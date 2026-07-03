@@ -1,0 +1,43 @@
+name: Docs Quality
+
+on:
+  pull_request:
+    paths:
+      - "content/**"
+      - "docs/**"
+      - "data/**"
+      - "scripts/**"
+      - ".github/workflows/docs-quality.yml"
+  push:
+    branches:
+      - main
+
+jobs:
+  validate-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate required docs frontmatter
+        shell: pwsh
+        run: ./scripts/validate-docs.ps1
+
+  markdown-links:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Markdown lint
+        uses: DavidAnson/markdownlint-cli2-action@v19
+        with:
+          globs: |
+            **/*.md
+
+      - name: Link check
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: --no-progress --verbose --exclude-mail --accept 200,206,429 './**/*.md'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

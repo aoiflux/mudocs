@@ -6,13 +6,17 @@ weight: 1
 ---
 
 #### Packaged Binary
-Download latest release from [our official GitHub repo](https://github.com/gaurav-gogia/mutant/releases) for your operating system
+
+Download latest release from
+[our official GitHub repo](https://github.com/aoiflux/mutant/releases) for your
+operating system
 
 #### Intall from Source
+
 Pre-Installation: Download & Install [GoLang](https://golang.org)
 
 ```bash
-git clone https://github.com/gaurav-gogia/mutant
+git clone https://github.com/aoiflux/mutant
 cd mutant
 go install
 ```

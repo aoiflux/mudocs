@@ -5,31 +5,37 @@ draft: false
 weight: 6
 ---
 
-[Mutant](https://github.com/gaurav-gogia/mutant) supports simple conditions and branching through if/else statements. Let's see them in action in below examples:
+[Mutant](https://github.com/aoiflux/mutant) supports simple conditions and
+branching through if/else statements. Let's see them in action in below
+examples:
 
 ###### Example 1
+
 ```js
-if(1 == 1) {
-    puts("yes");
+if (1 == 1) {
+    putf("yes");
 }
 ```
 
 ###### Example 2
+
 ```js
-if(1 == 2) {
-    puts("yes");
+if (1 == 2) {
+    putf("yes");
 } else {
-    puts("no");
+    putf("no");
 }
 ```
 
 ###### Example 3
+
 ```js
-if(1 == 2) {
-    puts("yes");
-} if(1 == 3) {
-    puts("yes 3");
+if (1 == 2) {
+    putf("yes");
+}
+if (1 == 3) {
+    putf("yes 3");
 } else {
-    puts("no");
+    putf("no");
 }
 ```

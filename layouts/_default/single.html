@@ -1,0 +1,23 @@
+{{ define "main" }}
+  <article class="doc-layout">
+    <header class="section-hero doc-hero">
+      <p class="eyebrow">{{ .CurrentSection.Title | default .Section }}</p>
+      <h1>{{ .Title }}</h1>
+      {{ with .Summary }}<p class="lead">{{ . }}</p>{{ end }}
+      <dl class="meta-grid">
+        {{ with .Params.source_repo }}
+          <div><dt>Source repo</dt><dd><a href="https://github.com/{{ . }}">{{ . }}</a></dd></div>
+        {{ end }}
+        {{ with .Params.source_path }}
+          <div><dt>Source path</dt><dd><a href="https://github.com/{{ $.Params.source_repo }}/blob/{{ $.Params.source_ref }}/{{ . }}">{{ . }}</a></dd></div>
+        {{ end }}
+        {{ with .Params.last_reviewed }}<div><dt>Last reviewed</dt><dd>{{ . }}</dd></div>{{ end }}
+        {{ with .Params.freshness_tier }}<div><dt>Freshness tier</dt><dd>{{ . }}</dd></div>{{ end }}
+      </dl>
+    </header>
+
+    <div class="doc-body panel prose{{ if eq .File.BaseFileName "built-ins" }} doc-body-compact{{ end }}">
+      {{ .Content }}
+    </div>
+  </article>
+{{ end }}

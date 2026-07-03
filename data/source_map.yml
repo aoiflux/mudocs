@@ -1,0 +1,51 @@
+pages:
+  - page: /docs/guide/install/
+    source_repo: aoiflux/mutant
+    source_path: README.md
+    source_ref: main
+    freshness_tier: high
+  - page: /docs/guide/getting-started/
+    source_repo: aoiflux/mutant
+    source_path: README.md
+    source_ref: main
+    freshness_tier: high
+  - page: /docs/reference/keywords/
+    source_repo: aoiflux/mutant
+    source_path: docs/BYTECODE_IR.md
+    source_ref: main
+    freshness_tier: high
+  - page: /docs/reference/data-types/
+    source_repo: aoiflux/mutant
+    source_path: docs/BYTECODE_IR.md
+    source_ref: main
+    freshness_tier: high
+  - page: /docs/reference/functions/
+    source_repo: aoiflux/mutant
+    source_path: docs/BYTECODE_IR.md
+    source_ref: main
+    freshness_tier: high
+  - page: /docs/reference/built-ins/
+    source_repo: aoiflux/mutant
+    source_path: docs/QUICK_REFERENCE.md
+    source_ref: main
+    freshness_tier: high
+  - page: /docs/security/overview/
+    source_repo: aoiflux/mutant
+    source_path: docs/SECURITY_LLD.md
+    source_ref: main
+    freshness_tier: critical
+  - page: /docs/security/environment-contract/
+    source_repo: aoiflux/mutant
+    source_path: docs/SECURITY_LLD.md
+    source_ref: main
+    freshness_tier: critical
+  - page: /docs/runtime/bytecode-opcodes/
+    source_repo: aoiflux/mutant
+    source_path: docs/BYTECODE_IR.md
+    source_ref: main
+    freshness_tier: critical
+  - page: /docs/examples/sandbox-detection/
+    source_repo: aoiflux/mutant
+    source_path: examples/sandbox_detection_examples.go
+    source_ref: main
+    freshness_tier: medium

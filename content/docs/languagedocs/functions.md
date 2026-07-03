@@ -5,9 +5,11 @@ draft: false
 weight: 8
 ---
 
-[Mutant](https://github.com/gaurav-gogia/mutant) supports user defined functions. Let's see them in action in below examples:
+[Mutant](https://github.com/aoiflux/mutant) supports user defined functions.
+Let's see them in action in below examples:
 
 ###### Example 1
+
 ```js
 let sum = fn(n1, n2) {
     return n1 + n2;

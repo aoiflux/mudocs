@@ -3,11 +3,11 @@ title: "Examples"
 date: 2021-03-28T11:06:57+05:30
 draft: false
 weight: 3
+summary: "Runnable Mutant examples for getting started quickly."
 ---
 
-Here is a list of some example [mutant](https://github.com/gaurav-gogia/mutant) programs to get your journey started:
-
 1. Add two numbers:
+
 ```js
 let sum = fn(n1, n2) {
     return n1 + n2;
@@ -15,16 +15,17 @@ let sum = fn(n1, n2) {
 
 putln("Lets add two numbers: ");
 
-puts("Enter first number: ");
-let num1 = gets("int");
+putf("Enter first number: ");
+let num1 = gets();
 
-puts("Enter second number: ");
-let num2 = gets("int");
+putf("Enter second number: ");
+let num2 = gets();
 
 sum(num1, num2);
 ```
 
 2. Print Fibonacci Series
+
 ```js
 let fibonacci = fn(x) {
     if (x == 0) {

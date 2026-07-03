@@ -1,0 +1,42 @@
+{{ define "main" }}
+  <section class="section-hero">
+    <p class="eyebrow">{{ .Parent.Title | default .Section }}</p>
+    <h1>{{ .Title }}</h1>
+    {{ with .Params.description }}<p class="lead">{{ . }}</p>{{ end }}
+  </section>
+
+  {{ if eq .Section "guide" }}
+    {{ with .GetPage "getting-started" }}
+      <section class="featured-sample">
+        <div class="featured-copy">
+          <p class="card-kicker">Featured sample</p>
+          <h2>{{ .Title }}</h2>
+          <p>{{ with .Params.summary }}{{ . }}{{ else }}{{ .Summary | plainify | truncate 140 }}{{ end }}</p>
+          <a class="button button-secondary" href="{{ .RelPermalink }}">Open guide</a>
+        </div>
+        {{ with .Params.featured_program }}
+          <pre class="featured-code"><code>{{ . | htmlEscape }}</code></pre>
+        {{ end }}
+      </section>
+    {{ end }}
+  {{ end }}
+
+  {{ if .Content }}
+    {{ if eq .Section "reference" }}
+      <article class="prose panel reference-sections">{{ .Content }}</article>
+    {{ else }}
+      <article class="prose panel">{{ .Content }}</article>
+    {{ end }}
+  {{ end }}
+
+  <section class="content-list">
+    {{ range .Pages.ByWeight }}
+      <article class="content-card">
+        <p class="card-kicker">{{ .CurrentSection.Title }}</p>
+        <h2><a href="{{ .RelPermalink }}">{{ .LinkTitle }}</a></h2>
+        <p>{{ with .Params.summary }}{{ . }}{{ else }}{{ .Summary | plainify | truncate 160 }}{{ end }}</p>
+        {{ with .Params.source_path }}<p class="meta-line">Source: {{ . }}</p>{{ end }}
+      </article>
+    {{ end }}
+  </section>
+{{ end }}

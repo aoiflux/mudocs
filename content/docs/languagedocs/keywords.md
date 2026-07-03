@@ -17,7 +17,7 @@ weight: 4
 
 ###### Following is the list of built-in functions:
 
-1. `puts`
+1. `putf`
 2. `putln`
 3. `gets`
 4. `push`

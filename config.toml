@@ -1,10 +1,13 @@
 baseURL = "https://mudocs.netlify.app/"
-languageCode = "en-us"
 title = "μdocs"
-theme = "Dot"
+defaultContentLanguage = "en"
+ignoreLogs = ['warning-goldmark-raw-html']
 
-############################# Default Parameters ##########################
 [params]
+description = "Adapted Mutant documentation with a manual freshness workflow and canonical source links."
+hero_title = "Mutant documentation, redesigned for clarity."
+hero_subtitle = "Task-first guides, canonical references, and a manual freshness workflow for the latest stable release."
+############################# Default Parameters ##########################
 # logo is for all page
 logo = ""
 # logo white is for homepage logo, you can use colorful logo too...
@@ -20,11 +23,12 @@ white_color = "#171b42"
 light_color = "#361a99"
 
 # font family
-font_family = "roboto" # Choose font family from : https://fonts.google.com/
+font_family = "manrope" # Choose font family from : https://fonts.google.com/
 
 ################################ English Language ######################
 [Languages.en]
 weight = 1
+locale = "en-US"
 
 # banner
 [Languages.en.params.banner]
@@ -42,7 +46,7 @@ content = "Official compiled binaries are available for: Linux, macOS, & Windows
 [Languages.en.params.cta.button]
 enable = true
 label = "Download"
-link = "https://github.com/gaurav-gogia/mutant/releases"
+link = "https://github.com/aoiflux/mutant/releases"
 
 
 ################## english navigation #################
@@ -59,21 +63,45 @@ hasChildren = true
 
 [[Languages.en.menu.main]]
 parent = "docs"
-name = "Features"
-url = "docs/features"
+name = "Guide"
+url = "docs/guide"
 weight = 1
 
 [[Languages.en.menu.main]]
 parent = "docs"
-name = "Language Docs"
-url = "docs/languagedocs"
+name = "Reference"
+url = "docs/reference"
 weight = 2
+
+[[Languages.en.menu.main]]
+parent = "docs"
+name = "Security"
+url = "docs/security"
+weight = 3
+
+[[Languages.en.menu.main]]
+parent = "docs"
+name = "Runtime"
+url = "docs/runtime"
+weight = 4
+
+[[Languages.en.menu.main]]
+parent = "docs"
+name = "Features"
+url = "docs/features"
+weight = 5
 
 [[Languages.en.menu.main]]
 parent = "docs"
 name = "Examples"
 url = "docs/examples"
-weight = 3
+weight = 6
+
+[[Languages.en.menu.main]]
+parent = "docs"
+name = "Releases"
+url = "docs/releases"
+weight = 7
 
 [[Languages.en.menu.main]]
 name = "About Us"
