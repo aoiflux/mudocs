@@ -7,6 +7,7 @@ ignoreLogs = ['warning-goldmark-raw-html']
 description = "Adapted Mutant documentation with a manual freshness workflow and canonical source links."
 hero_title = "Mutant documentation, redesigned for clarity."
 hero_subtitle = "Task-first guides, canonical references, and a manual freshness workflow for the latest stable release."
+spacing_density = "normal"
 ############################# Default Parameters ##########################
 # logo is for all page
 logo = ""

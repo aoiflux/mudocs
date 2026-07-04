@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="/css/site.css" />
     {{ partial "head.html" . }}
   </head>
-  <body>
+  <body class="density-{{ .Site.Params.spacing_density | default "normal" }}">
     <a class="skip-link" href="#content">Skip to content</a>
     {{ partial "header.html" . }}
     <main id="content" class="page-shell">
