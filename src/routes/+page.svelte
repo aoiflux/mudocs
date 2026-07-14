@@ -3,7 +3,6 @@
 </script>
 
 <section class="panel" style="margin-bottom: 1rem;">
-	<p class="kicker">Definitive Guide In Progress</p>
 	<h1 class="big-title">The Definitive Mutant Guide</h1>
 	<p class="lede">
 		This new implementation uses the repository-level docs corpus as the canonical source for architecture,
