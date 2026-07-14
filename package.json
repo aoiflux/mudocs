@@ -5,13 +5,14 @@
 	"type": "module",
 	"scripts": {
 		"sync:wasm": "node ./scripts/sync-wasm-repl.mjs",
+		"check:docs:wasm": "node ./scripts/lint-wasm-docs.mjs",
 		"predev": "npm run sync:wasm",
 		"prebuild": "npm run sync:wasm",
 		"dev": "vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
-		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check": "npm run check:docs:wasm && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
 	},
 	"devDependencies": {

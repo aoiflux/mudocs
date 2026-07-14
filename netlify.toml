@@ -4,6 +4,7 @@ publish = "build"
 
 [functions]
 directory = ".netlify/functions-internal"
+included_files = ["docs/**"]
 
 [[redirects]]
 from = "/*"

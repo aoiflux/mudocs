@@ -35,7 +35,7 @@ export const docsManifest: Record<string, ManifestEntry> = {
 		order: 30,
 		tags: ['faq', 'orientation', 'guide']
 	},
-	'docs/LANGUAGE_REFERENCE.md': {
+	'docs/MUTANT_LANGUAGE_REFERENCE.md': {
 		section: 'reference',
 		audience: 'language-user',
 		order: 12,
@@ -47,6 +47,13 @@ export const docsManifest: Record<string, ManifestEntry> = {
 		audience: 'language-user',
 		order: 14,
 		tags: ['playground', 'examples', 'syntax', 'learning'],
+		themes: ['repl']
+	},
+	'docs/WASM_REPL_REFERENCE.md': {
+		section: 'reference',
+		audience: 'language-user',
+		order: 16,
+		tags: ['wasm', 'repl', 'browser', 'api', 'migration'],
 		themes: ['repl']
 	},
 	'docs/QUICK_REFERENCE.md': {

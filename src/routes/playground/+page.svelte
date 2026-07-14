@@ -25,7 +25,7 @@
 		{
 			id: 'expr-arithmetic',
 			label: 'Arithmetic expression',
-			description: 'Safe expression-only snippet for web REPL smoke test.',
+			description: 'Quick arithmetic smoke test for web REPL execution.',
 			code: '2 + 40'
 		},
 		{
@@ -49,7 +49,7 @@ putln(last([10, 20, 30]))
 putln(rest([10, 20, 30]))
 putln(push([10, 20, 30], 40))
 putln(pop([10, 20, 30]))
-putln(len([10, 20, 30, 40])[0])`
+putln(len([10, 20, 30, 40]))`
 		},
 		{
 			id: 'output-formatting',
@@ -164,19 +164,23 @@ for (let i = 0; i < 4; i = i + 1) {
 putln(sum)`
 		},
 		{
-			id: 'loops-for-in',
-			label: 'Loop: for-in',
-			description: 'Iterate directly over collection values.',
-			code: `for (item in ["bytecode", "sandbox", "signing", "lsp"]) {
-	putln(item)
+			id: 'loops-for-indexed-array',
+			label: 'Loop: for with array indexing',
+			description: 'Iterate collection values using a classic index-driven for loop.',
+			code: `let items = ["bytecode", "sandbox", "signing", "lsp"]
+for (let i = 0; i < len(items); i = i + 1) {
+	putln(items[i])
 }`
 		},
 		{
-			id: 'loops-for-each',
-			label: 'Loop: for-each',
-			description: 'Explicit for-each style traversal sample.',
-			code: `for each (item in ["parse", "compile", "run"]) {
-	putln(item)
+			id: 'loops-while-indexed-array',
+			label: 'Loop: while with array indexing',
+			description: 'Traverse an array with state-driven while loop progression.',
+			code: `let items = ["parse", "compile", "run"]
+let i = 0
+while (i < len(items)) {
+	putln(items[i])
+	i = i + 1
 }`
 		},
 		{
@@ -220,23 +224,13 @@ putln(Verdict.Block)`
 
 	const preflightRules = [
 		{
-			test: (value: string) => /\blet\s+[A-Za-z_][A-Za-z0-9_]*\s*=/.test(value),
-			hit: {
-				rule: 'assignment-not-supported',
-				message:
-					'Assignment-style statements are currently rejected by this browser REPL profile. Try expression-only snippets.',
-				docHref: '/docs/reference/language_reference#variables',
-				docLabel: 'Language Reference'
-			}
-		},
-		{
 			test: (value: string) => /\b(fs_|net_|exec_|sandbox_|debug_)/.test(value),
 			hit: {
 				rule: 'restricted-builtins',
 				message:
 					'Filesystem, network, process, and probe builtins are restricted in browser mode.',
-				docHref: '/docs/security',
-				docLabel: 'Security model docs'
+				docHref: '/docs/reference/wasm_repl_reference#6-unsupported-builtins-and-rationale',
+				docLabel: 'WASM REPL reference'
 			}
 		}
 	];
@@ -258,10 +252,6 @@ putln(Verdict.Block)`
 
 		if (/already exited/i.test(raw)) {
 			return 'Runtime instance ended unexpectedly. The worker will auto-restart the WASM runtime on retry.';
-		}
-
-		if (/unsupported syntax.*AssignExpression/i.test(raw)) {
-			return 'Web REPL currently accepts expression-oriented input. Remove assignment statements and retry with a pure expression or function call.';
 		}
 
 		if (/unsupported syntax/i.test(raw)) {
@@ -374,21 +364,16 @@ putln(Verdict.Block)`
 <section class="grid" style="align-items: start;">
 	<div class="card" style="grid-column: span 7;">
 		<h3>Editor</h3>
-		<div style="display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.6rem; margin-bottom: 0.7rem;">
+		<div style="margin-bottom: 0.7rem;">
 			<select
 				bind:value={selectedPreset}
+				onchange={applyPreset}
 				style="border: 3px solid var(--ink); padding: 0.45rem; background: var(--input-bg); color: var(--ink); font: 600 0.88rem/1 'Space Grotesk', sans-serif; text-transform: uppercase;"
 			>
 				{#each presets as preset}
 					<option value={preset.id}>{preset.label}</option>
 				{/each}
 			</select>
-			<button
-				onclick={applyPreset}
-				style="border: 3px solid var(--ink); background: var(--accent-2); color: var(--ink); font-weight: 800; text-transform: uppercase; padding: 0.45rem 0.7rem; cursor: pointer;"
-			>
-				Load
-			</button>
 		</div>
 		<p style="margin: 0 0 0.6rem; font-size: 0.9rem; color: var(--ink-soft);">{presets.find((p) => p.id === selectedPreset)?.description}</p>
 		<textarea

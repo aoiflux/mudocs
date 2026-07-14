@@ -17,7 +17,9 @@ import {
 } from '$lib/server/docs-manifest';
 
 function resolveDocsRoot(): string {
+	const configuredRoot = process.env.MUDOCS_DOCS_ROOT?.trim();
 	const candidates = [
+		configuredRoot ? path.resolve(configuredRoot) : null,
 		path.resolve(process.cwd(), 'docs'),
 		path.resolve(process.cwd(), '..', 'docs'),
 		path.resolve(process.cwd(), '..', 'mutant', 'docs')
@@ -44,14 +46,14 @@ const sectionCatalog: Record<SectionKey, {
 		description: 'Big-picture explanations, quick reference material, and definitive orientation docs.',
 		intro: 'Start here if you need the shape of the language, why it exists, and which foundational documents to read first.',
 		featuredSlug: 'what_is_mutant',
-		readingPath: ['what_is_mutant', 'language_reference', 'playground_examples']
+		readingPath: ['what_is_mutant', 'mutant_language_reference', 'playground_examples', 'wasm_repl_reference']
 	},
 	reference: {
 		title: 'Reference',
 		description: 'Canonical policies, reference sheets, migration matrices, and source-of-truth documentation.',
 		intro: 'Use this section when you need exact policy, source-of-truth fields, or implementation mapping rather than narrative explanation.',
-		featuredSlug: 'language_reference',
-		readingPath: ['language_reference', 'playground_examples', 'quick_reference']
+		featuredSlug: 'mutant_language_reference',
+		readingPath: ['mutant_language_reference', 'wasm_repl_reference', 'playground_examples', 'quick_reference']
 	},
 	runtime: {
 		title: 'Runtime',
@@ -522,7 +524,17 @@ function processMarkdown(body: string): {
 }
 
 async function loadAllDocs(): Promise<DocItem[]> {
-	const definitiveDocsRoot = resolveDocsRoot();
+	let definitiveDocsRoot: string;
+	try {
+		definitiveDocsRoot = resolveDocsRoot();
+	} catch (error) {
+		console.error('[docs] Unable to resolve docs root', error);
+		docsCache = {
+			key: 'missing-docs-root',
+			docs: []
+		};
+		return [];
+	}
 	const { files, cacheKey } = await resolveDocsFilesWithCacheKey(definitiveDocsRoot);
 
 	if (docsCache && docsCache.key === cacheKey) {
@@ -728,7 +740,7 @@ export async function getHomeReadingPaths(): Promise<HomeReadingPath[]> {
 			title: 'Learn The Language',
 			description: 'Start with orientation, pick up syntax and reference, then explore execution internals.',
 			audience: 'language-user',
-			steps: resolveSteps(['what_is_mutant', 'language_reference', 'playground_examples', 'bytecode_ir'])
+			steps: resolveSteps(['what_is_mutant', 'mutant_language_reference', 'playground_examples', 'wasm_repl_reference', 'bytecode_ir'])
 		},
 		{
 			id: 'understand-security',
