@@ -4,29 +4,40 @@
 
 ## Docs Overhaul Status
 
-This repository is currently migrating from a legacy docs layout to a new IA:
-
-- Guide
-- Reference
-- Security
-- Runtime
-- Examples
-- Releases
+This repository now runs on a definitive SvelteKit docs platform sourced from
+the repository-level `docs/` corpus.
 
 Canonical-source policy and manual update workflow are documented in `docs/`.
 
-The site now uses a local Hugo docs shell instead of depending on the empty Dot
-theme submodule.
+## SvelteKit Website
+
+The website is fully served from `site/`.
+
+Run it locally:
+
+```bash
+cd site
+npm install
+npm run dev
+```
+
+Current implementation includes:
+
+- docs manifest/frontmatter-driven section, audience, and order overrides
+- tags and theme cross-linking (bytecode, sandboxing, signing, REPL, LSP)
+- guided homepage reading paths for language, security, and tooling tracks
+- `/playground` worker-based browser WASM REPL path
 
 ### How to run development server
 
 ```bash
-hugo server -D
+cd site
+npm install
+npm run dev
 ```
 
-### Theme used
+### Deployment
 
-This website uses a custom local Hugo docs shell with manual update workflow and
-canonical source links.
+Netlify now builds and publishes the SvelteKit app under `site/`.
 
 ![Home Page](./pics/home.png)

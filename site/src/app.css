@@ -1,0 +1,253 @@
+:root {
+	--bg: #f5efe2;
+	--surface: #fff8eb;
+	--ink: #121212;
+	--ink-soft: #2c2a27;
+	--accent: #00a8a8;
+	--accent-2: #ff6f3c;
+	--grid: rgba(18, 18, 18, 0.12);
+	--border-heavy: 3px solid var(--ink);
+	--radius: 0;
+	--shadow-brut: 7px 7px 0 var(--ink);
+	--max-width: 1180px;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+	font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+	background:
+		repeating-linear-gradient(0deg, transparent 0 47px, var(--grid) 47px 48px),
+		repeating-linear-gradient(90deg, transparent 0 47px, var(--grid) 47px 48px),
+		linear-gradient(145deg, #f5efe2 0%, #f3e6cb 45%, #f1dcc7 100%);
+	color: var(--ink);
+	min-height: 100%;
+}
+
+a {
+	color: var(--ink);
+	text-underline-offset: 2px;
+	font-weight: 600;
+}
+
+.page-shell {
+	max-width: var(--max-width);
+	margin: 0 auto;
+	padding: 1rem;
+	padding-bottom: 5rem;
+}
+
+.panel {
+	background: var(--surface);
+	border: var(--border-heavy);
+	box-shadow: var(--shadow-brut);
+	padding: 1rem;
+}
+
+.kicker {
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	font-size: 0.76rem;
+	font-weight: 700;
+	margin-bottom: 0.5rem;
+	color: var(--ink-soft);
+}
+
+.big-title {
+	font-size: clamp(2rem, 6vw, 4.6rem);
+	line-height: 0.98;
+	margin: 0;
+	text-transform: uppercase;
+	letter-spacing: -0.03em;
+	font-weight: 800;
+	max-width: 16ch;
+}
+
+.lede {
+	font-size: 1.1rem;
+	max-width: 70ch;
+	line-height: 1.6;
+	color: var(--ink-soft);
+}
+
+.grid {
+	display: grid;
+	grid-template-columns: repeat(12, minmax(0, 1fr));
+	gap: 1rem;
+}
+
+.card {
+	grid-column: span 6;
+	background: var(--surface);
+	border: var(--border-heavy);
+	padding: 1rem;
+	box-shadow: 5px 5px 0 var(--ink);
+	transition: transform 160ms ease;
+}
+
+.card:hover {
+	transform: translate(-3px, -3px);
+	box-shadow: 8px 8px 0 var(--ink);
+}
+
+.card h3 {
+	margin-top: 0;
+	margin-bottom: 0.6rem;
+	font-size: 1.2rem;
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+}
+
+.doc-content {
+	font-size: 1rem;
+	line-height: 1.75;
+	color: var(--ink);
+}
+
+.doc-content h1,
+.doc-content h2,
+.doc-content h3 {
+	text-transform: uppercase;
+	letter-spacing: 0.01em;
+	line-height: 1.15;
+}
+
+.doc-content pre {
+	overflow-x: auto;
+	padding: 0.9rem;
+	border: var(--border-heavy);
+	background: #1f1f1f;
+	color: #f3f3f3;
+	font-family: 'IBM Plex Mono', Consolas, monospace;
+	font-size: 0.9rem;
+	line-height: 1.5;
+}
+
+.doc-content code {
+	font-family: 'IBM Plex Mono', Consolas, monospace;
+	font-size: 0.92em;
+	background: #f0e6d2;
+	padding: 0.1em 0.3em;
+}
+
+.doc-content pre code {
+	background: transparent;
+	padding: 0;
+}
+
+.doc-content blockquote {
+	border-left: 8px solid var(--accent-2);
+	margin-left: 0;
+	padding: 0.2rem 1rem;
+	background: #fce8d9;
+	font-weight: 500;
+}
+
+.doc-content table {
+	width: 100%;
+	border-collapse: collapse;
+	margin: 1rem 0;
+	font-size: 0.95rem;
+}
+
+.doc-content th,
+.doc-content td {
+	border: 2px solid var(--ink);
+	padding: 0.45rem 0.55rem;
+	vertical-align: top;
+}
+
+.spec-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	gap: 0.8rem;
+	margin: 1.2rem 0;
+}
+
+.spec-group {
+	border: 2px solid var(--ink);
+	padding: 0.7rem;
+	background: #fdf5e8;
+}
+
+.meta-row {
+	display: flex;
+	gap: 0.6rem;
+	flex-wrap: wrap;
+	margin-top: 0.7rem;
+	font-size: 0.8rem;
+	font-family: 'IBM Plex Mono', Consolas, monospace;
+	text-transform: uppercase;
+}
+
+.meta-chip {
+	padding: 0.2rem 0.5rem;
+	border: 2px solid var(--ink);
+	background: #e6f9f6;
+}
+
+.doc-rail-block {
+	margin: 1.5rem 0;
+	padding: 1rem;
+	border: 2px solid var(--ink);
+	background: #fdf5e8;
+}
+
+.doc-rail-title {
+	margin: 0 0 0.8rem;
+	font-size: 1rem;
+	text-transform: uppercase;
+}
+
+.toc-list {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	display: grid;
+	gap: 0.45rem;
+}
+
+.toc-level-3,
+.toc-level-4 {
+	padding-left: 1rem;
+}
+
+.doc-footer-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	gap: 0.8rem;
+	margin-top: 2rem;
+}
+
+.doc-nav-card,
+.related-doc-link {
+	display: block;
+	border: 2px solid var(--ink);
+	background: #fff8eb;
+	padding: 0.8rem;
+	text-decoration: none;
+}
+
+.doc-nav-label {
+	display: block;
+	margin-bottom: 0.4rem;
+	font-size: 0.72rem;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+}
+
+.related-docs-list {
+	display: grid;
+	gap: 0.7rem;
+}
+
+@media (max-width: 900px) {
+	.card {
+		grid-column: span 12;
+	}
+}
