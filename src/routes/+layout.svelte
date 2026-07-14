@@ -149,14 +149,15 @@
 		href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;700;800&display=swap"
 		rel="stylesheet"
 	/>
-	<title>mudocs-next</title>
+	<title>Mudocs</title>
 </svelte:head>
 
 <div class="page-shell">
 	<header class="panel" style="margin-bottom: 1rem;">
 		<div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: center;">
-			<a href="/" style="font-size: 1.1rem; text-decoration: none; font-weight: 800; text-transform: uppercase;">
-				mu docs // next
+			<a class="site-brand" href="/">
+				<img src={favicon} alt="Mudocs logo" />
+				<span>mu docs // next</span>
 			</a>
 			<form action="/search" method="GET" class="quick-search" role="search">
 				<input name="q" type="search" placeholder="Search docs..." aria-label="Search docs" required />

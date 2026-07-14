@@ -71,6 +71,26 @@ a {
 	font-weight: 600;
 }
 
+.site-brand {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.55rem;
+	font-size: 1.1rem;
+	text-decoration: none;
+	font-weight: 800;
+	text-transform: uppercase;
+	letter-spacing: 0.01em;
+}
+
+.site-brand img {
+	width: 1.85rem;
+	height: 1.85rem;
+	border: 2px solid var(--ink);
+	background: var(--surface);
+	padding: 0.1rem;
+	box-shadow: 3px 3px 0 var(--ink);
+}
+
 .page-shell {
 	max-width: var(--max-width);
 	margin: 0 auto;
