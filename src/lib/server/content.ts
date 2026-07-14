@@ -18,7 +18,6 @@ import {
 
 function resolveDocsRoot(): string {
 	const candidates = [
-		process.env.MUDOCS_DOCS_ROOT,
 		path.resolve(process.cwd(), 'docs'),
 		path.resolve(process.cwd(), '..', 'docs'),
 		path.resolve(process.cwd(), '..', 'mutant', 'docs')
@@ -99,7 +98,7 @@ const themeCatalog = {
 	},
 	sandboxing: {
 		title: 'Sandboxing',
-		description: 'Environment checks, sandbox signals, and anti-analysis handling.'
+		description: 'Sandbox signals, runtime probes, and anti-analysis handling.'
 	},
 	signing: {
 		title: 'Signing',
