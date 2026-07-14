@@ -23,6 +23,32 @@ export const docsManifest: Record<string, ManifestEntry> = {
 		tags: ['language', 'overview', 'orientation'],
 		themes: ['repl']
 	},
+	'docs/DETAILED_EXPLANATIONS.md': {
+		section: 'overview',
+		audience: 'all',
+		order: 20,
+		tags: ['overview', 'deep-dive', 'security']
+	},
+	'docs/QUESTIONS_ANSWERED.md': {
+		section: 'overview',
+		audience: 'all',
+		order: 30,
+		tags: ['faq', 'orientation', 'guide']
+	},
+	'docs/LANGUAGE_REFERENCE.md': {
+		section: 'reference',
+		audience: 'language-user',
+		order: 12,
+		tags: ['language', 'syntax', 'control-flow', 'loops'],
+		themes: ['repl']
+	},
+	'docs/PLAYGROUND_EXAMPLES.md': {
+		section: 'reference',
+		audience: 'language-user',
+		order: 14,
+		tags: ['playground', 'examples', 'syntax', 'learning'],
+		themes: ['repl']
+	},
 	'docs/QUICK_REFERENCE.md': {
 		section: 'reference',
 		audience: 'language-user',
@@ -30,11 +56,17 @@ export const docsManifest: Record<string, ManifestEntry> = {
 		tags: ['reference', 'cheatsheet', 'runtime'],
 		themes: ['bytecode']
 	},
-	'docs/CANONICAL_SOURCES.md': {
+	'docs/VISUAL_COMPARISON.md': {
+		section: 'reference',
+		audience: 'all',
+		order: 30,
+		tags: ['comparison', 'visual', 'reference']
+	},
+	'docs/REMAINING_WORK_CHECKLIST.md': {
 		section: 'reference',
 		audience: 'integrator',
-		order: 15,
-		tags: ['policy', 'source-of-truth']
+		order: 90,
+		tags: ['checklist', 'status', 'maintenance']
 	},
 	'docs/BYTECODE_IR.md': {
 		section: 'runtime',
@@ -50,11 +82,31 @@ export const docsManifest: Record<string, ManifestEntry> = {
 		tags: ['bytecode', 'polymorphism'],
 		themes: ['bytecode']
 	},
+	'docs/BINARY_ARTIFACT_SECURITY_DEEP_DIVE.md': {
+		section: 'runtime',
+		audience: 'platform-engineer',
+		order: 30,
+		tags: ['artifact', 'runtime', 'hardening'],
+		themes: ['bytecode', 'signing']
+	},
+	'docs/FINAL_SUMMARY.md': {
+		section: 'overview',
+		audience: 'all',
+		order: 40,
+		tags: ['summary', 'security', 'status']
+	},
 	'docs/SECURITY_LLD.md': {
 		section: 'security',
 		audience: 'security-analyst',
 		order: 10,
 		tags: ['security', 'hardening', 'lld'],
+		themes: ['signing', 'sandboxing']
+	},
+	'docs/SECURITY_DIAGRAMS.md': {
+		section: 'security',
+		audience: 'security-analyst',
+		order: 15,
+		tags: ['security', 'diagrams', 'architecture'],
 		themes: ['signing', 'sandboxing']
 	},
 	'docs/SECURITY_RUNBOOK.md': {
@@ -64,11 +116,46 @@ export const docsManifest: Record<string, ManifestEntry> = {
 		tags: ['operations', 'runbook', 'security'],
 		themes: ['signing', 'sandboxing']
 	},
+	'docs/SECURITY_ANSWERS.md': {
+		section: 'security',
+		audience: 'security-analyst',
+		order: 25,
+		tags: ['security', 'faq', 'operations'],
+		themes: ['sandboxing']
+	},
+	'docs/SECURITY_ENHANCEMENTS.md': {
+		section: 'security',
+		audience: 'security-analyst',
+		order: 28,
+		tags: ['security', 'enhancements', 'roadmap'],
+		themes: ['signing', 'sandboxing']
+	},
+	'docs/SECURITY_MIGRATION_COMPLETE.md': {
+		section: 'security',
+		audience: 'integrator',
+		order: 29,
+		tags: ['security', 'migration', 'status'],
+		themes: ['signing']
+	},
 	'docs/SANDBOX_DETECTION.md': {
 		section: 'security',
 		audience: 'security-analyst',
 		order: 30,
 		tags: ['sandbox', 'detection'],
+		themes: ['sandboxing']
+	},
+	'docs/SANDBOX_FEATURE_SUMMARY.md': {
+		section: 'security',
+		audience: 'security-analyst',
+		order: 32,
+		tags: ['sandbox', 'features', 'summary'],
+		themes: ['sandboxing']
+	},
+	'docs/SANDBOX_COMPLETE_SUMMARY.md': {
+		section: 'security',
+		audience: 'security-analyst',
+		order: 33,
+		tags: ['sandbox', 'summary', 'detection'],
 		themes: ['sandboxing']
 	},
 	'docs/ANTITAMPER_PROBE.md': {
@@ -78,17 +165,39 @@ export const docsManifest: Record<string, ManifestEntry> = {
 		tags: ['anti-tamper', 'probe'],
 		themes: ['signing']
 	},
+	'docs/ANTITAMPER_PROBE_ENABLEMENT_LLD.md': {
+		section: 'security',
+		audience: 'security-analyst',
+		order: 36,
+		tags: ['anti-tamper', 'enablement', 'lld'],
+		themes: ['signing']
+	},
+	'docs/PROCESS_INJECTION_DETECTION_LLD.md': {
+		section: 'security',
+		audience: 'security-analyst',
+		order: 37,
+		tags: ['process-injection', 'detection', 'lld'],
+		themes: ['sandboxing']
+	},
+	'docs/REMOTE_PROCESS_SCAN_DEEP_DIVE.md': {
+		section: 'security',
+		audience: 'security-analyst',
+		order: 38,
+		tags: ['remote-scan', 'policy', 'deep-dive'],
+		themes: ['sandboxing']
+	},
+	'docs/SECURITY_LLD_TRACEABILITY.md': {
+		section: 'security',
+		audience: 'integrator',
+		order: 39,
+		tags: ['security', 'traceability', 'requirements'],
+		themes: ['signing']
+	},
 	'docs/IMPLEMENTATION_GUIDE.md': {
 		section: 'tooling',
 		audience: 'integrator',
 		order: 10,
 		tags: ['implementation', 'workflow']
-	},
-	'docs/MANUAL_UPDATE_WORKFLOW.md': {
-		section: 'tooling',
-		audience: 'integrator',
-		order: 20,
-		tags: ['workflow', 'maintenance']
 	},
 	'docs/LSP_EXTENSION_ONBOARDING_60_MIN.md': {
 		section: 'tooling',

@@ -62,7 +62,7 @@
 		{#each data.themes as theme}
 			<a class="related-doc-link" href={`/docs/themes/${theme.theme}`}>
 				<strong>{theme.title}</strong><br />
-				<span style="font-size: 0.9rem; color: #2c2a27;">{theme.description}</span><br />
+				<span style="font-size: 0.9rem; color: var(--ink-soft);">{theme.description}</span><br />
 				<span class="doc-nav-label">{theme.count} docs</span>
 			</a>
 		{/each}

@@ -19,9 +19,12 @@
 		<input
 			bind:value={query}
 			placeholder="Search titles, sections, source paths"
-			style="width: 100%; border: 3px solid #121212; padding: 0.8rem; background: #fff8eb; font: 600 0.95rem/1.2 'Space Grotesk', sans-serif;"
+			style="width: 100%; border: 3px solid var(--ink); padding: 0.8rem; background: var(--input-bg); color: var(--ink); font: 600 0.95rem/1.2 'Space Grotesk', sans-serif;"
 		/>
 	</div>
+	<p style="margin: 0.8rem 0 0; font-size: 0.9rem; color: var(--ink-soft);">
+		Need full-text ranking and filters? <a href="/search">Open Advanced Search</a>.
+	</p>
 </section>
 
 <section class="grid">

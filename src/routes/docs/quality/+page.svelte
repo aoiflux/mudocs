@@ -12,7 +12,40 @@
 	<div class="meta-row">
 		<span class="meta-chip">Total docs: {data.report.totalDocs}</span>
 		<span class="meta-chip">Docs with issues: {data.report.docsWithIssues}</span>
+		<span class="meta-chip">Manifest entries: {data.report.manifestEntries}</span>
+		<span class="meta-chip">Diagram fences: {data.report.totalDiagramFences}</span>
+		<span class="meta-chip">Rendered diagrams: {data.report.totalRenderedDiagrams}</span>
 		<span class="meta-chip">Generated: {data.report.generatedAt}</span>
+	</div>
+</section>
+
+<section class="panel" style="margin-bottom: 1rem;">
+	<p class="kicker">Parity</p>
+	<div class="grid">
+		<article class="card" style="grid-column: span 6;">
+			<h3 style="margin-top: 0;">Manifest Missing Files</h3>
+			{#if data.report.manifestMissingFiles.length === 0}
+				<p style="margin-bottom: 0;">No stale manifest mappings detected.</p>
+			{:else}
+				<ul style="margin-bottom: 0;">
+					{#each data.report.manifestMissingFiles as item}
+						<li>{item}</li>
+					{/each}
+				</ul>
+			{/if}
+		</article>
+		<article class="card" style="grid-column: span 6;">
+			<h3 style="margin-top: 0;">Unmapped Docs</h3>
+			{#if data.report.unmappedDocs.length === 0}
+				<p style="margin-bottom: 0;">All docs are explicitly configured in manifest.</p>
+			{:else}
+				<ul style="margin-bottom: 0;">
+					{#each data.report.unmappedDocs as item}
+						<li>{item}</li>
+					{/each}
+				</ul>
+			{/if}
+		</article>
 	</div>
 </section>
 

@@ -1,5 +1,25 @@
 <script lang="ts">
 	let { data } = $props();
+
+	const deepDiveKeywords = ['deep-dive', 'diagram', 'lld', 'traceability', 'runbook', 'probe', 'migration'];
+
+	function docPriority(doc: (typeof data.docs)[number]): number {
+		const text = [doc.title, doc.description, ...(doc.tags ?? [])].join(' ').toLowerCase();
+		let score = 0;
+		for (const keyword of deepDiveKeywords) {
+			if (text.includes(keyword)) score += 3;
+		}
+		if ((doc.themes ?? []).length > 0) score += 1;
+		if (doc.frontmatter.freshness_tier === 'critical') score += 2;
+		if (doc.frontmatter.freshness_tier === 'high') score += 1;
+		return score;
+	}
+
+	const curatedDeepDives = $derived(
+		[...data.docs]
+			.sort((a, b) => docPriority(b) - docPriority(a) || a.title.localeCompare(b.title))
+			.slice(0, 4)
+	);
 </script>
 
 <section class="panel" style="margin-bottom: 1rem;">
@@ -35,6 +55,19 @@
 				</a>
 			{/each}
 		</div>
+	</div>
+</section>
+
+<section class="panel" style="margin-bottom: 1rem;">
+	<p class="kicker">Curated</p>
+	<h2 style="margin-top: 0; text-transform: uppercase;">Top Deep Dives</h2>
+	<div class="related-docs-list">
+		{#each curatedDeepDives as doc}
+			<a class="related-doc-link" href={`/docs/${doc.section}/${doc.slug}`}>
+				<strong>{doc.title}</strong><br />
+				<span style="font-size: 0.9rem; color: var(--ink-soft);">{doc.description}</span>
+			</a>
+		{/each}
 	</div>
 </section>
 

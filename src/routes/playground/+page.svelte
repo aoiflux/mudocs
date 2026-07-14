@@ -154,19 +154,37 @@ putln(bytes_read_u64_le("\x08\x07\x06\x05\x04\x03\x02\x01", 0))`
 putln(json_parse("{\"kind\":\"hashmap\",\"entries\":3,\"enabled\":true}"))`
 		},
 		{
-			id: 'loops-for',
-			label: 'Loop: for',
-			description: 'Simple for-loop sample for repeated output.',
+			id: 'loops-for-classic',
+			label: 'Loop: for (classic)',
+			description: 'Classic init/condition/post loop with accumulation.',
+			code: `let sum = 0
+for (let i = 0; i < 4; i = i + 1) {
+	sum = sum + i
+}
+putln(sum)`
+		},
+		{
+			id: 'loops-for-in',
+			label: 'Loop: for-in',
+			description: 'Iterate directly over collection values.',
 			code: `for (item in ["bytecode", "sandbox", "signing", "lsp"]) {
+	putln(item)
+}`
+		},
+		{
+			id: 'loops-for-each',
+			label: 'Loop: for-each',
+			description: 'Explicit for-each style traversal sample.',
+			code: `for each (item in ["parse", "compile", "run"]) {
 	putln(item)
 }`
 		},
 		{
 			id: 'loops-while',
 			label: 'Loop: while',
-			description: 'While-loop sample; adjust the condition and body as needed.',
+			description: 'State-driven loop condition example.',
 			code: `let i = 0
-while (i < 4) {
+while (i < 3) {
 	putln(i)
 	i = i + 1
 }`
@@ -207,8 +225,8 @@ putln(Verdict.Block)`
 				rule: 'assignment-not-supported',
 				message:
 					'Assignment-style statements are currently rejected by this browser REPL profile. Try expression-only snippets.',
-				docHref: '/docs/languagedocs/variables',
-				docLabel: 'Variables docs'
+				docHref: '/docs/reference/language_reference#variables',
+				docLabel: 'Language Reference'
 			}
 		},
 		{
@@ -359,7 +377,7 @@ putln(Verdict.Block)`
 		<div style="display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.6rem; margin-bottom: 0.7rem;">
 			<select
 				bind:value={selectedPreset}
-				style="border: 3px solid #121212; padding: 0.45rem; background: #fff8eb; font: 600 0.88rem/1 'Space Grotesk', sans-serif; text-transform: uppercase;"
+				style="border: 3px solid var(--ink); padding: 0.45rem; background: var(--input-bg); color: var(--ink); font: 600 0.88rem/1 'Space Grotesk', sans-serif; text-transform: uppercase;"
 			>
 				{#each presets as preset}
 					<option value={preset.id}>{preset.label}</option>
@@ -367,20 +385,20 @@ putln(Verdict.Block)`
 			</select>
 			<button
 				onclick={applyPreset}
-				style="border: 3px solid #121212; background: #ff6f3c; color: #121212; font-weight: 800; text-transform: uppercase; padding: 0.45rem 0.7rem; cursor: pointer;"
+				style="border: 3px solid var(--ink); background: var(--accent-2); color: var(--ink); font-weight: 800; text-transform: uppercase; padding: 0.45rem 0.7rem; cursor: pointer;"
 			>
 				Load
 			</button>
 		</div>
-		<p style="margin: 0 0 0.6rem; font-size: 0.9rem; color: #2c2a27;">{presets.find((p) => p.id === selectedPreset)?.description}</p>
+		<p style="margin: 0 0 0.6rem; font-size: 0.9rem; color: var(--ink-soft);">{presets.find((p) => p.id === selectedPreset)?.description}</p>
 		<textarea
 			bind:value={code}
-			style="width: 100%; min-height: 320px; border: 3px solid #121212; padding: 0.75rem; font: 500 0.95rem/1.5 'IBM Plex Mono', Consolas, monospace;"
+			style="width: 100%; min-height: 320px; border: 3px solid var(--ink); background: var(--input-bg); color: var(--ink); padding: 0.75rem; font: 500 0.95rem/1.5 'IBM Plex Mono', Consolas, monospace;"
 		></textarea>
 
 		{#if preflightHints.length}
 			<div
-				style="margin-top: 0.8rem; border: 3px solid #121212; background: #fce8d9; padding: 0.7rem; font-size: 0.88rem; line-height: 1.4;"
+				style="margin-top: 0.8rem; border: 3px solid var(--ink); background: var(--quote-bg); padding: 0.7rem; font-size: 0.88rem; line-height: 1.4;"
 			>
 				<strong style="text-transform: uppercase; display: block; margin-bottom: 0.35rem;">Preflight hints</strong>
 				<ul style="margin: 0; padding-left: 1.1rem;">
@@ -398,7 +416,7 @@ putln(Verdict.Block)`
 			<button
 				onclick={run}
 				disabled={running}
-				style="border: 3px solid #121212; background: #00a8a8; color: #121212; font-weight: 800; text-transform: uppercase; padding: 0.5rem 0.8rem; cursor: pointer;"
+				style="border: 3px solid var(--ink); background: var(--accent); color: var(--ink); font-weight: 800; text-transform: uppercase; padding: 0.5rem 0.8rem; cursor: pointer;"
 			>
 				{running ? 'Running...' : 'Run'}
 			</button>
@@ -409,7 +427,7 @@ putln(Verdict.Block)`
 		<h3>Output</h3>
 		{#if friendlyDiagnostic}
 			<div
-				style="margin-bottom: 0.7rem; border: 3px solid #121212; background: #e6f9f6; padding: 0.65rem; font-size: 0.86rem;"
+				style="margin-bottom: 0.7rem; border: 3px solid var(--ink); background: var(--chip-bg); padding: 0.65rem; font-size: 0.86rem;"
 			>
 				<strong style="text-transform: uppercase;">Hint:</strong> {friendlyDiagnostic}
 			</div>
@@ -420,7 +438,7 @@ putln(Verdict.Block)`
 				{#if panicView.isPanic}
 					<button
 						onclick={() => (showRawOutput = !showRawOutput)}
-						style="border: 2px solid #121212; background: #fff8eb; font: 700 0.75rem/1 'Space Grotesk', sans-serif; text-transform: uppercase; padding: 0.25rem 0.45rem; cursor: pointer;"
+						style="border: 2px solid var(--ink); background: var(--surface); color: var(--ink); font: 700 0.75rem/1 'Space Grotesk', sans-serif; text-transform: uppercase; padding: 0.25rem 0.45rem; cursor: pointer;"
 					>
 						{showRawOutput ? 'View summary' : 'View raw output'}
 					</button>

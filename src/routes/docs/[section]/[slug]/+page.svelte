@@ -1,11 +1,31 @@
 <script lang="ts">
 	let { data } = $props();
+
+	const sectionHref = $derived(`/docs/${data.doc.section}`);
 </script>
 
 <article class="panel doc-content">
+	<nav class="breadcrumbs" aria-label="Breadcrumb">
+		<a href="/">Home</a>
+		<span>/</span>
+		<a href="/docs">Docs</a>
+		<span>/</span>
+		<a href={sectionHref}>{data.doc.sectionTitle}</a>
+		<span>/</span>
+		<strong>{data.doc.title}</strong>
+	</nav>
+
 	<p class="kicker">{data.doc.section}</p>
 	<h1 style="margin-top: 0;">{data.doc.title}</h1>
 	<p class="lede">{data.doc.description}</p>
+
+	<section class="doc-rail-block" style="margin-top: 0.9rem;">
+		<h2 class="doc-rail-title">Context Rail</h2>
+		<div class="related-docs-list">
+			<a class="related-doc-link" href={sectionHref}>Back to {data.doc.sectionTitle} section</a>
+			<a class="related-doc-link" href="/search?q={encodeURIComponent(data.doc.title)}">Search this topic</a>
+		</div>
+	</section>
 
 	<div class="meta-row" style="margin-bottom: 1rem;">
 		{#if data.doc.frontmatter.last_reviewed}
