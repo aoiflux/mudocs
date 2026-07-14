@@ -69,12 +69,6 @@ export const docsManifest: Record<string, ManifestEntry> = {
 		order: 30,
 		tags: ['comparison', 'visual', 'reference']
 	},
-	'docs/REMAINING_WORK_CHECKLIST.md': {
-		section: 'reference',
-		audience: 'integrator',
-		order: 90,
-		tags: ['checklist', 'status', 'maintenance']
-	},
 	'docs/BYTECODE_IR.md': {
 		section: 'runtime',
 		audience: 'platform-engineer',
