@@ -42,16 +42,17 @@ Notes:
 - false
 - fn
 - for
-- For browser runtime support and API details, use `WASM_REPL_REFERENCE.md` as
-  the definitive guide.
 - if
 - let
 - macro
-- return let values = [10, 20, 30, 40]; putln(len(values));
+- return
+- struct
+- true
 
-let item = {"engine": "mutant", "ok": true}; putln(json_stringify(item));
+## Browser Runtime Note
 
-let i = 0; while (i < len(values)) { putln(values[i]); i = i + 1; };
+For browser runtime support and API details, use `WASM_REPL_REFERENCE.md` as the
+definitive guide.
 
 - `gets()` - Reads a line of input from stdin.
 - `last(array)` - Returns the last element of an array.
@@ -448,15 +449,7 @@ let i = 0; while (i < len(values)) { putln(values[i]); i = i + 1; };
 ```mutant
 let values = [10, 20, 30, 40];
 putln(len(values));
-
-let item = {"engine": "mutant", "ok": true};
-putln(json_stringify(item));
-
-let i = 0;
-while (i < len(values)) {
-  putln(values[i]);
-  i = i + 1;
-};
+putln(json_stringify({"engine": "mutant", "ok": true}));
 ```
 
 ## Maintenance
