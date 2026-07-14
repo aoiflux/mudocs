@@ -1,43 +1,40 @@
-# mudocs
+# mudocs-next (SvelteKit)
 
-[Official website for mutant](https://mudocs.netlify.app)
+This directory contains the production SvelteKit implementation for mudocs. It
+includes:
 
-## Docs Overhaul Status
+- Material-Brutalist visual baseline
+- Server-side markdown ingestion from `../docs`
+- Section and document routes:
+  - `/`
+  - `/docs`
+  - `/docs/[section]`
+  - `/docs/[section]/[slug]`
+  - `/about`
+  - `/playground` (worker-based WASM REPL path)
 
-This repository now runs on a definitive SvelteKit docs platform sourced from
-the repository-level `docs/` corpus.
+## Run locally
 
-Canonical-source policy and manual update workflow are documented in `docs/`.
-
-## SvelteKit Website
-
-The website is fully served from `site/`.
-
-Run it locally:
-
-```bash
+```sh
 cd site
 npm install
 npm run dev
 ```
 
-Current implementation includes:
+`predev` automatically syncs artifacts from `../wasm-repl/` into
+`static/wasm-repl/`.
 
-- docs manifest/frontmatter-driven section, audience, and order overrides
-- tags and theme cross-linking (bytecode, sandboxing, signing, REPL, LSP)
-- guided homepage reading paths for language, security, and tooling tracks
-- `/playground` worker-based browser WASM REPL path
+## Quality checks
 
-### How to run development server
-
-```bash
-cd site
-npm install
-npm run dev
+```sh
+npm run check
+npm run build
 ```
 
-### Deployment
+## Notes
 
-Netlify now builds and publishes the SvelteKit app under `site/`.
-
-![Home Page](./pics/home.png)
+- WASM runtime files expected from `../wasm-repl/`:
+  - `mutant_repl.wasm`
+  - `wasm_exec.js`
+- The playground worker uses Go's `wasm_exec.js` bootstrap and attempts to
+  discover the exported runtime bridge function from the WASM module.

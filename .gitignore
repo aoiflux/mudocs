@@ -1,11 +1,23 @@
-# OS/editor artifacts
+node_modules
+
+# Output
+.output
+.vercel
+.netlify
+.wrangler
+/.svelte-kit
+/build
+
+# OS
 .DS_Store
 Thumbs.db
 
-# Logs and temp files
-*.log
-*.tmp
-*.temp
+# Env
+.env
+.env.*
+!.env.example
+!.env.test
 
-site/build/
-site/node_modules/
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*

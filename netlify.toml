@@ -1,15 +1,3 @@
 [build]
-publish = "site/build"
-command = "cd site && npm ci && npm run build"
-
-[context.production]
-command = "cd site && npm ci && npm run build"
-
-[context.deploy-preview]
-command = "cd site && npm ci && npm run build"
-
-[context.branch-deploy]
-command = "cd site && npm ci && npm run build"
-
-[context.next]
-command = "cd site && npm ci && npm run build"
+command = "npm run build"
+publish = "build"

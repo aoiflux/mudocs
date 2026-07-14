@@ -35,10 +35,156 @@
 			code: '1 < 2'
 		},
 		{
-			id: 'call-putln',
-			label: 'Builtin call',
-			description: 'Function call without assignment statement.',
-			code: 'putln(21 + 21)'
+			id: 'builtin-help',
+			label: 'Builtin help',
+			description: 'Print builtin reference from the REPL runtime.',
+			code: 'help()'
+		},
+		{
+			id: 'collections-basic',
+			label: 'Collections basics',
+			description: 'Try first/last/rest/push/pop/len on arrays.',
+			code: `putln(first([10, 20, 30]))
+putln(last([10, 20, 30]))
+putln(rest([10, 20, 30]))
+putln(push([10, 20, 30], 40))
+putln(pop([10, 20, 30]))
+putln(len([10, 20, 30, 40])[0])`
+		},
+		{
+			id: 'output-formatting',
+			label: 'Output formatting',
+			description: 'Use putln and putf for formatted output.',
+			code: `putln("Mutant WASM REPL")
+putf("score=%d, mode=%s", 98, "sandbox")`
+		},
+		{
+			id: 'json-roundtrip',
+			label: 'JSON roundtrip',
+			description: 'Parse JSON text and stringify it back.',
+			code: `putln(json_parse("{\"tool\":\"mutant\",\"ok\":true,\"count\":3}"))
+putln(json_stringify(json_parse("{\"path\":\"/playground\",\"track\":\"docs\"}")))`
+		},
+		{
+			id: 'text-builtins',
+			label: 'Text builtins',
+			description: 'Contains/index/count/split/replace and fuzzy similarity checks.',
+			code: `putln(text_contains("mutant security runtime", "security"))
+putln(text_index("mutant security runtime", "runtime"))
+putln(text_count("a-b-a-b-a", "a"))
+putln(text_split("bytecode|sandbox|lsp", "|"))
+putln(text_replace("sandbox profile: standard", "standard", "paranoid"))
+putln(text_similarity("sandbox", "sand box"))
+putln(text_levenshtein("runtime", "run-time"))
+putln(text_jaro_winkler("mutant", "mutan"))
+putln(text_fuzzy_find("security runbook and runtime docs", "runbok"))`
+		},
+		{
+			id: 'regex-builtins',
+			label: 'Regex builtins',
+			description: 'Match/find/find_all/captures/replace.',
+			code: `putln(regex_match("^mu[a-z]+$", "mutant"))
+putln(regex_find("[A-Z]{2,}", "LSP extension"))
+putln(regex_find_all("\\d+", "ports 80 443 8080"))
+putln(regex_capture_groups("([A-Za-z_]+):(\\d+)", "runtime:4173"))
+putln(regex_replace("\\s+", "-", "mutant docs quality"))`
+		},
+		{
+			id: 'bytes-primitives',
+			label: 'Bytes primitive helpers',
+			description: 'Character/byte conversions and direct indexing helpers.',
+			code: `putln(bytes_char_from_int(65))
+putln(bytes_int_from_char("A"))
+putln(bytes_hex("Mutant"))`
+		},
+		{
+			id: 'bytes-endian-read-write',
+			label: 'Bytes endian read/write',
+			description: 'Read and write fixed-size values with endian helpers.',
+			code: `putln(bytes_write_u16_be("ABCD", 0, 4660))
+putln(bytes_write_u16_le("ABCD", 0, 4660))
+putln(bytes_write_u32_be("ABCDEFGH", 0, 305419896))
+putln(bytes_write_u32_le("ABCDEFGH", 0, 305419896))
+putln(bytes_read_u16_be("\x12\x34", 0))
+putln(bytes_read_u16_le("\x34\x12", 0))
+putln(bytes_read_u32_be("\x12\x34\x56\x78", 0))
+putln(bytes_read_u32_le("\x78\x56\x34\x12", 0))`
+		},
+		{
+			id: 'bytes-cursor-walk',
+			label: 'Bytes cursor walk',
+			description: 'Create a cursor and walk through binary data.',
+			code: `let c = bytes_cursor_new("\x01\x02\x03\x04\x05\x06\x07\x08")
+putln(bytes_cursor_tell(c))
+putln(bytes_cursor_read_u8(c))
+putln(bytes_cursor_read_u16_be(c))
+putln(bytes_cursor_read_u16_le(c))
+putln(bytes_cursor_seek(c, 0))
+putln(bytes_cursor_read_u32_be(c))
+putln(bytes_cursor_read_u32_le(c))
+putln(bytes_cursor_read_u64_be(c))
+putln(bytes_cursor_seek(c, 0))
+putln(bytes_cursor_read_u64_le(c))
+putln(bytes_cursor_eof(c))`
+		},
+		{
+			id: 'bytes-index-slice-cstr',
+			label: 'Bytes index/slice/cstr',
+			description: 'Use bytes_get/bytes_len/bytes_slice/bytes_cstr_at helpers.',
+			code: `let raw = "mutant\x00sandbox"
+putln(bytes_len(raw))
+putln(bytes_get(raw, 0))
+putln(bytes_slice(raw, 0, 6))
+putln(bytes_cstr_at(raw, 0))`
+		},
+		{
+			id: 'bytes-64bit-read-write',
+			label: 'Bytes 64-bit read/write',
+			description: 'Roundtrip 64-bit values using big-endian and little-endian helpers.',
+			code: `putln(bytes_write_u64_be("12345678abcdefgh", 0, 72623859790382856))
+putln(bytes_write_u64_le("12345678abcdefgh", 0, 72623859790382856))
+putln(bytes_read_u64_be("\x01\x02\x03\x04\x05\x06\x07\x08", 0))
+putln(bytes_read_u64_le("\x08\x07\x06\x05\x04\x03\x02\x01", 0))`
+		},
+		{
+			id: 'hashmap-json-shape',
+			label: 'Hashmap workflow',
+			description: 'Create and inspect a hashmap-like object via JSON helpers.',
+			code: `putln(json_stringify({"engine":"mutant","section":"runtime","ok":true}))
+putln(json_parse("{\"kind\":\"hashmap\",\"entries\":3,\"enabled\":true}"))`
+		},
+		{
+			id: 'loops-for',
+			label: 'Loop: for',
+			description: 'Simple for-loop sample for repeated output.',
+			code: `for (item in ["bytecode", "sandbox", "signing", "lsp"]) {
+	putln(item)
+}`
+		},
+		{
+			id: 'loops-while',
+			label: 'Loop: while',
+			description: 'While-loop sample; adjust the condition and body as needed.',
+			code: `let i = 0
+while (i < 4) {
+	putln(i)
+	i = i + 1
+}`
+		},
+		{
+			id: 'struct-sample',
+			label: 'Struct sample',
+			description: 'Struct declaration and value construction sample.',
+			code: `struct Finding { id, severity, source }
+let f = Finding { id: 7, severity: "high", source: "runtime" }
+putln(f)`
+		},
+		{
+			id: 'enum-sample',
+			label: 'Enum sample',
+			description: 'Enum declaration with value selection sample.',
+			code: `enum Verdict { Allow, Observe, Block }
+putln(Verdict.Block)`
 		}
 	];
 
