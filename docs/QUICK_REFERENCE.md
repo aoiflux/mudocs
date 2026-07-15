@@ -81,7 +81,7 @@ Standalone release trailer V3:
 
 ## Quick checks
 
-- Unexpected builtins blocked? Check `runtime setting` and `runtime setting`.
+- Unexpected builtins blocked? Check `runtime setting`.
 - Signature failure? Check trusted key pinning and release signer chain.
 - Integrity failure? Treat as active tamper.
 - Release artifact mismatch? Check trailer profile code and provenance hash.

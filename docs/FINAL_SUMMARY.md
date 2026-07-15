@@ -25,13 +25,10 @@ This is the consolidated, current-state summary for Mutant security.
 ## 3. Operator-critical gates
 
 1. runtime setting=1 controls probe execution.
-2. runtime setting controls runner process-protection
-   enforcement once probes are enabled.
-3. runtime setting and runtime setting control remote
-   scan execution and enforcement semantics.
+2. runtime setting controls runner process-protection enforcement once probes
+   are enabled.
+3. runtime setting controls remote scan execution and enforcement semantics.
 4. --signer-auth enables trusted signer verification in secure mode.
-5. runtime setting and runtime setting determine policy
-   outcomes.
 
 ## 4. Student learning path
 
