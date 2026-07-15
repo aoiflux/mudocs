@@ -7,7 +7,8 @@
 	import '../app.css';
 
 	let { children } = $props();
-	let themeMode = $state<'light' | 'dark' | 'auto'>('auto');
+	type ThemeMode = 'light' | 'dark' | 'artist' | 'auto';
+	let themeMode = $state<ThemeMode>('auto');
 
 	const THEME_KEY = 'mudocs-theme-mode';
 	const MERMAID_SRC = 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js';
@@ -21,13 +22,25 @@
 		mermaid?: MermaidApi;
 	};
 
+	let hasMounted = false;
+
 	function resolveAutoTheme(): 'light' | 'dark' {
 		return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 	}
 
-	function applyTheme(mode: 'light' | 'dark' | 'auto') {
+	function applyTheme(mode: ThemeMode, animate = false) {
 		if (typeof document === 'undefined') return;
 		const resolved = mode === 'auto' ? resolveAutoTheme() : mode;
+
+		if (animate && hasMounted) {
+			document.documentElement.classList.remove('theme-shift');
+			void document.documentElement.offsetWidth;
+			document.documentElement.classList.add('theme-shift');
+			window.setTimeout(() => {
+				document.documentElement.classList.remove('theme-shift');
+			}, 620);
+		}
+
 		document.documentElement.setAttribute('data-theme', resolved);
 	}
 
@@ -76,8 +89,9 @@
 			}
 			return;
 		}
-		const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-		mermaid.initialize({ startOnLoad: false, theme: isDark ? 'dark' : 'default' });
+		const activeTheme = document.documentElement.getAttribute('data-theme');
+		const mermaidTheme = activeTheme === 'dark' || activeTheme === 'artist' ? 'dark' : 'default';
+		mermaid.initialize({ startOnLoad: false, theme: mermaidTheme });
 
 		for (const target of targets) {
 			const source = target.dataset.diagramSource;
@@ -104,20 +118,34 @@
 
 	function onThemeChange(event: Event) {
 		const select = event.currentTarget as HTMLSelectElement;
-		themeMode = select.value as typeof themeMode;
+		themeMode = select.value as ThemeMode;
 		localStorage.setItem(THEME_KEY, themeMode);
-		applyTheme(themeMode);
+		applyTheme(themeMode, true);
+		void renderMermaidDiagrams();
+	}
+
+	function onThemeRequest(event: Event) {
+		const request = event as CustomEvent<{ mode?: ThemeMode }>;
+		const requested = request.detail?.mode;
+		if (requested !== 'light' && requested !== 'dark' && requested !== 'artist' && requested !== 'auto') {
+			return;
+		}
+
+		themeMode = requested;
+		localStorage.setItem(THEME_KEY, themeMode);
+		applyTheme(themeMode, true);
 		void renderMermaidDiagrams();
 	}
 
 	onMount(() => {
 		const stored = localStorage.getItem(THEME_KEY);
-		if (stored === 'light' || stored === 'dark' || stored === 'auto') {
+		if (stored === 'light' || stored === 'dark' || stored === 'artist' || stored === 'auto') {
 			themeMode = stored;
 		}
 
 		applyTheme(themeMode);
 		void renderMermaidDiagrams();
+		hasMounted = true;
 
 		const media = window.matchMedia('(prefers-color-scheme: dark)');
 		const onSchemeChange = () => {
@@ -129,6 +157,7 @@
 
 		media.addEventListener('change', onSchemeChange);
 		window.addEventListener('keydown', onGlobalKeydown);
+		window.addEventListener('mudocs:set-theme', onThemeRequest as EventListener);
 		afterNavigate(() => {
 			applyTheme(themeMode);
 			void renderMermaidDiagrams();
@@ -137,6 +166,7 @@
 		return () => {
 			media.removeEventListener('change', onSchemeChange);
 			window.removeEventListener('keydown', onGlobalKeydown);
+			window.removeEventListener('mudocs:set-theme', onThemeRequest as EventListener);
 		};
 	});
 </script>
@@ -167,6 +197,8 @@
 				<a href="/docs">Docs</a>
 				<a href="/search">Search</a>
 				<a href="/playground">Playground</a>
+				<a href="/theme-lab">Theme Lab</a>
+				<a href="https://github.com/aoiflux/mutant" target="_blank" rel="noopener noreferrer">GitHub</a>
 				<a href="/docs/overview">Overview</a>
 				<a href="/docs/reference">Reference</a>
 				<a href="/docs/security">Security</a>
@@ -181,6 +213,7 @@
 				<select value={themeMode} onchange={onThemeChange}>
 					<option value="light">Light</option>
 					<option value="dark">Dark</option>
+					<option value="artist">Artist</option>
 					<option value="auto">Auto</option>
 				</select>
 			</label>

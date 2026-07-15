@@ -1,21 +1,92 @@
 <script lang="ts">
 	let { data } = $props();
+
+	const totalDocs = $derived(data.sections.reduce((sum: number, section: { count: number }) => sum + section.count, 0));
+
+	const launchChapters = [
+		{
+			title: 'Polymorphic Runtime Core',
+			copy: 'Mutant delivers a hardened runtime with polymorphic bytecode and execution controls engineered for resilient operation.',
+			label: 'Runtime Focus',
+			primaryHref: 'https://github.com/aoiflux/mutant',
+			primaryText: 'View Runtime In GitHub',
+			secondaryHref: '/docs/runtime',
+			secondaryText: 'Read Runtime Docs'
+		},
+		{
+			title: 'Security As Architecture',
+			copy: 'Security is not bolted on. It is part of the language and platform story from probes to sandbox controls to trust flows.',
+			label: 'Security Focus',
+			primaryHref: 'https://github.com/aoiflux/mutant',
+			primaryText: 'Inspect Security Design',
+			secondaryHref: '/docs/security',
+			secondaryText: 'Open Security Docs'
+		},
+		{
+			title: 'Tooling Ready For Teams',
+			copy: 'From LSP enablement to REPL workflows, Mutant gives integrators a practical path from exploration to production workflows.',
+			label: 'Tooling Focus',
+			primaryHref: 'https://github.com/aoiflux/mutant',
+			primaryText: 'Explore Source & Workflow',
+			secondaryHref: '/docs/tooling',
+			secondaryText: 'See Tooling Docs'
+		}
+	];
 </script>
 
-<section class="panel" style="margin-bottom: 1rem;">
-	<h1 class="big-title">The Definitive Mutant Guide</h1>
+<section class="panel mutant-launch" style="margin-bottom: 1rem;">
+	<div class="mutant-spotlight" aria-hidden="true"></div>
+	<p class="kicker">Mutant Platform</p>
+	<h1 class="big-title">Build With Mutant</h1>
 	<p class="lede">
-		This new implementation uses the repository-level docs corpus as the canonical source for architecture,
-		security, runtime, and workflow knowledge, with the browser REPL folded directly into the learning surface.
+		A secure-by-design language and runtime stack with deep documentation, practical workflows, and architecture
+		clarity. Start at the source and move directly into implementation.
 	</p>
-	<div class="meta-row">
-		<span class="meta-chip">SvelteKit</span>
-		<span class="meta-chip">Docs corpus: /docs</span>
-		<span class="meta-chip">WASM REPL path</span>
+	<div class="hero-evidence-grid" style="margin-top: 0.95rem;">
+		<div class="hero-evidence-item">
+			<span class="doc-nav-label">Repository</span>
+			<strong>aoiflux/mutant</strong>
+		</div>
+		<div class="hero-evidence-item">
+			<span class="doc-nav-label">Documentation Surface</span>
+			<strong>{totalDocs} pages mapped</strong>
+		</div>
+		<div class="hero-evidence-item">
+			<span class="doc-nav-label">Tracks</span>
+			<strong>Runtime, Security, Tooling</strong>
+		</div>
+	</div>
+	<div class="cta-cluster">
+		<a class="cta-primary" href="https://github.com/aoiflux/mutant" target="_blank" rel="noopener noreferrer">
+			Go To Mutant GitHub
+		</a>
+		<a class="cta-secondary" href="/docs">Open Documentation</a>
+		<a class="cta-secondary" href="/playground">Try Playground</a>
 	</div>
 </section>
 
-<section class="grid">
+<section class="snap-deck" style="margin-top: 1rem;">
+	{#each launchChapters as chapter}
+		<article class="panel snap-chapter">
+			<p class="kicker">{chapter.label}</p>
+			<h2 class="chapter-title">{chapter.title}</h2>
+			<p class="lede" style="margin-top: 0.4rem;">{chapter.copy}</p>
+			<div class="cta-cluster">
+				<a
+					class="cta-primary"
+					href={chapter.primaryHref}
+					target="_blank"
+					rel="noopener noreferrer"
+				>
+					{chapter.primaryText}
+				</a>
+				<a class="cta-secondary" href={chapter.secondaryHref}>{chapter.secondaryText}</a>
+			</div>
+		</article>
+	{/each}
+</section>
+
+<section class="grid" style="margin-top: 1rem;">
 	{#each data.sections as section}
 		<article class="card">
 			<h3>{section.title}</h3>
@@ -52,6 +123,18 @@
 			</article>
 		{/each}
 	</div>
+</section>
+
+<section class="panel" style="margin-top: 1rem;">
+	<p class="kicker">Experimental Design</p>
+	<h2 style="margin-top: 0; text-transform: uppercase;">Theme Lab</h2>
+	<p class="lede" style="margin-top: 0.25rem; max-width: 60ch;">
+		The full animation-heavy theme showcase now lives on a dedicated route so this landing page stays focused on
+		driving discovery of Mutant and its source repository.
+	</p>
+	<p style="margin-bottom: 0; margin-top: 0.95rem;">
+		<a class="cta-secondary" href="/theme-lab">Open Theme Lab</a>
+	</p>
 </section>
 
 <section class="panel" style="margin-top: 1rem;">
