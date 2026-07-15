@@ -32,12 +32,6 @@ This design separates these decisions clearly.
 2. Default enabled when unset.
 3. Disabled by: `0`, `false`, `off`, `no`.
 
-### 3.3 Policy Inputs
-
-1. `runtime setting`
-2. `runtime setting`
-3. secure/compat/dev mode context
-
 ## 4. Decision Model
 
 ```mermaid

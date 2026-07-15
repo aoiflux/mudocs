@@ -513,14 +513,6 @@ type ProcessRiskVerdict struct {
 
 ### 13.3 Config and env gates (security/processscan_config.go)
 
-Current runtime settings:
-
-1. runtime setting
-2. runtime setting (off, observe, enforce)
-3. runtime setting
-4. runtime setting
-5. runtime setting
-
 Suggested struct:
 
 ```go

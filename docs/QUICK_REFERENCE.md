@@ -10,8 +10,8 @@ artifact, runtime, and risky builtins.
 1. Signed artifact verification
 
 - Signer pinning is enforced in secure mode when `--signer-auth` is enabled.
-- Trusted signer key source is `runtime setting` (or local
-  bootstrap fallback if unset).
+- Trusted signer key source is `runtime setting` (or local bootstrap fallback if
+  unset).
 - Compatibility mode verifies embedded signature validity only.
 
 2. Payload confidentiality
@@ -62,26 +62,6 @@ Set `runtime setting` to control default posture.
 - Defaults tamper response to `terminate`.
 - Risky builtins default to deny unless explicitly allowed.
 
-Explicit runtime configuration settings still win:
-
-- `runtime setting`
-- `runtime setting`
-
-## Useful runtime configuration settings
-
-- `runtime setting`
-- `runtime setting`
-- `runtime setting`
-- `runtime setting`
-- `runtime setting`
-- `runtime setting`
-- `runtime setting`
-- `runtime setting`
-- `runtime setting`
-- `runtime setting`
-- `runtime setting`
-- `runtime setting`
-
 ## Artifact format
 
 Signed `.mu` envelope:
@@ -101,8 +81,7 @@ Standalone release trailer V3:
 
 ## Quick checks
 
-- Unexpected builtins blocked? Check `runtime setting` and
-  `runtime setting`.
+- Unexpected builtins blocked? Check `runtime setting` and `runtime setting`.
 - Signature failure? Check trusted key pinning and release signer chain.
 - Integrity failure? Treat as active tamper.
 - Release artifact mismatch? Check trailer profile code and provenance hash.
