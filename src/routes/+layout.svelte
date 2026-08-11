@@ -5,6 +5,7 @@
 
 	import favicon from '$lib/assets/favicon.svg';
 	import '../app.css';
+	import '$lib/artist/artist-fx.css';
 
 	let { children } = $props();
 	type ThemeMode = 'light' | 'dark' | 'artist' | 'auto';

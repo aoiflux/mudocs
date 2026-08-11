@@ -1,0 +1,541 @@
+/* ==========================================================================
+   ARTIST FX LIBRARY
+   Brutalist + Material / Control-UI / Cyberpunk 2077 motion language.
+   Utility-class driven; pairs with $lib/artist/motion.ts.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Motion + color tokens
+   -------------------------------------------------------------------------- */
+:root {
+	/* easing */
+	--fx-ease-apple: cubic-bezier(0.22, 1, 0.36, 1);
+	--fx-ease-ferrari: cubic-bezier(0.9, 0.02, 0.1, 1);
+	--fx-ease-snap: cubic-bezier(0.85, 0, 0.15, 1);
+	--fx-ease-micro: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+	/* duration scale */
+	--fx-dur-micro: 140ms;
+	--fx-dur-fast: 320ms;
+	--fx-dur-base: 620ms;
+	--fx-dur-slow: 1100ms;
+	--fx-dur-ambient: 7s;
+
+	/* cyberpunk palette */
+	--fx-neon-cyan: #46f1ff;
+	--fx-deep-magenta: #ff2eb8;
+	--fx-electric-blue: #4a7dff;
+	--fx-warning-yellow: #ffd93b;
+	--fx-infrared-red: #ff3d5a;
+	--fx-brutal-gray: #23262f;
+}
+
+/* --------------------------------------------------------------------------
+   Entrance transitions (scroll-triggered via [data-fx] + .fx-in)
+   -------------------------------------------------------------------------- */
+[data-fx] {
+	opacity: 0;
+	will-change: transform, opacity;
+	transition:
+		transform var(--fx-dur-base) var(--fx-ease-apple),
+		opacity var(--fx-dur-base) ease,
+		clip-path var(--fx-dur-base) var(--fx-ease-snap);
+}
+
+[data-fx='fade-up'] {
+	transform: translateY(34px);
+}
+
+[data-fx='slide-diagonal'] {
+	transform: translate(-42px, 26px) skewX(-3deg);
+	transition-timing-function: var(--fx-ease-ferrari);
+}
+
+[data-fx='scale-in'] {
+	transform: scale(0.9);
+	transition-timing-function: var(--fx-ease-micro);
+}
+
+[data-fx='panel-reveal'] {
+	transform: none;
+	clip-path: inset(0 100% 0 0);
+	opacity: 1;
+}
+
+[data-fx].fx-in {
+	opacity: 1;
+	transform: none;
+	clip-path: inset(0 0 0 0);
+}
+
+/* stagger container: children inherit delay set by JS */
+[data-fx-stagger] > * {
+	transition:
+		transform var(--fx-dur-base) var(--fx-ease-apple),
+		opacity var(--fx-dur-base) ease;
+}
+
+/* --------------------------------------------------------------------------
+   Typewriter engine styling
+   -------------------------------------------------------------------------- */
+.fx-typewriter {
+	white-space: pre-wrap;
+}
+
+.fx-typewriter::after {
+	content: '▍';
+	display: inline-block;
+	margin-left: 0.06em;
+	color: var(--fx-neon-cyan);
+	animation: fx-caret-blink 0.85s steps(1) infinite;
+	text-shadow: 0 0 12px color-mix(in srgb, var(--fx-neon-cyan) 80%, transparent);
+}
+
+.fx-typewriter-done::after {
+	animation-duration: 1.2s;
+}
+
+/* --------------------------------------------------------------------------
+   Glitch system: pixel-shift, scanline-flicker, chromatic-aberration
+   -------------------------------------------------------------------------- */
+.fx-glitch {
+	position: relative;
+	display: inline-block;
+}
+
+.fx-glitch::before,
+.fx-glitch::after {
+	content: attr(data-text);
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	opacity: 0;
+	clip-path: inset(0 0 0 0);
+}
+
+/* chromatic aberration layers */
+.fx-glitch::before {
+	color: var(--fx-neon-cyan);
+	z-index: -1;
+}
+
+.fx-glitch::after {
+	color: var(--fx-deep-magenta);
+	z-index: -2;
+}
+
+:root[data-theme='artist'] .fx-glitch::before {
+	animation: fx-glitch-shift-a 3.8s infinite steps(1);
+	opacity: 0.85;
+}
+
+:root[data-theme='artist'] .fx-glitch::after {
+	animation: fx-glitch-shift-b 3.8s infinite steps(1);
+	opacity: 0.7;
+}
+
+/* hover-triggered variant for non-artist themes */
+.fx-glitch-hover:hover::before {
+	animation: fx-glitch-shift-a 0.7s infinite steps(1);
+	opacity: 0.85;
+}
+
+.fx-glitch-hover:hover::after {
+	animation: fx-glitch-shift-b 0.7s infinite steps(1);
+	opacity: 0.7;
+}
+
+/* scanline flicker block */
+.fx-scanlines {
+	position: relative;
+	isolation: isolate;
+}
+
+.fx-scanlines::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	background: repeating-linear-gradient(
+		0deg,
+		transparent 0 2px,
+		color-mix(in srgb, var(--fx-neon-cyan) 7%, transparent) 2px 3px
+	);
+	mix-blend-mode: overlay;
+	animation: fx-scanline-flicker 6s linear infinite;
+	z-index: 2;
+}
+
+/* --------------------------------------------------------------------------
+   Textures: grain, holographic gradient, brushed metal
+   -------------------------------------------------------------------------- */
+.fx-grain {
+	position: relative;
+	isolation: isolate;
+}
+
+.fx-grain::after {
+	content: '';
+	position: absolute;
+	inset: -50%;
+	pointer-events: none;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+	opacity: 0.05;
+	mix-blend-mode: overlay;
+	animation: fx-grain-jitter 0.9s steps(4) infinite;
+	z-index: 3;
+}
+
+.fx-holo {
+	background:
+		linear-gradient(
+			120deg,
+			color-mix(in srgb, var(--fx-neon-cyan) 24%, transparent),
+			color-mix(in srgb, var(--fx-deep-magenta) 20%, transparent) 34%,
+			color-mix(in srgb, var(--fx-electric-blue) 22%, transparent) 62%,
+			color-mix(in srgb, var(--fx-neon-cyan) 24%, transparent)
+		);
+	background-size: 260% 260%;
+	animation: fx-holo-sweep 9s var(--fx-ease-apple) infinite;
+}
+
+.fx-metal {
+	background:
+		repeating-linear-gradient(
+			92deg,
+			color-mix(in srgb, #cfd6e4 9%, transparent) 0 1px,
+			transparent 1px 3px
+		),
+		linear-gradient(160deg, var(--fx-brutal-gray), color-mix(in srgb, var(--fx-brutal-gray) 60%, #000));
+}
+
+/* --------------------------------------------------------------------------
+   Hover systems: neon outline (magnetic/tilt handled by motion.ts)
+   -------------------------------------------------------------------------- */
+.fx-neon-outline {
+	position: relative;
+	transition:
+		box-shadow var(--fx-dur-fast) var(--fx-ease-ferrari),
+		transform var(--fx-dur-fast) var(--fx-ease-ferrari);
+}
+
+.fx-neon-outline:hover,
+.fx-neon-outline:focus-visible {
+	box-shadow:
+		0 0 0 1px var(--fx-neon-cyan),
+		0 0 18px color-mix(in srgb, var(--fx-neon-cyan) 55%, transparent),
+		6px 6px 0 var(--ink);
+	transform: translate(-2px, -2px);
+}
+
+.fx-tilt {
+	transform-style: preserve-3d;
+	will-change: transform;
+}
+
+/* --------------------------------------------------------------------------
+   Looping ambient: neon-pulse, breathing-light, grid-flow
+   -------------------------------------------------------------------------- */
+.fx-neon-pulse {
+	animation: fx-neon-pulse 2.6s ease-in-out infinite;
+}
+
+.fx-breathing {
+	animation: fx-breathing var(--fx-dur-ambient) ease-in-out infinite;
+}
+
+.fx-grid-flow {
+	background-image:
+		linear-gradient(90deg, color-mix(in srgb, var(--fx-neon-cyan) 16%, transparent) 1px, transparent 1px),
+		linear-gradient(0deg, color-mix(in srgb, var(--fx-deep-magenta) 12%, transparent) 1px, transparent 1px);
+	background-size: 44px 44px;
+	animation: fx-grid-flow 12s linear infinite;
+}
+
+/* --------------------------------------------------------------------------
+   Structural: angled panels, floating shards, motion separators
+   -------------------------------------------------------------------------- */
+.fx-angled {
+	clip-path: polygon(0 0, 100% 0, 100% calc(100% - 22px), calc(100% - 22px) 100%, 0 100%);
+}
+
+.fx-shard {
+	position: absolute;
+	pointer-events: none;
+	border: 1px solid color-mix(in srgb, var(--fx-neon-cyan) 60%, transparent);
+	background: color-mix(in srgb, var(--fx-neon-cyan) 8%, transparent);
+	clip-path: polygon(0 0, 100% 12%, 82% 100%, 8% 88%);
+	animation: fx-shard-drift 11s ease-in-out infinite;
+}
+
+.fx-shard--magenta {
+	border-color: color-mix(in srgb, var(--fx-deep-magenta) 60%, transparent);
+	background: color-mix(in srgb, var(--fx-deep-magenta) 8%, transparent);
+	animation-duration: 13s;
+	animation-direction: reverse;
+}
+
+.fx-separator {
+	height: 3px;
+	border: 0;
+	margin: 0;
+	background: linear-gradient(
+		90deg,
+		transparent,
+		var(--fx-neon-cyan) 22%,
+		var(--fx-deep-magenta) 50%,
+		var(--fx-electric-blue) 78%,
+		transparent
+	);
+	background-size: 220% 100%;
+	animation: fx-separator-flow 5s linear infinite;
+}
+
+/* --------------------------------------------------------------------------
+   Cursor FX canvas layer
+   -------------------------------------------------------------------------- */
+.fx-cursor-canvas {
+	position: fixed;
+	inset: 0;
+	width: 100vw;
+	height: 100vh;
+	pointer-events: none;
+	z-index: 9999;
+	mix-blend-mode: screen;
+}
+
+/* --------------------------------------------------------------------------
+   Artist-theme global ambience (gated so light/dark stay clean)
+   -------------------------------------------------------------------------- */
+:root[data-theme='artist'] body {
+	position: relative;
+}
+
+:root[data-theme='artist'] .panel {
+	transition:
+		box-shadow var(--fx-dur-fast) var(--fx-ease-apple),
+		border-color var(--fx-dur-fast) ease;
+}
+
+:root[data-theme='artist'] .panel:hover {
+	box-shadow:
+		var(--shadow-brut),
+		0 0 26px color-mix(in srgb, var(--fx-neon-cyan) 18%, transparent);
+}
+
+:root[data-theme='artist'] .big-title {
+	text-shadow:
+		0 0 22px color-mix(in srgb, var(--fx-neon-cyan) 34%, transparent),
+		0 0 60px color-mix(in srgb, var(--fx-deep-magenta) 18%, transparent);
+}
+
+:root[data-theme='artist'] .meta-chip {
+	animation: fx-neon-pulse 3.4s ease-in-out infinite;
+}
+
+/* --------------------------------------------------------------------------
+   Keyframes
+   -------------------------------------------------------------------------- */
+@keyframes fx-caret-blink {
+	0%,
+	55% {
+		opacity: 1;
+	}
+	56%,
+	100% {
+		opacity: 0;
+	}
+}
+
+@keyframes fx-glitch-shift-a {
+	0%,
+	86%,
+	100% {
+		transform: none;
+		clip-path: inset(0 0 0 0);
+		opacity: 0;
+	}
+	87% {
+		transform: translate(-3px, 1px);
+		clip-path: inset(12% 0 62% 0);
+		opacity: 0.85;
+	}
+	90% {
+		transform: translate(3px, -1px);
+		clip-path: inset(58% 0 8% 0);
+		opacity: 0.85;
+	}
+	93% {
+		transform: translate(-2px, 0);
+		clip-path: inset(30% 0 38% 0);
+		opacity: 0.85;
+	}
+	96% {
+		transform: none;
+		opacity: 0;
+	}
+}
+
+@keyframes fx-glitch-shift-b {
+	0%,
+	85%,
+	100% {
+		transform: none;
+		clip-path: inset(0 0 0 0);
+		opacity: 0;
+	}
+	88% {
+		transform: translate(3px, -1px);
+		clip-path: inset(66% 0 4% 0);
+		opacity: 0.7;
+	}
+	91% {
+		transform: translate(-3px, 1px);
+		clip-path: inset(6% 0 74% 0);
+		opacity: 0.7;
+	}
+	95% {
+		transform: translate(2px, 0);
+		clip-path: inset(40% 0 30% 0);
+		opacity: 0.7;
+	}
+	97% {
+		transform: none;
+		opacity: 0;
+	}
+}
+
+@keyframes fx-scanline-flicker {
+	0%,
+	100% {
+		opacity: 0.55;
+	}
+	4% {
+		opacity: 0.2;
+	}
+	8% {
+		opacity: 0.6;
+	}
+	62% {
+		opacity: 0.45;
+	}
+	64% {
+		opacity: 0.75;
+	}
+	66% {
+		opacity: 0.4;
+	}
+}
+
+@keyframes fx-grain-jitter {
+	0% {
+		transform: translate(0, 0);
+	}
+	25% {
+		transform: translate(-6%, 4%);
+	}
+	50% {
+		transform: translate(4%, -5%);
+	}
+	75% {
+		transform: translate(-3%, -2%);
+	}
+	100% {
+		transform: translate(5%, 3%);
+	}
+}
+
+@keyframes fx-holo-sweep {
+	0%,
+	100% {
+		background-position: 0% 40%;
+	}
+	50% {
+		background-position: 100% 60%;
+	}
+}
+
+@keyframes fx-neon-pulse {
+	0%,
+	100% {
+		box-shadow: 0 0 0 0 color-mix(in srgb, var(--fx-neon-cyan) 0%, transparent);
+	}
+	50% {
+		box-shadow: 0 0 14px 1px color-mix(in srgb, var(--fx-neon-cyan) 42%, transparent);
+	}
+}
+
+@keyframes fx-breathing {
+	0%,
+	100% {
+		filter: brightness(1) saturate(1);
+	}
+	50% {
+		filter: brightness(1.09) saturate(1.16);
+	}
+}
+
+@keyframes fx-grid-flow {
+	0% {
+		background-position: 0 0, 0 0;
+	}
+	100% {
+		background-position: 44px 88px, 88px 44px;
+	}
+}
+
+@keyframes fx-shard-drift {
+	0%,
+	100% {
+		transform: translate3d(0, 0, 0) rotate(0deg);
+	}
+	33% {
+		transform: translate3d(14px, -18px, 0) rotate(4deg);
+	}
+	66% {
+		transform: translate3d(-10px, 8px, 0) rotate(-3deg);
+	}
+}
+
+@keyframes fx-separator-flow {
+	0% {
+		background-position: 0% 0;
+	}
+	100% {
+		background-position: 220% 0;
+	}
+}
+
+/* --------------------------------------------------------------------------
+   Reduced motion: collapse everything to static, readable output
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+	[data-fx] {
+		opacity: 1;
+		transform: none;
+		clip-path: none;
+		transition: none;
+	}
+
+	.fx-typewriter::after {
+		animation: none;
+		opacity: 0;
+	}
+
+	.fx-glitch::before,
+	.fx-glitch::after,
+	.fx-scanlines::after,
+	.fx-grain::after {
+		animation: none !important;
+		opacity: 0 !important;
+	}
+
+	.fx-neon-pulse,
+	.fx-breathing,
+	.fx-grid-flow,
+	.fx-shard,
+	.fx-separator,
+	.fx-holo {
+		animation: none !important;
+	}
+}

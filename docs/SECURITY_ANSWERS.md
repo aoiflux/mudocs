@@ -24,7 +24,8 @@ Secure mode behavior:
 2. Signer-auth is optional and can be explicitly enforced with `--signer-auth`.
 3. Without `--signer-auth`, secure mode keeps runtime hardening gates but does
    not run signer pinning verification.
-4. Trusted key pinning uses `runtime setting`.
+4. Trusted key pinning uses `MUTANT_TRUSTED_PUBLIC_KEY_HEX` (with local
+   bootstrap fallback if unset).
 
 Compatibility/dev behavior:
 
@@ -64,8 +65,8 @@ Yes, as anti-tamper process-protection probes.
 
 Important gates:
 
-1. `runtime setting=1` must be set to run probes.
-2. `runtime setting` controls runner enforcement once probes
+1. `MUTANT_ENABLE_ANTITAMPER_PROBE=1` must be set to run probes.
+2. `MUTANT_ENABLE_PROCESS_PROTECTION` controls runner enforcement once probes
    are enabled.
 
 Runner enforcement probes:
@@ -80,6 +81,14 @@ Threshold:
 
 1. `detected=true` with `confidence >= 80` is treated as process protection
    event.
+
+Remote scan status:
+
+1. Remote scan manager integration exists behind
+   `MUTANT_ENABLE_REMOTE_PROCESS_SCAN`.
+2. Mode gate is `MUTANT_REMOTE_SCAN_MODE=off|observe|enforce`.
+3. Current Windows scanner is scaffolding-safe no-op, so integration is
+   present while detector depth is still partial.
 
 ## 7) Are polymorphic mutations fully active?
 
@@ -110,9 +119,9 @@ storage path today.
 
 Policy input:
 
-1. `runtime setting` = `warn`, `delay`, or `terminate`
-2. `runtime setting` for delay mode
-3. `runtime setting` (`minimal`, `standard`, `paranoid`) for defaults
+1. `MUTANT_TAMPER_RESPONSE` = `warn`, `delay`, or `terminate`
+2. `MUTANT_TAMPER_DELAY_MS` for delay mode
+3. `MUTANT_PROTECTION_PROFILE` (`minimal`, `standard`, `paranoid`) for defaults
 
 Precedence:
 
@@ -134,8 +143,8 @@ Key counters include:
 
 Export:
 
-1. Set `runtime setting` to export JSON at process exit.
-2. Set `runtime setting=1` for stderr audit lines.
+1. Set `MUTANT_SECURITY_TELEMETRY_FILE` to export JSON at process exit.
+2. Set `MUTANT_SECURITY_AUDIT=1` for stderr audit lines.
 
 ## 11) What should students remember?
 

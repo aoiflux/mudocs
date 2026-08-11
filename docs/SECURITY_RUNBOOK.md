@@ -1,3 +1,5 @@
+# Security Runbook
+
 ## 1. Purpose
 
 This runbook explains how to triage and respond to Mutant runtime security
@@ -17,7 +19,7 @@ low-level design, treat the following as authoritative and update this file:
 Alignment rules:
 
 1. Keep mode and policy semantics identical to LLD definitions.
-2. Keep runtime configuration setting names and defaults identical to implementation.
+2. Keep environment variable names and defaults identical to implementation.
 3. Avoid introducing undocumented flags or implied capabilities.
 
 ## 2. Primary Runtime Events
@@ -38,26 +40,26 @@ Alignment rules:
 
 ### 3.1 Policy Controls
 
-1. `runtime setting` = `warn|delay|terminate`
-2. `runtime setting` = delay duration (0..5000)
-3. `runtime setting` = `minimal|standard|paranoid`
+1. `MUTANT_TAMPER_RESPONSE` = `warn|delay|terminate`
+2. `MUTANT_TAMPER_DELAY_MS` = delay duration (0..5000)
+3. `MUTANT_PROTECTION_PROFILE` = `minimal|standard|paranoid`
 4. `--signer-auth` enables trusted signer verification in secure mode.
 
 ### 3.2 Probe Controls
 
-1. `runtime setting=1` enables anti-tamper probe execution.
-2. `runtime setting` controls runner process-protection
+1. `MUTANT_ENABLE_ANTITAMPER_PROBE=1` enables anti-tamper probe execution.
+2. `MUTANT_ENABLE_PROCESS_PROTECTION` controls runner process-protection
    enforcement when probes are enabled.
-3. `runtime setting=1` enables remote scan manager execution.
-4. `runtime setting=off|observe|enforce` controls block vs observe
+3. `MUTANT_ENABLE_REMOTE_PROCESS_SCAN=1` enables remote scan manager execution.
+4. `MUTANT_REMOTE_SCAN_MODE=off|observe|enforce` controls block vs observe
    behavior.
-5. `runtime setting` and `runtime setting` tune
+5. `MUTANT_REMOTE_SCAN_MAX_PROCESSES` and `MUTANT_REMOTE_SCAN_ALLOWLIST` tune
    scan scope.
 
 ### 3.3 Telemetry Controls
 
-1. `runtime setting=1` emits audit lines to stderr.
-2. `runtime setting=<path>` exports JSON telemetry snapshot on
+1. `MUTANT_SECURITY_AUDIT=1` emits audit lines to stderr.
+2. `MUTANT_SECURITY_TELEMETRY_FILE=<path>` exports JSON telemetry snapshot on
    exit.
 
 ## 4. First 10 Minutes Checklist
@@ -124,7 +126,7 @@ Production guidance:
 $ts = Get-Date -Format "yyyyMMdd-HHmmss"
 $dir = "./incident-$ts"
 New-Item -ItemType Directory -Path $dir | Out-Null
-Get-ChildItem MUTANT_* | Out-File "$dir/env.txt"
+Get-ChildItem Env:MUTANT_* | Out-File "$dir/env.txt"
 Get-FileHash .\mutant.exe -Algorithm SHA256 | Out-File "$dir/hashes.txt"
 if (Test-Path .\telemetry.json) { Copy-Item .\telemetry.json "$dir/telemetry.json" }
 ```
@@ -157,12 +159,12 @@ every change in incident notes.
 Use when running trusted release artifacts in production.
 
 ```powershell
-runtime setting = "terminate"
-runtime setting = "paranoid"
-runtime setting = "1"
-runtime setting = "1"
-runtime setting = "1"
-runtime setting = ".\telemetry.json"
+$env:MUTANT_TAMPER_RESPONSE = "terminate"
+$env:MUTANT_PROTECTION_PROFILE = "paranoid"
+$env:MUTANT_ENABLE_ANTITAMPER_PROBE = "1"
+$env:MUTANT_ENABLE_PROCESS_PROTECTION = "1"
+$env:MUTANT_SECURITY_AUDIT = "1"
+$env:MUTANT_SECURITY_TELEMETRY_FILE = ".\telemetry.json"
 ```
 
 ### 9.2 Production Standard (Balanced)
@@ -170,11 +172,11 @@ runtime setting = ".\telemetry.json"
 Use for broad production rollout with strong defaults and lower friction.
 
 ```powershell
-runtime setting = "terminate"
-runtime setting = "standard"
-runtime setting = "1"
-runtime setting = "1"
-runtime setting = "1"
+$env:MUTANT_TAMPER_RESPONSE = "terminate"
+$env:MUTANT_PROTECTION_PROFILE = "standard"
+$env:MUTANT_ENABLE_ANTITAMPER_PROBE = "1"
+$env:MUTANT_ENABLE_PROCESS_PROTECTION = "1"
+$env:MUTANT_SECURITY_AUDIT = "1"
 ```
 
 ### 9.3 Investigation Mode (Delay + Observe)
@@ -182,13 +184,13 @@ runtime setting = "1"
 Use during controlled triage when you need more evidence before termination.
 
 ```powershell
-runtime setting = "delay"
-runtime setting = "1500"
-runtime setting = "standard"
-runtime setting = "1"
-runtime setting = "1"
-runtime setting = "1"
-runtime setting = ".\telemetry.json"
+$env:MUTANT_TAMPER_RESPONSE = "delay"
+$env:MUTANT_TAMPER_DELAY_MS = "1500"
+$env:MUTANT_PROTECTION_PROFILE = "standard"
+$env:MUTANT_ENABLE_ANTITAMPER_PROBE = "1"
+$env:MUTANT_ENABLE_PROCESS_PROTECTION = "1"
+$env:MUTANT_SECURITY_AUDIT = "1"
+$env:MUTANT_SECURITY_TELEMETRY_FILE = ".\telemetry.json"
 ```
 
 ### 9.4 Compatibility Triage (Temporary)
@@ -196,11 +198,11 @@ runtime setting = ".\telemetry.json"
 Use only for short-lived false-positive isolation and root-cause analysis.
 
 ```powershell
-runtime setting = "warn"
-runtime setting = "minimal"
-runtime setting = "1"
-runtime setting = "0"
-runtime setting = "1"
+$env:MUTANT_TAMPER_RESPONSE = "warn"
+$env:MUTANT_PROTECTION_PROFILE = "minimal"
+$env:MUTANT_ENABLE_ANTITAMPER_PROBE = "1"
+$env:MUTANT_ENABLE_PROCESS_PROTECTION = "0"
+$env:MUTANT_SECURITY_AUDIT = "1"
 ```
 
 ### 9.5 Probe Off (Debug Baseline)
@@ -208,30 +210,30 @@ runtime setting = "1"
 Use to separate probe-related signals from other runtime controls.
 
 ```powershell
-runtime setting = "0"
-runtime setting = "0"
-runtime setting = "warn"
+$env:MUTANT_ENABLE_ANTITAMPER_PROBE = "0"
+$env:MUTANT_ENABLE_PROCESS_PROTECTION = "0"
+$env:MUTANT_TAMPER_RESPONSE = "warn"
 ```
 
 ### 9.6 Linux Example (Strict)
 
 ```bash
-export runtime setting=terminate
-export runtime setting=paranoid
-export runtime setting=1
-export runtime setting=1
-export runtime setting=1
-export runtime setting=./telemetry.json
+export MUTANT_TAMPER_RESPONSE=terminate
+export MUTANT_PROTECTION_PROFILE=paranoid
+export MUTANT_ENABLE_ANTITAMPER_PROBE=1
+export MUTANT_ENABLE_PROCESS_PROTECTION=1
+export MUTANT_SECURITY_AUDIT=1
+export MUTANT_SECURITY_TELEMETRY_FILE=./telemetry.json
 ```
 
 ### 9.7 Reset to Defaults
 
 ```powershell
-Remove-Item runtime setting -ErrorAction SilentlyContinue
-Remove-Item runtime setting -ErrorAction SilentlyContinue
-Remove-Item runtime setting -ErrorAction SilentlyContinue
-Remove-Item runtime setting -ErrorAction SilentlyContinue
-Remove-Item runtime setting -ErrorAction SilentlyContinue
-Remove-Item runtime setting -ErrorAction SilentlyContinue
-Remove-Item runtime setting -ErrorAction SilentlyContinue
+Remove-Item Env:MUTANT_TAMPER_RESPONSE -ErrorAction SilentlyContinue
+Remove-Item Env:MUTANT_TAMPER_DELAY_MS -ErrorAction SilentlyContinue
+Remove-Item Env:MUTANT_PROTECTION_PROFILE -ErrorAction SilentlyContinue
+Remove-Item Env:MUTANT_ENABLE_ANTITAMPER_PROBE -ErrorAction SilentlyContinue
+Remove-Item Env:MUTANT_ENABLE_PROCESS_PROTECTION -ErrorAction SilentlyContinue
+Remove-Item Env:MUTANT_SECURITY_AUDIT -ErrorAction SilentlyContinue
+Remove-Item Env:MUTANT_SECURITY_TELEMETRY_FILE -ErrorAction SilentlyContinue
 ```

@@ -25,8 +25,8 @@ Telemetry events used by this subsystem:
 
 Anti-tamper probing has two gates:
 
-1. Master probe gate: `runtime setting=1`
-2. Runner process-protection gate: `runtime setting`
+1. Master probe gate: `MUTANT_ENABLE_ANTITAMPER_PROBE=1`
+2. Runner process-protection gate: `MUTANT_ENABLE_PROCESS_PROTECTION`
 
 Behavior:
 

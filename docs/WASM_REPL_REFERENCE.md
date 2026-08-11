@@ -214,7 +214,28 @@ Intentionally unsupported:
 
 ## 5) Builtin Support (Current)
 
-Total supported builtins: 81
+The full standard library is **399 builtins across 32 categories** — see the
+[Capability Reference](CAPABILITY_REFERENCE.md) for the complete catalog. In the
+browser WASM REPL, the **pure-compute** families run unchanged; the **host-facing**
+families (section 6) are unavailable because the WASM sandbox has no filesystem,
+network, process, or OS access.
+
+**Pure-compute families available in WASM** (operate purely on in-memory values):
+
+- Standard library: collection/hash ops and higher-order functions
+  (`map`/`filter`/`reduce`/`each`/`sort_by`), `sort`/`reverse`/`unique`/`range`/`zip`,
+  `abs`/`min`/`max`/`sum`/`avg`, `type_of`/`is_null`.
+- Strings (`str_*`), text analysis (`text_*`, `regex_*`).
+- Structured data: `json_parse`/`json_stringify`, encoding (`base64`/`base32`/`hex`/`url`),
+  compression (`gzip`/`zlib`), base and type conversion (`to_*`/`parse_*`/`to_base`/`from_base`).
+- Math (`math_*`, `rand`/`rand_int`/`rand_bytes`), time (`time_*`), hashing
+  (`hash_*`/`hmac`/`uuid_*`/`nanoid`/`random_hex`).
+- Cryptography on in-memory data (`x509_parse`, `jwt_decode`, `pem_decode`,
+  `aes_encrypt`/`aes_decrypt`), network intelligence (`defang`/`refang`, `ip_*`,
+  `cidr_*`, `domain_extract`/`tld_extract`, `extract_iocs`), and fingerprints that
+  take in-memory input (`ja3`, `nt_hash`, `lm_hash`).
+
+The families enumerated below were the original WASM set and remain supported.
 
 ### 5.1 Core
 
@@ -411,27 +432,62 @@ Supported:
 - all: broader discoverability list (useful for learning CLI surface, even when
   not callable in browser)
 
-default allow = false decision = allow
-
 ## 9) Usage Patterns and Examples
 
-### 9.1 Arrays and output
+### 9.1 Loop over array values
 
 ```mutant
-let items = ["bytecode", "sandbox", "signing"];
-putln(len(items));
-putln(first(items));
-putln(last(items));
+let items = ["bytecode", "sandbox", "signing", "lsp"];
+for (let i = 0; i < len(items); i = i + 1) {
+  putln(items[i]);
+};
 ```
 
-### 9.2 JSON roundtrip
+### 9.2 Functions, structs, and enums
 
 ```mutant
-let payload = {"tool": "mutant", "ok": true};
-putln(json_stringify(payload));
+struct Point { x; y; };
+enum Color { Red, Green, Blue };
+
+let scale = fn(p, factor) {
+  let out = Point { x: p.x * factor, y: p.y * factor };
+  return out;
+};
+
+let p = Point { x: 1.5, y: 2 };
+let p2 = scale(p, 2);
+putln(p2.x);
+putln(Color.Green);
 ```
 
-### 9.3 Browser invocation
+### 9.3 Policy + cache + in-memory graph
+
+```mutant
+policy_load("allow_policy", {
+  "module": "package access
+default allow = false
+allow { true }
+decision = allow
+rules = [1]",
+  "eval_query": "data.access.decision",
+  "allow_query": "data.access.allow",
+  "rules_query": "data.access.rules"
+});
+
+putln(policy_allow("allow_policy", {"user": "analyst"}));
+
+cache_open("session");
+cache_put("session", "count", 7);
+putln(cache_get("session", "count")["value"]);
+
+let h = db_open();
+let n1 = db_add_node(h);
+let n2 = db_add_node(h);
+db_add_edge(h, n1, n2);
+putln(len(db_query_nodes(h)));
+```
+
+### 9.4 Browser invocation
 
 ```javascript
 const result = window.mutantReplEval("len([1, 2, 3])");
@@ -439,10 +495,15 @@ if (!result.ok) {
   console.error(result.error);
 } else {
   console.log(result.output);
+  console.log(result.supported);
+  console.log(result.builtins);
 }
 
-const completion = window.mutantReplComplete("text_", "supported");
-console.log(completion.candidates);
+const c1 = window.mutantReplComplete("text_", "supported");
+console.log(c1.candidates);
+
+const c2 = window.mutantReplCompleteLine('help("bu', "supported");
+console.log(c2.candidates);
 ```
 
 ## 10) Troubleshooting

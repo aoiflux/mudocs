@@ -41,7 +41,7 @@ Verification paths:
 
 Trusted key resolution order when signer-auth path is used:
 
-1. If `runtime setting` is set, use it.
+1. If `MUTANT_TRUSTED_PUBLIC_KEY_HEX` is set, use it.
 2. Otherwise bootstrap/load local keypair in keystore and trust local public
    key.
 
@@ -56,7 +56,7 @@ Default key dir:
 
 Override:
 
-`runtime setting`
+`MUTANT_KEYSTORE_DIR`
 
 ## 4. Runtime Signature Decision Matrix
 
@@ -131,8 +131,8 @@ When signature verification runs and fails:
 
 Telemetry export:
 
-1. Optional on process exit via `runtime setting`.
-2. Optional audit stream via `runtime setting=1`.
+1. Optional on process exit via `MUTANT_SECURITY_TELEMETRY_FILE`.
+2. Optional audit stream via `MUTANT_SECURITY_AUDIT=1`.
 
 ## 8. Operational Pitfalls
 
@@ -144,6 +144,6 @@ Telemetry export:
 ## 9. Recommended Production Posture
 
 1. Use `--secure --signer-auth`.
-2. Set `runtime setting` to approved release signer.
-3. Set `runtime setting=terminate`.
-4. Enable `runtime setting=1` and telemetry export.
+2. Set `MUTANT_TRUSTED_PUBLIC_KEY_HEX` to approved release signer.
+3. Set `MUTANT_TAMPER_RESPONSE=terminate`.
+4. Enable `MUTANT_SECURITY_AUDIT=1` and telemetry export.

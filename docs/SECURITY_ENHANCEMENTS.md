@@ -99,7 +99,7 @@ Decision (2026-07):
 
 1. Keep `runtime` mode as default VM global storage path to preserve throughput.
 2. Keep `wrapper` mode as opt-in hardening path behind
-   `runtime setting=wrapper`.
+   `MUTANT_VM_GLOBAL_MEMORY_MODE=wrapper`.
 3. Do not add new secure-memory helper types in this release beyond existing
    wrappers (`SecureGlobal`, `SecureStack`, `SecureConstantPool`).
 4. Revisit additional helpers only if a new threat model requires object classes

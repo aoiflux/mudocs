@@ -10,8 +10,8 @@ artifact, runtime, and risky builtins.
 1. Signed artifact verification
 
 - Signer pinning is enforced in secure mode when `--signer-auth` is enabled.
-- Trusted signer key source is `runtime setting` (or local bootstrap fallback if
-  unset).
+- Trusted signer key source is `MUTANT_TRUSTED_PUBLIC_KEY_HEX` (or local
+  bootstrap fallback if unset).
 - Compatibility mode verifies embedded signature validity only.
 
 2. Payload confidentiality
@@ -47,7 +47,7 @@ artifact, runtime, and risky builtins.
 
 ## Protection profiles
 
-Set `runtime setting` to control default posture.
+Set `MUTANT_PROTECTION_PROFILE` to control default posture.
 
 - `minimal`
 - Defaults tamper response to `warn`.
@@ -61,6 +61,26 @@ Set `runtime setting` to control default posture.
 - `paranoid`
 - Defaults tamper response to `terminate`.
 - Risky builtins default to deny unless explicitly allowed.
+
+Explicit environment variables still win:
+
+- `MUTANT_TAMPER_RESPONSE`
+- `MUTANT_BUILTIN_CAPABILITIES`
+
+## Useful environment variables
+
+- `MUTANT_TRUSTED_PUBLIC_KEY_HEX`
+- `MUTANT_SIGNING_PRIVATE_KEY_HEX`
+- `MUTANT_TAMPER_RESPONSE`
+- `MUTANT_TAMPER_DELAY_MS`
+- `MUTANT_PROTECTION_PROFILE`
+- `MUTANT_BUILTIN_CAPABILITIES`
+- `MUTANT_SECURITY_AUDIT`
+- `MUTANT_SECURITY_TELEMETRY_FILE`
+- `MUTANT_ENABLE_REMOTE_PROCESS_SCAN`
+- `MUTANT_REMOTE_SCAN_MODE`
+- `MUTANT_REMOTE_SCAN_MAX_PROCESSES`
+- `MUTANT_REMOTE_SCAN_ALLOWLIST`
 
 ## Artifact format
 
@@ -81,7 +101,8 @@ Standalone release trailer V3:
 
 ## Quick checks
 
-- Unexpected builtins blocked? Check `runtime setting`.
+- Unexpected builtins blocked? Check `MUTANT_PROTECTION_PROFILE` and
+  `MUTANT_BUILTIN_CAPABILITIES`.
 - Signature failure? Check trusted key pinning and release signer chain.
 - Integrity failure? Treat as active tamper.
 - Release artifact mismatch? Check trailer profile code and provenance hash.

@@ -66,8 +66,8 @@ Enforcement condition:
 
 Gates:
 
-- runtime setting=1 must be enabled.
-- runtime setting controls runner-side enforcement.
+- MUTANT_ENABLE_ANTITAMPER_PROBE=1 must be enabled.
+- MUTANT_ENABLE_PROCESS_PROTECTION controls runner-side enforcement.
 
 ---
 
@@ -182,7 +182,7 @@ sequenceDiagram
     Win-->>Probe: []AntiTamperSignal
     Probe-->>Runner: signals, enabled=true
 
-   loop for every signal
+    loop for each signal
         Runner->>Runner: if detected && confidence >= 80
     end
 
@@ -319,7 +319,7 @@ type ProcessRiskVerdict struct {
 ### 8.6 Scan loop pseudocode
 
 ```text
-for process in enumerateProcesses():
+for each process in enumerateProcesses():
     h = openProcessWithLeastPrivilege(process)
     if h unavailable:
         continue
@@ -513,6 +513,14 @@ type ProcessRiskVerdict struct {
 
 ### 13.3 Config and env gates (security/processscan_config.go)
 
+Current env vars:
+
+1. MUTANT_ENABLE_REMOTE_PROCESS_SCAN
+2. MUTANT_REMOTE_SCAN_MODE (off, observe, enforce)
+3. MUTANT_REMOTE_SCAN_MAX_PROCESSES
+4. MUTANT_REMOTE_SCAN_INTERVAL_MS
+5. MUTANT_REMOTE_SCAN_ALLOWLIST
+
 Suggested struct:
 
 ```go
@@ -679,16 +687,16 @@ Sprint D (enforcement):
 
 1. Enable enforce mode behind env gate. [done]
 2. Roll out to secure profile first. [in progress]
-3. Keep emergency kill-switch runtime setting. [done via mode/off gate]
+3. Keep emergency kill-switch env var. [done via mode/off gate]
 
-### 13.13 Deep-dive reference
+### 13.12 Deep-dive reference
 
 For a code-accurate deep dive on current remote-scan architecture and behavior,
 see:
 
 1. [REMOTE_PROCESS_SCAN_DEEP_DIVE.md](REMOTE_PROCESS_SCAN_DEEP_DIVE.md)
 
-### 13.12 Mermaid implementation dependency graph
+### 13.13 Mermaid implementation dependency graph
 
 ```mermaid
 flowchart TD
@@ -701,7 +709,7 @@ flowchart TD
    H[processscan_windows_stub.go] --> D
 ```
 
-### 13.13 Practical coding tip for this repo
+### 13.14 Practical coding tip for this repo
 
 Follow the same OS pattern already used in security package:
 

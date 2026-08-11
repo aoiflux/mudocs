@@ -19,30 +19,36 @@ This design separates these decisions clearly.
 
 ### 3.1 Master Probe Gate
 
-`runtime setting`
+`MUTANT_ENABLE_ANTITAMPER_PROBE`
 
 1. Value `1` means probes run.
 2. Any other value means probes are skipped.
 
 ### 3.2 Process Protection Gate
 
-`runtime setting`
+`MUTANT_ENABLE_PROCESS_PROTECTION`
 
 1. Evaluated by runner process-protection path.
 2. Default enabled when unset.
 3. Disabled by: `0`, `false`, `off`, `no`.
 
+### 3.3 Policy Inputs
+
+1. `MUTANT_TAMPER_RESPONSE`
+2. `MUTANT_PROTECTION_PROFILE`
+3. secure/compat/dev mode context
+
 ## 4. Decision Model
 
 ```mermaid
 flowchart TD
-    A[RunAntiTamperProbe called] --> B{runtime setting == 1?}
+    A[RunAntiTamperProbe called] --> B{MUTANT_ENABLE_ANTITAMPER_PROBE == 1?}
     B -->|No| C[Return signals=nil, enabled=false]
     B -->|Yes| D[Run requested probes and return signals]
 
     D --> E{Caller is runner process-protection path?}
     E -->|No| F[Diagnostics only]
-    E -->|Yes| G{runtime setting enabled?}
+    E -->|Yes| G{MUTANT_ENABLE_PROCESS_PROTECTION enabled?}
     G -->|No| H[Skip enforcement]
     G -->|Yes| I{Any signal: detected=true and confidence>=80?}
     I -->|No| J[Continue]
@@ -80,7 +86,7 @@ Risk:
 Mitigation:
 
 1. Document production recommended env posture.
-2. Add deployment checks for required security runtime settings.
+2. Add deployment checks for required security env vars.
 
 Risk:
 

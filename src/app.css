@@ -71,6 +71,27 @@
 	--shadow-brut: 8px 8px 0 #5f61db;
 }
 
+:root[data-theme='artist'] .page-shell {
+	position: relative;
+	isolation: isolate;
+}
+
+:root[data-theme='artist'] .page-shell::before {
+	content: '';
+	position: fixed;
+	inset: 8% 10% auto;
+	height: min(28vh, 15rem);
+	pointer-events: none;
+	background:
+		linear-gradient(180deg, color-mix(in srgb, var(--bg) 24%, transparent), transparent 80%),
+		url('/artist/banner.png') center / cover no-repeat;
+	opacity: 0.11;
+	filter: saturate(1.2) contrast(1.04) blur(0.4px);
+	mix-blend-mode: screen;
+	mask-image: linear-gradient(180deg, transparent 0, black 18%, black 78%, transparent 100%);
+	z-index: -1;
+}
+
 * {
 	box-sizing: border-box;
 }
@@ -255,6 +276,106 @@ a {
 	pointer-events: none;
 	opacity: 0.78;
 	z-index: -2;
+}
+
+.artist-hero-video,
+.artist-hero-video-fallback {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	pointer-events: none;
+	opacity: 0.28;
+	filter: saturate(1.22) contrast(1.07) brightness(0.88);
+	mix-blend-mode: screen;
+	z-index: -4;
+	animation: hero-video-drift 14s ease-in-out infinite;
+}
+
+.artist-hero-emblem {
+	position: absolute;
+	right: 1.1rem;
+	bottom: 1rem;
+	width: min(32vw, 14rem);
+	aspect-ratio: 16 / 9;
+	object-fit: cover;
+	border: 2px solid color-mix(in srgb, var(--ink) 78%, var(--accent));
+	box-shadow: 5px 5px 0 color-mix(in srgb, var(--ink) 72%, var(--accent-2));
+	opacity: 0.56;
+	filter: saturate(1.16) brightness(1.03);
+	mask-image: linear-gradient(145deg, transparent 0, black 14%, black 86%, transparent 100%);
+	pointer-events: none;
+	z-index: -1;
+	animation: emblem-float 6.6s ease-in-out infinite;
+}
+
+.artist-media-panel {
+	position: relative;
+	overflow: clip;
+	isolation: isolate;
+}
+
+.artist-media-panel::before {
+	content: '';
+	position: absolute;
+	inset: -20% -12% auto;
+	height: 13rem;
+	pointer-events: none;
+	background:
+		radial-gradient(circle at 20% 40%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 62%),
+		radial-gradient(circle at 72% 20%, color-mix(in srgb, var(--accent-2) 20%, transparent), transparent 62%);
+	filter: blur(8px);
+	z-index: -1;
+}
+
+.artist-media-grid {
+	align-items: stretch;
+}
+
+.artist-media-card {
+	position: relative;
+	overflow: clip;
+	padding: 0.75rem;
+	background:
+		linear-gradient(150deg, color-mix(in srgb, var(--surface) 88%, var(--accent) 12%), transparent 60%),
+		var(--surface);
+}
+
+.artist-media-card::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	background: repeating-linear-gradient(125deg, transparent 0 19px, color-mix(in srgb, var(--ink) 7%, transparent) 19px 21px);
+	opacity: 0.34;
+}
+
+.artist-media-card > * {
+	position: relative;
+	z-index: 1;
+}
+
+.artist-video,
+.artist-banner {
+	display: block;
+	width: 100%;
+	height: auto;
+	border: 2px solid var(--ink);
+	box-shadow: 5px 5px 0 var(--ink);
+	background: #050810;
+}
+
+.artist-video {
+	aspect-ratio: 16 / 9;
+	object-fit: cover;
+	animation: media-breathe 4.6s ease-in-out infinite;
+}
+
+.artist-banner {
+	aspect-ratio: 16 / 9;
+	object-fit: cover;
+	animation: media-breathe 5.2s ease-in-out infinite reverse;
 }
 
 .launch-hero {
@@ -646,6 +767,21 @@ a {
 		conic-gradient(from 210deg at 78% 12%, rgba(255, 111, 207, 0.3), rgba(70, 241, 255, 0.22), rgba(255, 111, 207, 0.3)),
 		linear-gradient(165deg, rgba(70, 241, 255, 0.26), transparent 44%, rgba(255, 111, 207, 0.2) 82%);
 	animation: artist-shift 8.5s linear infinite;
+}
+
+.theme-artist::after {
+	content: '';
+	position: absolute;
+	inset: auto 0 0;
+	height: 42%;
+	background:
+		linear-gradient(180deg, transparent 0, color-mix(in srgb, var(--surface) 22%, transparent) 24%, color-mix(in srgb, var(--surface) 74%, transparent) 100%),
+		url('/artist/banner.png') center / cover no-repeat;
+	opacity: 0.3;
+	mix-blend-mode: screen;
+	pointer-events: none;
+	filter: saturate(1.2) brightness(0.94);
+	z-index: 0;
 }
 
 .theme-artist .theme-stage-glow {
@@ -1132,9 +1268,60 @@ a {
 	}
 }
 
+@keyframes media-breathe {
+	0%,
+	100% {
+		transform: scale(1);
+		filter: saturate(1) brightness(1);
+	}
+	50% {
+		transform: scale(1.015);
+		filter: saturate(1.1) brightness(1.05);
+	}
+}
+
+@keyframes hero-video-drift {
+	0%,
+	100% {
+		transform: translate3d(0, 0, 0) scale(1.03);
+	}
+	50% {
+		transform: translate3d(-8px, 6px, 0) scale(1.07);
+	}
+}
+
+@keyframes emblem-float {
+	0%,
+	100% {
+		transform: translateY(0);
+	}
+	50% {
+		transform: translateY(-6px);
+	}
+}
+
 @media (max-width: 900px) {
+	:root[data-theme='artist'] .page-shell::before {
+		inset: 11% 5% auto;
+		height: 9.5rem;
+		opacity: 0.1;
+	}
+
+	.artist-hero-emblem {
+		position: static;
+		width: 100%;
+		max-width: 16rem;
+		margin-top: 0.75rem;
+		opacity: 0.5;
+		mask-image: none;
+	}
+
 	.hero-evidence-grid {
 		grid-template-columns: 1fr;
+	}
+
+	.artist-media-card {
+		grid-column: span 12 !important;
 	}
 
 	.snap-chapter {

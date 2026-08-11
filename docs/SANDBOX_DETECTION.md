@@ -122,7 +122,7 @@ Default response behavior:
 
 - Secure mode: terminate
 - Compat mode: warn
-- Override via runtime setting (warn|delay|terminate)
+- Override via MUTANT_TAMPER_RESPONSE (warn|delay|terminate)
 
 ## Telemetry
 
@@ -130,13 +130,13 @@ Sandbox detection contributes to security telemetry snapshot/export:
 
 - sandbox_detected
 
-Audit stream integration (when runtime setting=1):
+Audit stream integration (when MUTANT_SECURITY_AUDIT=1):
 
 - event=sandbox_detected stage=<stage>
 
 Telemetry export file is controlled by:
 
-- runtime setting
+- MUTANT_SECURITY_TELEMETRY_FILE
 
 ## Testing
 

@@ -1,5 +1,9 @@
 # Security Architecture Diagrams (Code-Synced)
 
+Visual reference for how Mutant's runtime security pipeline, policy
+decisions, and probe gates fit together, kept in sync with current code
+behavior.
+
 ## 1. End-to-End Runtime Security Flow
 
 ```mermaid
@@ -29,7 +33,7 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    A[Security event] --> B{runtime setting set?}
+    A[Security event] --> B{MUTANT_TAMPER_RESPONSE set?}
     B -->|Yes| C[Use explicit env action]
     B -->|No| D[Use profile default]
     D --> E{Profile}
@@ -46,14 +50,14 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    A[RunAntiTamperProbe called] --> B{runtime setting == 1?}
+    A[RunAntiTamperProbe called] --> B{MUTANT_ENABLE_ANTITAMPER_PROBE == 1?}
     B -->|No| C[Return enabled=false, no signals]
     B -->|Yes| D[Run requested probes]
     D --> E[Return signals + enabled=true]
 
     E --> F{Called from runner process-protection path?}
     F -->|No| G[Diagnostic use only]
-    F -->|Yes| H{runtime setting enabled?}
+    F -->|Yes| H{MUTANT_ENABLE_PROCESS_PROTECTION enabled?}
     H -->|No| I[Skip enforcement]
     H -->|Yes| J{Any detected && confidence >= 80?}
     J -->|No| K[Continue]
@@ -111,3 +115,25 @@ Note:
 1. Mutation controls and seed are wired through CLI.
 2. Advanced transform activation is intentionally constrained in current
    configuration.
+
+## 7. Remote Scan Gate Model
+
+```mermaid
+flowchart TD
+    A[RunRemoteProcessScan] --> B{MUTANT_ENABLE_REMOTE_PROCESS_SCAN == 1?}
+    B -->|No| C[Disabled, no scan]
+    B -->|Yes| D{MUTANT_REMOTE_SCAN_MODE}
+    D -->|off| C
+    D -->|observe| E[Telemetry only]
+    D -->|enforce| F{Any verdict >= critical?}
+    F -->|No| G[Continue]
+    F -->|Yes| H[Apply tamper policy]
+```
+
+## 8. Memory Hardening Snapshot
+
+```mermaid
+flowchart LR
+    A[VM runtime path] --> B[mutil object encrypt/decrypt flow]
+    C[Additional primitives] --> D[SecureGlobal/SecureStack/SecureConstantPool]
+```

@@ -381,14 +381,14 @@ The compiler detects this with `lastInstructionIs(code.OpPop)` and either:
 ```
 1. enterScope()
 2. If named function: symbolTable.DefineFunctionName(name)   → OpCurrentClosure support
-3. For every parameter: symbolTable.Define(param)            → LocalScope
+3. For each parameter: symbolTable.Define(param)             → LocalScope
 4. Compile body block
 5. If last instruction is OpPop → replaceLastPopWithReturn()
 6. If last instruction is not OpReturnValue → emit OpReturn
 7. Snapshot freeSymbols = symbolTable.FreeSymbols
 8. Snapshot numLocals    = symbolTable.numDefinitions
 9. leaveScope() → captures finished instruction bytes
-10. For every free symbol: loadSymbol(sym) → pushes captured values onto parent stack
+10. For each free symbol: loadSymbol(sym)  → pushes captured values onto parent stack
 11. compiledFn = &CompiledFunction{Instructions, NumLocals, NumParams}
 12. fnIndex = addConstant(compiledFn)
 13. emit(OpClosure, fnIndex, len(freeSymbols))
@@ -716,7 +716,7 @@ The compiler for `inner`:
 2. Calls `defineFree(x_local)` →
    `FreeSymbols = [{Name:"x", Scope:LOCAL, Index:0}]`.
 3. After body compilation, `FreeSymbols` has one entry.
-4. In the parent scope, `loadSymbol` for every free symbol emits `OpGetLocal 0`
+4. In the parent scope, `loadSymbol` for each free symbol emits `OpGetLocal 0`
    (loading `x` onto the stack).
 5. Emits `OpClosure <innerFnIdx> 1`.
 

@@ -16,13 +16,24 @@ If you want a concise answer to “what does it do?”:
 
 - It automates security and forensic workflows.
 - It can compile `.mut` source into encrypted bytecode and standalone binaries.
-- It has builtins for text, filesystem, network, registry, memory, binary
-  parsing, command execution, JSON, Lua, graph modeling, detection, policy, and
-  cache workflows.
+- It has a large standard library (**399 builtins** across 32 categories):
+  strings, math, hashing, time, structured data (JSON/encoding/compression),
+  higher-order collection functions, filesystem, networking (sockets/TLS/HTTP),
+  graph modeling, cryptography, IOC/network intelligence, fingerprinting,
+  detection, policy, sandboxed Lua, command execution, and a deep forensic
+  suite — process/memory/binary analysis, registry (hive/live), filesystem and
+  disk-image parsers, Windows/Unix/browser artifacts, and timeline building.
+  The full catalog is the [Capability Reference](CAPABILITY_REFERENCE.md).
 - It includes runtime protections such as signature verification, anti-tamper
   checks, anti-debug checks, anti-sandbox checks, process protection, and
   polymorphic bytecode stages.
+- It ships a Go-style language server (a separate `mlsp` binary) with strict
+  formatting, diagnostics, hover, completion, and OS-aware platform warnings.
 - It ships with real examples that you can study, adapt, and chain together.
+
+Deep-dive guides: [Capability Reference](CAPABILITY_REFERENCE.md) ·
+[Secure Networking](SECURE_NETWORKING.md) · [Graph Database](GRAPH_DATABASE.md) ·
+[Runtime Integration](RUNTIME_INTEGRATION.md) · [Structured Data](STRUCTURED_DATA.md).
 
 ## What you can do with it
 
@@ -35,10 +46,10 @@ Use Mutant to collect signals from a host, score them, and emit a report.
 
 Good starting examples:
 
-- [examples/security/security_environment_report.mut](https://github.com/aoiflux/mutant/tree/main/examples/security/security_environment_report.mut)
-- [examples/security/security_diagnostics_example.mut](https://github.com/aoiflux/mutant/tree/main/examples/security/security_diagnostics_example.mut)
-- [examples/detection/detection_example.mut](https://github.com/aoiflux/mutant/tree/main/examples/detection/detection_example.mut)
-- [examples/detection/detection_multi_signal_score.mut](https://github.com/aoiflux/mutant/tree/main/examples/detection/detection_multi_signal_score.mut)
+- [examples/security/security_environment_report.mut](../examples/security/security_environment_report.mut)
+- [examples/security/security_diagnostics_example.mut](../examples/security/security_diagnostics_example.mut)
+- [examples/detection/detection_example.mut](../examples/detection/detection_example.mut)
+- [examples/detection/detection_multi_signal_score.mut](../examples/detection/detection_multi_signal_score.mut)
 
 Typical questions this answers:
 
@@ -53,11 +64,11 @@ Mutant can fetch, parse, normalize, and correlate network observations.
 
 Examples:
 
-- [examples/network/network_service_recon_graph.mut](https://github.com/aoiflux/mutant/tree/main/examples/network/network_service_recon_graph.mut)
-- [examples/network/network_triage_dns_tls.mut](https://github.com/aoiflux/mutant/tree/main/examples/network/network_triage_dns_tls.mut)
-- [examples/network/http_recon_fetcher.mut](https://github.com/aoiflux/mutant/tree/main/examples/network/http_recon_fetcher.mut)
-- [examples/network/ioc_fetcher.mut](https://github.com/aoiflux/mutant/tree/main/examples/network/ioc_fetcher.mut)
-- [examples/network/pcap_offline_analysis.mut](https://github.com/aoiflux/mutant/tree/main/examples/network/pcap_offline_analysis.mut)
+- [examples/network/network_service_recon_graph.mut](../examples/network/network_service_recon_graph.mut)
+- [examples/network/network_triage_dns_tls.mut](../examples/network/network_triage_dns_tls.mut)
+- [examples/network/http_recon_fetcher.mut](../examples/network/http_recon_fetcher.mut)
+- [examples/network/ioc_fetcher.mut](../examples/network/ioc_fetcher.mut)
+- [examples/network/pcap_offline_analysis.mut](../examples/network/pcap_offline_analysis.mut)
 
 Typical questions this answers:
 
@@ -73,15 +84,15 @@ bytes-oriented analysis.
 
 Examples:
 
-- [examples/filesystem/fs_example.mut](https://github.com/aoiflux/mutant/tree/main/examples/filesystem/fs_example.mut)
-- [examples/filesystem/fs_forensics_example.mut](https://github.com/aoiflux/mutant/tree/main/examples/filesystem/fs_forensics_example.mut)
-- [examples/filesystem/ntfs_example.mut](https://github.com/aoiflux/mutant/tree/main/examples/filesystem/ntfs_example.mut)
-- [examples/filesystem/ext_example.mut](https://github.com/aoiflux/mutant/tree/main/examples/filesystem/ext_example.mut)
-- [examples/filesystem/raw_example.mut](https://github.com/aoiflux/mutant/tree/main/examples/filesystem/raw_example.mut)
-- [examples/filesystem/vhdi_example.mut](https://github.com/aoiflux/mutant/tree/main/examples/filesystem/vhdi_example.mut)
-- [examples/binary/binary_analysis_example.mut](https://github.com/aoiflux/mutant/tree/main/examples/binary/binary_analysis_example.mut)
-- [examples/binary/binary_triage_sections_entropy.mut](https://github.com/aoiflux/mutant/tree/main/examples/binary/binary_triage_sections_entropy.mut)
-- [examples/bytes/bytes_cursor_sample_demo.mut](https://github.com/aoiflux/mutant/tree/main/examples/bytes/bytes_cursor_sample_demo.mut)
+- [examples/filesystem/fs_example.mut](../examples/filesystem/fs_example.mut)
+- [examples/filesystem/fs_forensics_example.mut](../examples/filesystem/fs_forensics_example.mut)
+- [examples/filesystem/ntfs_example.mut](../examples/filesystem/ntfs_example.mut)
+- [examples/filesystem/ext_example.mut](../examples/filesystem/ext_example.mut)
+- [examples/filesystem/raw_example.mut](../examples/filesystem/raw_example.mut)
+- [examples/filesystem/vhdi_example.mut](../examples/filesystem/vhdi_example.mut)
+- [examples/binary/binary_analysis_example.mut](../examples/binary/binary_analysis_example.mut)
+- [examples/binary/binary_triage_sections_entropy.mut](../examples/binary/binary_triage_sections_entropy.mut)
+- [examples/bytes/bytes_cursor_sample_demo.mut](../examples/bytes/bytes_cursor_sample_demo.mut)
 
 Typical questions this answers:
 
@@ -96,12 +107,12 @@ Mutant is strong when the investigation crosses evidence types.
 
 Examples:
 
-- [examples/registry/registry_forensics_example.mut](https://github.com/aoiflux/mutant/tree/main/examples/registry/registry_forensics_example.mut)
-- [examples/registry/registry_persistence_hunt.mut](https://github.com/aoiflux/mutant/tree/main/examples/registry/registry_persistence_hunt.mut)
-- [examples/memory/memory_forensics_example.mut](https://github.com/aoiflux/mutant/tree/main/examples/memory/memory_forensics_example.mut)
-- [examples/memory/memory_scan_to_detection.mut](https://github.com/aoiflux/mutant/tree/main/examples/memory/memory_scan_to_detection.mut)
-- [examples/email/email_forensics_example.mut](https://github.com/aoiflux/mutant/tree/main/examples/email/email_forensics_example.mut)
-- [examples/email/email_attachment_triage.mut](https://github.com/aoiflux/mutant/tree/main/examples/email/email_attachment_triage.mut)
+- [examples/registry/registry_forensics_example.mut](../examples/registry/registry_forensics_example.mut)
+- [examples/registry/registry_persistence_hunt.mut](../examples/registry/registry_persistence_hunt.mut)
+- [examples/memory/memory_forensics_example.mut](../examples/memory/memory_forensics_example.mut)
+- [examples/memory/memory_scan_to_detection.mut](../examples/memory/memory_scan_to_detection.mut)
+- [examples/email/email_forensics_example.mut](../examples/email/email_forensics_example.mut)
+- [examples/email/email_attachment_triage.mut](../examples/email/email_attachment_triage.mut)
 
 Typical questions this answers:
 
@@ -117,11 +128,11 @@ instead of throwing away context.
 
 Examples:
 
-- [examples/graph/db_example.mut](https://github.com/aoiflux/mutant/tree/main/examples/graph/db_example.mut)
-- [examples/graph/db_wrappers_example.mut](https://github.com/aoiflux/mutant/tree/main/examples/graph/db_wrappers_example.mut)
-- [examples/graph/mini_log_correlator.mut](https://github.com/aoiflux/mutant/tree/main/examples/graph/mini_log_correlator.mut)
-- [examples/graph/mini_timeline_builder.mut](https://github.com/aoiflux/mutant/tree/main/examples/graph/mini_timeline_builder.mut)
-- [examples/graph/graph_detection_timeline.mut](https://github.com/aoiflux/mutant/tree/main/examples/graph/graph_detection_timeline.mut)
+- [examples/graph/db_example.mut](../examples/graph/db_example.mut)
+- [examples/graph/db_wrappers_example.mut](../examples/graph/db_wrappers_example.mut)
+- [examples/graph/mini_log_correlator.mut](../examples/graph/mini_log_correlator.mut)
+- [examples/graph/mini_timeline_builder.mut](../examples/graph/mini_timeline_builder.mut)
+- [examples/graph/graph_detection_timeline.mut](../examples/graph/graph_detection_timeline.mut)
 
 Typical questions this answers:
 
@@ -136,13 +147,13 @@ readable and focused.
 
 Examples:
 
-- [examples/policy/policy_engine_example.mut](https://github.com/aoiflux/mutant/tree/main/examples/policy/policy_engine_example.mut)
-- [examples/policy/policy_inline_allow_deny.mut](https://github.com/aoiflux/mutant/tree/main/examples/policy/policy_inline_allow_deny.mut)
-- [examples/cache/cache_example.mut](https://github.com/aoiflux/mutant/tree/main/examples/cache/cache_example.mut)
-- [examples/cache/cache_ttl_workflow.mut](https://github.com/aoiflux/mutant/tree/main/examples/cache/cache_ttl_workflow.mut)
-- [examples/lua/lua_run_string_example.mut](https://github.com/aoiflux/mutant/tree/main/examples/lua/lua_run_string_example.mut)
-- [examples/lua/lua_run_file_example.mut](https://github.com/aoiflux/mutant/tree/main/examples/lua/lua_run_file_example.mut)
-- [examples/lua/lua_run_http_example.mut](https://github.com/aoiflux/mutant/tree/main/examples/lua/lua_run_http_example.mut)
+- [examples/policy/policy_engine_example.mut](../examples/policy/policy_engine_example.mut)
+- [examples/policy/policy_inline_allow_deny.mut](../examples/policy/policy_inline_allow_deny.mut)
+- [examples/cache/cache_example.mut](../examples/cache/cache_example.mut)
+- [examples/cache/cache_ttl_workflow.mut](../examples/cache/cache_ttl_workflow.mut)
+- [examples/lua/lua_run_string_example.mut](../examples/lua/lua_run_string_example.mut)
+- [examples/lua/lua_run_file_example.mut](../examples/lua/lua_run_file_example.mut)
+- [examples/lua/lua_run_http_example.mut](../examples/lua/lua_run_http_example.mut)
 
 Typical questions this answers:
 
@@ -282,13 +293,12 @@ Examples:
 
 Macros are part of the language for advanced metaprogramming.
 
-The macro examples in
-[examples/macros/](https://github.com/aoiflux/mutant/tree/main/examples/macros/)
-show practical patterns:
+The macro examples in [examples/macros/](../examples/macros/) show practical
+patterns:
 
-- [examples/macros/macro_quote_unquote_basics.mut](https://github.com/aoiflux/mutant/tree/main/examples/macros/macro_quote_unquote_basics.mut)
-- [examples/macros/macro_rewrite_unless.mut](https://github.com/aoiflux/mutant/tree/main/examples/macros/macro_rewrite_unless.mut)
-- [examples/macros/macro_mini_dsl_rules.mut](https://github.com/aoiflux/mutant/tree/main/examples/macros/macro_mini_dsl_rules.mut)
+- [examples/macros/macro_quote_unquote_basics.mut](../examples/macros/macro_quote_unquote_basics.mut)
+- [examples/macros/macro_rewrite_unless.mut](../examples/macros/macro_rewrite_unless.mut)
+- [examples/macros/macro_mini_dsl_rules.mut](../examples/macros/macro_mini_dsl_rules.mut)
 
 Use macros when you want to:
 
@@ -310,12 +320,12 @@ If you are new to the language, this is the best path:
 
 1. Read [README.md](../README.md) for the quick overview.
 2. Try
-   [examples/security/security_environment_report.mut](https://github.com/aoiflux/mutant/tree/main/examples/security/security_environment_report.mut).
+   [examples/security/security_environment_report.mut](../examples/security/security_environment_report.mut).
 3. Try
-   [examples/network/network_service_recon_graph.mut](https://github.com/aoiflux/mutant/tree/main/examples/network/network_service_recon_graph.mut).
+   [examples/network/network_service_recon_graph.mut](../examples/network/network_service_recon_graph.mut).
 4. Try
-   [examples/registry/registry_forensics_example.mut](https://github.com/aoiflux/mutant/tree/main/examples/registry/registry_forensics_example.mut).
+   [examples/registry/registry_forensics_example.mut](../examples/registry/registry_forensics_example.mut).
 5. Try
-   [examples/macros/macro_quote_unquote_basics.mut](https://github.com/aoiflux/mutant/tree/main/examples/macros/macro_quote_unquote_basics.mut).
-6. Explore [examples/](https://github.com/aoiflux/mutant/tree/main/examples/) by
-   folder once the basic patterns make sense.
+   [examples/macros/macro_quote_unquote_basics.mut](../examples/macros/macro_quote_unquote_basics.mut).
+6. Explore [examples/](../examples/) by folder once the basic patterns make
+   sense.

@@ -1,3 +1,5 @@
+# Security Low-Level Design (LLD)
+
 ## 1. Document Purpose
 
 This document defines the low-level security design for Mutant's bytecode
@@ -49,7 +51,7 @@ Companion deep dives:
 3. Runs runtime under debugger/instrumentation.
 4. Patches bytecode/in-memory instruction regions.
 5. Replays older artifacts or malformed payloads.
-6. Manipulates runtime configuration settings at launch.
+6. Manipulates environment variables at launch.
 
 ### 3.2 Out of Scope (Current Release)
 
@@ -83,36 +85,6 @@ Mutant currently has three practical launch postures:
   password fallback is used (`mutil.GetPwd()`).
 - Intended for local testing convenience, not production hardening.
 
-### 4.3 Protection Profiles
-
-Mutant also supports a protection profile layer via `runtime setting`.
-
-Supported values:
-
-1. `minimal`
-
-- Favors compatibility and operator convenience.
-- Defaults tamper policy to `warn`.
-- Defaults risky builtin groups to allow-all unless an explicit capability list
-  is set.
-
-2. `standard`
-
-- Default profile when the runtime setting is unset or invalid.
-- Keeps secure mode fail-closed and compatibility mode warn-by-default.
-
-3. `paranoid`
-
-- Favors maximum tamper resistance.
-- Defaults tamper policy to `terminate` when this profile is selected.
-- Explicit `runtime setting` still has higher precedence.
-
-Profile precedence:
-
-- Explicit `runtime setting` still wins when set.
-- Explicit `runtime setting` still wins when set.
-- Profile selection only controls defaults.
-
 ### 4.1 Mode Resolution Rules
 
 CLI precedence is "last matching mode flag wins" due to linear arg scanning.
@@ -122,7 +94,7 @@ CLI precedence is "last matching mode flag wins" due to linear arg scanning.
 
 ### 4.2 Tamper Response Policy
 
-Policy source: env variable `runtime setting`.
+Policy source: env variable `MUTANT_TAMPER_RESPONSE`.
 
 Valid values:
 
@@ -137,8 +109,38 @@ Defaults:
 
 Delay tuning:
 
-- `runtime setting` in `[0..5000]`
+- `MUTANT_TAMPER_DELAY_MS` in `[0..5000]`
 - fallback default: `250ms`
+
+### 4.3 Protection Profiles
+
+Mutant also supports a protection profile layer via `MUTANT_PROTECTION_PROFILE`.
+
+Supported values:
+
+1. `minimal`
+
+- Favors compatibility and operator convenience.
+- Defaults tamper policy to `warn`.
+- Defaults risky builtin groups to allow-all unless an explicit capability list
+  is set.
+
+2. `standard`
+
+- Default profile when the env var is unset or invalid.
+- Keeps secure mode fail-closed and compatibility mode warn-by-default.
+
+3. `paranoid`
+
+- Favors maximum tamper resistance.
+- Defaults tamper policy to `terminate` when this profile is selected.
+- Explicit `MUTANT_TAMPER_RESPONSE` still has higher precedence.
+
+Profile precedence:
+
+- Explicit `MUTANT_TAMPER_RESPONSE` still wins when set.
+- Explicit `MUTANT_BUILTIN_CAPABILITIES` still wins when set.
+- Profile selection only controls defaults.
 
 ---
 
@@ -355,7 +357,7 @@ Security implication:
 - Runtime behavior still honors explicit environment overrides for policy
   controls.
 
-### 7.3 Deterministic Local Password Fallback
+### 7.4 Deterministic Local Password Fallback
 
 `mutil.GetPwd()` uses HKDF-SHA512 over fixed context constants to produce a
 deterministic local key string.
@@ -390,7 +392,7 @@ Security implication:
 2. Secure verification (`VerifyCodeWithTrustedPublicKey`):
 
 - Parses embedded public key/signature.
-- Loads trusted key from env `runtime setting` when set.
+- Loads trusted key from env `MUTANT_TRUSTED_PUBLIC_KEY_HEX` when set.
 - Falls back to local key bootstrap resolution when env is absent.
 - Constant-time compares embedded key with trusted key.
 - On mismatch returns `ErrUntrustedSigner`.
@@ -400,7 +402,7 @@ Security implication:
 
 Build/signing key source:
 
-- `runtime setting` preferred for stable signer identity.
+- `MUTANT_SIGNING_PRIVATE_KEY_HEX` preferred for stable signer identity.
 - If absent, local persistent keypair is loaded or bootstrapped from local
   keystore.
 
@@ -477,7 +479,7 @@ sequenceDiagram
 
 ### 9.1 Telemetry Export Hook
 
-If `runtime setting` is set, runner defers telemetry JSON export
+If `MUTANT_SECURITY_TELEMETRY_FILE` is set, runner defers telemetry JSON export
 at function exit.
 
 ### 9.2 Standalone Trailer Validation
@@ -511,11 +513,11 @@ Failure handling:
 At both `pre-decode` and `pre-execution` stages, runner evaluates process
 protection probes (`process_injection`, `trampoline`, `iat_got`,
 `module_integrity`, `memory_page_anomaly`) when
-`runtime setting=1`.
+`MUTANT_ENABLE_ANTITAMPER_PROBE=1`.
 
 Rollout gate:
 
-- `runtime setting` controls whether runner executes
+- `MUTANT_ENABLE_PROCESS_PROTECTION` controls whether runner executes
   process-protection enforcement.
 - default is enabled when unset.
 - disable values: `0`, `false`, `off`, `no`.
@@ -538,8 +540,8 @@ stages.
 
 Gates and modes:
 
-1. `runtime setting=1` enables scan execution.
-2. `runtime setting=off|observe|enforce` controls decision behavior.
+1. `MUTANT_ENABLE_REMOTE_PROCESS_SCAN=1` enables scan execution.
+2. `MUTANT_REMOTE_SCAN_MODE=off|observe|enforce` controls decision behavior.
 3. Scanner errors are telemetry-visible and non-blocking.
 
 Current enforcement behavior:
@@ -615,7 +617,7 @@ Behavior:
 
 - `minimal` profile defaults to allow-all.
 - `standard` and `paranoid` profiles default-deny the risky groups.
-- Explicit `runtime setting` overrides the profile default.
+- Explicit `MUTANT_BUILTIN_CAPABILITIES` overrides the profile default.
 
 ```mermaid
 stateDiagram-v2
@@ -674,7 +676,7 @@ Current wiring note:
 
 Current policy gate:
 
-- `runtime setting=runtime|wrapper`
+- `MUTANT_VM_GLOBAL_MEMORY_MODE=runtime|wrapper`
 - default is `runtime` for performance-safe operation
 - `wrapper` enables optional global wrapper usage where object types are
   supported
@@ -792,52 +794,52 @@ Atomic counters:
 
 ### 13.3 Audit Stream
 
-If `runtime setting=1`, writes stderr event lines:
+If `MUTANT_SECURITY_AUDIT=1`, writes stderr event lines:
 
 `[security-audit] ts=<unix> event=<...> stage=<...>`
 
 ---
 
-## 14. runtime configuration setting Contract
+## 14. Environment Variable Contract
 
 ### 14.1 Trust and Keys
 
-1. `runtime setting`
+1. `MUTANT_TRUSTED_PUBLIC_KEY_HEX`
 
 - required in secure runtime mode
 - trusted signer pinning key (ed25519 public key, hex)
 
-2. `runtime setting`
+2. `MUTANT_SIGNING_PRIVATE_KEY_HEX`
 
 - optional generator signing private key
 - stable artifact signer identity when set
 
-3. `runtime setting`
+3. `MUTANT_KEYSTORE_DIR`
 
 - optional override for local key bootstrap directory
 - defaults to `<home>/.mutant/keys`
 
 ### 14.2 Tamper Policy
 
-1. `runtime setting` = `warn|delay|terminate`
-2. `runtime setting` = integer ms in `[0..5000]`
+1. `MUTANT_TAMPER_RESPONSE` = `warn|delay|terminate`
+2. `MUTANT_TAMPER_DELAY_MS` = integer ms in `[0..5000]`
 
 ### 14.3 Probe and Process-Scan Gates
 
-1. `runtime setting` = `1` enables anti-tamper probe execution.
-2. `runtime setting` gates runner enforcement of the focused
+1. `MUTANT_ENABLE_ANTITAMPER_PROBE` = `1` enables anti-tamper probe execution.
+2. `MUTANT_ENABLE_PROCESS_PROTECTION` gates runner enforcement of the focused
    5-probe process-protection set.
-3. `runtime setting` = `1` enables remote process scan
+3. `MUTANT_ENABLE_REMOTE_PROCESS_SCAN` = `1` enables remote process scan
    manager.
-4. `runtime setting` = `off|observe|enforce`.
-5. `runtime setting` = positive integer, default `32`.
-6. `runtime setting` = positive integer, default `1000`.
-7. `runtime setting` = comma-separated process names.
+4. `MUTANT_REMOTE_SCAN_MODE` = `off|observe|enforce`.
+5. `MUTANT_REMOTE_SCAN_MAX_PROCESSES` = positive integer, default `32`.
+6. `MUTANT_REMOTE_SCAN_INTERVAL_MS` = positive integer, default `1000`.
+7. `MUTANT_REMOTE_SCAN_ALLOWLIST` = comma-separated process names.
 
 ### 14.4 Observability
 
-1. `runtime setting` = `1` to enable stderr audit lines
-2. `runtime setting` = output path for telemetry JSON
+1. `MUTANT_SECURITY_AUDIT` = `1` to enable stderr audit lines
+2. `MUTANT_SECURITY_TELEMETRY_FILE` = output path for telemetry JSON
 
 ---
 
@@ -965,9 +967,9 @@ Workflow `.github/workflows/security-profile.yml`:
 ### 20.1 Recommended Production Baseline
 
 1. Launch with `--secure` only.
-2. Set `runtime setting` to release signer key.
-3. Set `runtime setting=terminate`.
-4. Set `runtime setting=0` unless delay strategy is intentional.
+2. Set `MUTANT_TRUSTED_PUBLIC_KEY_HEX` to release signer key.
+3. Set `MUTANT_TAMPER_RESPONSE=terminate`.
+4. Set `MUTANT_TAMPER_DELAY_MS=0` unless delay strategy is intentional.
 5. Enable telemetry export and audit in monitored environments.
 
 ### 20.2 Developer Baseline

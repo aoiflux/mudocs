@@ -23,27 +23,27 @@ Primary implementation anchors:
 
 ## 2. Control Surface
 
-runtime configuration settings:
+Environment variables:
 
-1. `runtime setting`
+1. `MUTANT_ENABLE_REMOTE_PROCESS_SCAN`
 
 - Master gate for manager execution.
 
-2. `runtime setting`
+2. `MUTANT_REMOTE_SCAN_MODE`
 
 - `off`: disabled path.
 - `observe`: telemetry only.
 - `enforce`: policy block on critical verdict.
 
-3. `runtime setting`
+3. `MUTANT_REMOTE_SCAN_MAX_PROCESSES`
 
 - Positive integer, default `32`.
 
-4. `runtime setting`
+4. `MUTANT_REMOTE_SCAN_INTERVAL_MS`
 
 - Positive integer, default `1000`.
 
-5. `runtime setting`
+5. `MUTANT_REMOTE_SCAN_ALLOWLIST`
 
 - Comma-separated process names that should be skipped.
 
