@@ -22,7 +22,7 @@
 
 <SeoHead
 	title="All docs"
-	description="Browse the Mutant documentation corpus — {data.docs.length} documents across overview, reference, runtime, security and tooling."
+	description="Browse the Mutant documentation corpus — every guide, reference and runbook across overview, reference, runtime, security and tooling."
 />
 
 <div class="docs-layout is-two-col">
@@ -36,7 +36,7 @@
 		</nav>
 
 		<p class="eyebrow">Documentation</p>
-		<h1>{data.docs.length} documents</h1>
+		<h1>The corpus</h1>
 		<p class="lede">
 			The definitive Mutant corpus, rendered from the repository's own markdown. Filter here, or
 			<a href="/search">open advanced search</a> for full-text ranking.
@@ -71,11 +71,8 @@
 
 		<section>
 			<div class="band-head">
-				<p class="eyebrow">
-					{filteredDocs.length} {filteredDocs.length === 1 ? 'document' : 'documents'}
-					{normalizedQuery ? 'matching' : 'in the corpus'}
-				</p>
-				<a class="source-note" href="/docs/quality">Quality report ↗</a>
+				<p class="eyebrow">{normalizedQuery ? 'Matching documents' : 'Every document'}</p>
+				<a class="source-note" href="/search">Advanced search ↗</a>
 			</div>
 
 			<div class="related-docs-list">

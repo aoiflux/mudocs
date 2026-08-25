@@ -38,7 +38,6 @@
 	const docsMenuSecondary = [
 		{ href: '/docs/themes', label: 'Browse by theme' },
 		{ href: '/search', label: 'Search' },
-		{ href: '/docs/quality', label: 'Quality report' },
 		{ href: '/about', label: 'About' }
 	];
 

@@ -96,6 +96,8 @@
 		const activeTheme = document.documentElement.getAttribute('data-theme');
 		// "neutral" is the mermaid theme closest to Industry's line-drawing look;
 		// the dark ground gets mermaid's dark theme so the strokes stay legible.
+		// Its palette is then repainted from the site's tokens in app.css --
+		// feeding mermaid a themeVariables block instead collapses every node.
 		const mermaidTheme = activeTheme === 'dark' || activeTheme === 'artist' ? 'dark' : 'neutral';
 		mermaid.initialize({ startOnLoad: false, theme: mermaidTheme });
 
@@ -116,6 +118,9 @@
 
 	function onRenderDiagramsRequest() {
 		void renderMermaidDiagrams();
+		// The same signal means "new nodes are in the DOM", and those nodes carry
+		// [data-fx]. Without re-observing they would sit at their hidden start state.
+		void refreshReveals();
 	}
 
 	async function refreshReveals() {

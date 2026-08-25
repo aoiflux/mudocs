@@ -42,10 +42,6 @@
 		<p class="eyebrow">Section</p>
 		<h1>{data.current.title}</h1>
 		<p class="lede">{data.current.description}</p>
-		<div class="meta-row">
-			<span class="meta-chip">{data.docs.length} pages</span>
-		</div>
-
 		<section class="band">
 			<div class="two-up">
 				<div>

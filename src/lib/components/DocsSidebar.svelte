@@ -46,7 +46,7 @@
 				{#if isOpen(section)}
 					<div class="tree-links">
 						<a href={section.href} class:is-current={page.url.pathname === section.href}>
-							All {section.title.toLowerCase()} ({section.docs.length})
+							All {section.title.toLowerCase()}
 						</a>
 						{#each section.docs as doc (doc.slug)}
 							<a href={doc.href} class:is-current={page.url.pathname === doc.href}>{doc.title}</a>

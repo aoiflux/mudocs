@@ -64,8 +64,16 @@ function escapeHtml(value: string): string {
  * Drop shiki's inline background so the panel inherits --code-bg and stays
  * correct when the reader switches theme. The foreground colours are kept.
  */
+/**
+ * github-dark-dimmed's comment colour is #768390, which lands at 3.6:1 on the
+ * code panel — under AA for body text. The rest of its palette clears the bar,
+ * so the one token is lifted here rather than swapping the whole theme.
+ */
+const DIMMED_COMMENT = /#768390/gi;
+const COMMENT_LIFTED = '#8b98a5';
+
 function stripBackground(html: string): string {
-	return html.replace(/background-color:[^;"]*;?/g, '');
+	return html.replace(/background-color:[^;"]*;?/g, '').replace(DIMMED_COMMENT, COMMENT_LIFTED);
 }
 
 function wrap(inner: string, label: string): string {

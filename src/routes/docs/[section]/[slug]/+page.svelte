@@ -5,8 +5,9 @@
 	import DocsToc from '$lib/components/DocsToc.svelte';
 	import Tabs from '$lib/components/Tabs.svelte';
 	import CodePanel from '$lib/components/CodePanel.svelte';
-	import { tick } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { extractDiagrams } from '$lib/diagrams';
+	import { prefersReducedMotion } from '$lib/artist/motion';
 	import { REPO } from '$lib/site';
 
 	let { data } = $props();
@@ -24,7 +25,7 @@
 		{ id: 'guide', label: 'Guide' },
 		{
 			id: 'diagrams',
-			label: `Diagrams${diagrams.length ? ` (${diagrams.length})` : ''}`,
+			label: 'Diagrams',
 			disabled: diagrams.length === 0
 		},
 		{ id: 'source', label: 'Source' }
@@ -72,6 +73,38 @@
 			window.dispatchEvent(new CustomEvent('mudocs:render-diagrams'));
 		});
 	});
+
+	// How far through the document the reader is. These pages run to tens of
+	// screens, and nothing else on them says how much is left.
+	let progress = $state(0);
+	let article: HTMLElement | undefined = $state();
+
+	onMount(() => {
+		if (prefersReducedMotion()) return;
+
+		let frame = 0;
+		const measure = () => {
+			frame = 0;
+			if (!article) return;
+			const box = article.getBoundingClientRect();
+			const scrolled = -box.top;
+			const runway = box.height - window.innerHeight;
+			progress = runway <= 0 ? 0 : Math.min(Math.max(scrolled / runway, 0), 1);
+		};
+		const onScroll = () => {
+			if (frame) return;
+			frame = requestAnimationFrame(measure);
+		};
+
+		measure();
+		window.addEventListener('scroll', onScroll, { passive: true });
+		window.addEventListener('resize', onScroll);
+		return () => {
+			if (frame) cancelAnimationFrame(frame);
+			window.removeEventListener('scroll', onScroll);
+			window.removeEventListener('resize', onScroll);
+		};
+	});
 </script>
 
 <SeoHead title={doc.title} description={doc.description} type="article" />
@@ -79,7 +112,13 @@
 <div class="docs-layout">
 	<DocsSidebar tree={data.tree} />
 
-	<article class="docs-main">
+	<article class="docs-main" bind:this={article}>
+		<div
+			class="read-progress"
+			style="--read: {(progress * 100).toFixed(2)}%"
+			aria-hidden="true"
+		></div>
+
 		<nav class="breadcrumbs" aria-label="Breadcrumb">
 			<a href="/docs">Docs</a>
 			<span aria-hidden="true">/</span>
@@ -105,11 +144,11 @@
 		<Tabs {tabs} bind:active={activeTab} />
 
 		{#if activeTab === 'guide'}
-			<div id="panel-guide" role="tabpanel" aria-labelledby="tab-guide" class="doc-content">
+			<div id="panel-guide" role="tabpanel" aria-labelledby="tab-guide" class="doc-content tab-panel">
 				{@html doc.html}
 			</div>
 		{:else if activeTab === 'diagrams'}
-			<div id="panel-diagrams" role="tabpanel" aria-labelledby="tab-diagrams" class="doc-content">
+			<div id="panel-diagrams" role="tabpanel" aria-labelledby="tab-diagrams" class="doc-content tab-panel">
 				{#if diagrams.length}
 					{#each diagrams as figure, index (index)}
 						{@html figure}
@@ -119,7 +158,7 @@
 				{/if}
 			</div>
 		{:else}
-			<div id="panel-source" role="tabpanel" aria-labelledby="tab-source">
+			<div id="panel-source" role="tabpanel" aria-labelledby="tab-source" class="tab-panel">
 				<p class="text-muted" style="font-size: 13px;">
 					The markdown behind this page, exactly as it sits in
 					<a href={githubUrl} target="_blank" rel="noopener noreferrer">{doc.sourcePath}</a>.

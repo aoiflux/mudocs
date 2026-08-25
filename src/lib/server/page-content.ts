@@ -88,7 +88,9 @@ function trimToLength(text: string, max: number): string {
 	if (text.length <= max) return text;
 	const cut = text.slice(0, max);
 	const lastStop = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('; '));
-	if (lastStop > max * 0.5) return cut.slice(0, lastStop + 1);
+	// A shorter complete sentence beats a longer one cut off mid-clause, so take
+	// any full stop that still leaves a readable summary behind.
+	if (lastStop >= 60) return cut.slice(0, lastStop + 1);
 	return cut.replace(/\s+\S*$/, '') + '…';
 }
 
@@ -100,19 +102,43 @@ function unnumber(title: string): string {
 function bulletsOf(markdown: string, limit: number): string[] {
 	const out: string[] = [];
 	let inFence = false;
+	// The corpus is hard-wrapped, so a bullet routinely continues on the next
+	// indented line. Reading line by line would cut most of them mid-sentence.
+	let current: string | null = null;
+
+	const flush = () => {
+		if (current === null) return;
+		out.push(plainText(current));
+		current = null;
+	};
+
 	for (const line of markdown.split(/\r?\n/)) {
 		if (line.trim().startsWith('```')) {
 			inFence = !inFence;
 			continue;
 		}
 		if (inFence) continue;
+
 		const bullet = /^\s*[-*+]\s+(.+)$/.exec(line);
 		if (bullet) {
-			out.push(plainText(bullet[1]));
+			flush();
 			if (out.length >= limit) break;
+			current = bullet[1];
+			continue;
 		}
+
+		// An indented, non-empty line that is not itself a bullet continues one.
+		if (current !== null && /^\s+\S/.test(line)) {
+			current += ' ' + line.trim();
+			continue;
+		}
+
+		flush();
+		if (out.length >= limit) break;
 	}
-	return out;
+
+	flush();
+	return out.slice(0, limit);
 }
 
 /**
@@ -120,9 +146,48 @@ function bulletsOf(markdown: string, limit: number): string[] {
  * showcase plate. Diagram fences are skipped — they render as figures, not
  * code, and carry nothing readable at thumbnail size.
  */
-async function firstCodeFence(raw: string, maxLines = 10): Promise<string | null> {
+/** Languages worth putting on a plate — a reader learns something from these. */
+const SHOWCASE_LANGS = new Set([
+	'mutant',
+	'mut',
+	'go',
+	'bash',
+	'sh',
+	'shell',
+	'powershell',
+	'ps1',
+	'json',
+	'javascript',
+	'typescript',
+	'lua',
+	'yaml'
+]);
+
+/**
+ * ASCII diagrams live in plain fences all over this corpus. Rendered small they
+ * read as broken underscores, so they are worth skipping in favour of a later
+ * fence that carries actual code.
+ */
+function isAsciiArt(body: string): boolean {
+	const letters = (body.match(/[A-Za-z]/g) ?? []).length;
+	const rules = (body.match(/[|_\-+^v<>/\\\u2500-\u257f\u2190-\u21ff]/g) ?? []).length;
+	return rules > 12 && letters < rules * 2;
+}
+
+/**
+ * The one code fence that best represents a document, highlighted server-side.
+ *
+ * Fences are ranked rather than taken in order. Language comes first — a fence
+ * the highlighter knows beats an unlabelled one, and ASCII art loses to both —
+ * then length, because the plate is a tall panel and a two-line fence leaves
+ * most of it empty. Returns null for a document that carries only diagrams.
+ */
+async function firstCodeFence(raw: string, maxLines = 14): Promise<string | null> {
 	const pattern = /```([A-Za-z0-9_+-]*)[^\n]*\n([\s\S]*?)```/g;
 	let match: RegExpExecArray | null;
+
+	let best: { lang: string; body: string; score: number } | null = null;
+	const bestPossible = 2 * 100 + maxLines;
 
 	while ((match = pattern.exec(raw)) !== null) {
 		const lang = (match[1] ?? '').toLowerCase();
@@ -132,12 +197,19 @@ async function firstCodeFence(raw: string, maxLines = 10): Promise<string | null
 		const lines = body.split('\n');
 		if (lines.length < 2) continue;
 
-		const clipped = lines.slice(0, maxLines).join('\n');
-		// Round-trip through the same highlighter the doc pages use.
-		return await highlightFences('```' + lang + '\n' + clipped + '\n```');
+		const rank = SHOWCASE_LANGS.has(lang) ? 2 : isAsciiArt(body) ? 0 : 1;
+		if (rank === 0) continue;
+
+		const score = rank * 100 + Math.min(lines.length, maxLines);
+		if (!best || score > best.score) best = { lang, body, score };
+		if (score >= bestPossible) break;
 	}
 
-	return null;
+	if (!best) return null;
+
+	const clipped = best.body.split('\n').slice(0, maxLines).join('\n');
+	// Round-trip through the same highlighter the doc pages use.
+	return await highlightFences('```' + best.lang + '\n' + clipped + '\n```');
 }
 
 function fencesOf(raw: string): { code: number; diagrams: number } {
@@ -185,7 +257,13 @@ function prose(markdown: string): string {
 			const bullets = bulletsOf(trimmed, 4).filter(
 				(bullet) => bullet.includes(' ') && bullet.length >= 12
 			);
-			if (bullets.length) return bullets.slice(0, 2).join(' · ');
+			// One bullet that already reads as a sentence says more than two
+			// clipped ones welded together with a separator.
+			if (bullets.length) {
+				const first = bullets[0];
+				if (first.length >= 70) return first;
+				return bullets.slice(0, 2).join(' · ');
+			}
 			continue;
 		}
 
@@ -256,6 +334,17 @@ export type LandingContent = {
 	totalDocs: number;
 };
 
+/**
+ * Written out rather than extracted: the onboarding guide's opening chapters are
+ * a reading list and a set of learning outcomes aimed at a new maintainer, and
+ * neither describes the extension to a visitor. Every capability named here is
+ * one the LLD lists for the language server (LSP_EXTENSION_LLD.md section 1,
+ * "Diagnostics / Hover / Completion / Rename / Formatting / Semantic Tokens"),
+ * served by the mlsp process the same chapter diagrams.
+ */
+const EXTENSION_SUMMARY =
+	'Diagnostics, hover, completion, rename, formatting and semantic tokens for .mut files, served over LSP by the mlsp process.';
+
 export async function getLandingContent(): Promise<LandingContent> {
 	const [docs, sections] = await Promise.all([listAllDocs(), listSections()]);
 
@@ -325,8 +414,7 @@ export async function getLandingContent(): Promise<LandingContent> {
 			.map((doc) => ({ title: doc.title, href: docHref(doc) }))
 	}));
 
-	const extensionSections = extensionDoc ? splitSections(extensionDoc.raw) : [];
-	const architecture = extensionSections.find((section) => /architecture map/i.test(section.title));
+	const lldDoc = byFile(docs, 'LSP_EXTENSION_LLD.md');
 
 	return {
 		hero: {
@@ -338,7 +426,10 @@ export async function getLandingContent(): Promise<LandingContent> {
 		},
 		whatIs: {
 			title: whatIsDoc?.title ?? 'What is Mutant',
-			summary: condense(secondBlock || leadSentence, 260),
+			// The doc's own opening is two sentences, the second of them long; any
+			// budget short of this drops it and leaves a one-clause answer to
+			// "what is Mutant".
+			summary: condense(secondBlock || leadSentence, 460),
 			bullets: shortVersion ? bulletsOf(shortVersion.markdown, 3).map((b) => condense(b, 96)) : [],
 			sourcePath: whatIsDoc?.sourcePath ?? null,
 			href: whatIsDoc ? docHref(whatIsDoc) : null
@@ -352,12 +443,9 @@ export async function getLandingContent(): Promise<LandingContent> {
 		tools,
 		extension: {
 			title: 'Mutant for VSCode',
-			summary: condense(
-				(architecture ? prose(architecture.markdown) : '') || (extensionDoc?.description ?? ''),
-				180
-			),
-			sourcePath: extensionDoc?.sourcePath ?? null,
-			href: extensionDoc ? docHref(extensionDoc) : null
+			summary: EXTENSION_SUMMARY,
+			sourcePath: lldDoc?.sourcePath ?? extensionDoc?.sourcePath ?? null,
+			href: lldDoc ? docHref(lldDoc) : extensionDoc ? docHref(extensionDoc) : null
 		},
 		totalDocs: docs.length
 	};
@@ -388,6 +476,8 @@ export type ShowcaseItem = {
 	tags: string[];
 	diagrams: number;
 	codeBlocks: number;
+	/** What the document carries, said in words rather than tallies. */
+	kind: 'diagrams' | 'code' | 'both';
 	/** Highlighted HTML for the first code fence, or null when the doc has none. */
 	excerpt: string | null;
 	/** Section headings, shown on the plate for docs that carry no code at all. */
@@ -431,6 +521,7 @@ export async function getShowcase(): Promise<ShowcaseContent> {
 			tags: doc.tags.slice(0, 3),
 			diagrams,
 			codeBlocks: code,
+			kind: diagrams > 0 && code > 0 ? 'both' : diagrams > 0 ? 'diagrams' : 'code',
 			excerpt: await firstCodeFence(doc.raw),
 			// A diagram-only document has no fence to show; its chapter list says
 			// what it covers just as well.
@@ -519,14 +610,10 @@ export async function getExtensionContent(): Promise<ExtensionContent> {
 			href: lldDoc ? `${docHref(lldDoc)}#${slugOf(section.title)}` : '/docs/tooling'
 		}));
 
-	const outcomes = onboardingSections.find((section) => /outcomes/i.test(section.title));
 
 	return {
 		title: 'Mutant for VSCode',
-		lede: condense(
-			outcomes ? bulletsOf(outcomes.markdown, 2).join(' ') : (onboardingDoc?.description ?? ''),
-			230
-		),
+		lede: EXTENSION_SUMMARY,
 		steps,
 		features,
 		onboarding: onboardingDoc

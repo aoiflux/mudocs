@@ -105,8 +105,8 @@
 <section class="band">
 	<p class="eyebrow">Why Mutant · four value props</p>
 	<div class="four-up" data-fx="fade-up" data-fx-stagger="90">
-		{#each landing.valueProps as prop (prop.title)}
-			<FeatureCard title={prop.title} body={prop.body} href={prop.href} />
+		{#each landing.valueProps as prop, index (prop.title)}
+			<FeatureCard title={prop.title} body={prop.body} href={prop.href} {index} />
 		{/each}
 	</div>
 </section>

@@ -23,10 +23,6 @@
 		<p class="eyebrow">Theme</p>
 		<h1>{data.current.title}</h1>
 		<p class="lede">{data.current.description}</p>
-		<div class="meta-row">
-			<span class="meta-chip">{data.docs.length} docs</span>
-		</div>
-
 		<div class="three-up" style="margin-top: var(--space-8);" data-fx="fade-up" data-fx-stagger="80">
 			{#each data.docs as doc (doc.slug)}
 				<Blueprint

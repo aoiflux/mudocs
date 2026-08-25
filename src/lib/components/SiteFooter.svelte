@@ -44,7 +44,6 @@
 			<a href={REPO.url} target="_blank" rel="noopener noreferrer">{REPO.slug} ↗</a>
 			<a href={`${REPO.url}/issues`} target="_blank" rel="noopener noreferrer">Issues ↗</a>
 			<a href="/about">About</a>
-			<a href="/docs/quality">Docs quality</a>
 		</div>
 	</div>
 

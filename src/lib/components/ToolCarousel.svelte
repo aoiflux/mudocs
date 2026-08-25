@@ -14,15 +14,23 @@
 
 <div class="carousel" bind:this={viewport}>
 	<div class="carousel-track" bind:this={track}>
-		{#each items as item (item.href)}
-			<a class="carousel-card" href={item.href}>
+		{#each items as item, index (item.href)}
+			<a class="carousel-card" href={item.href} style="--i: {index}">
+				<!-- Name the section first, then say what it is; the contents list is
+				     supporting detail and reads as noise above its own heading. -->
+				<span class="card-title">{item.title}</span>
+				<span class="card-body">{item.description}</span>
+
 				<ul class="card-doclist">
 					{#each item.docs as doc (doc.href)}
 						<li>{doc.title}</li>
 					{/each}
 				</ul>
-				<span class="card-title">{item.title}</span>
-				<span class="card-body">{item.description}</span>
+
+				<span class="card-go">
+					Open section
+					<span class="card-go-arrow" aria-hidden="true">→</span>
+				</span>
 			</a>
 		{/each}
 	</div>

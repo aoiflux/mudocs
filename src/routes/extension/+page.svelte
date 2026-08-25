@@ -90,8 +90,8 @@
 	<section class="band">
 		<p class="eyebrow">Features</p>
 		<div class="four-up" data-fx="fade-up" data-fx-stagger="80">
-			{#each ext.features as feature (feature.title)}
-				<FeatureCard title={feature.title} body={feature.body} href={feature.href} />
+			{#each ext.features as feature, index (feature.title)}
+				<FeatureCard title={feature.title} body={feature.body} href={feature.href} {index} />
 			{/each}
 		</div>
 		{#if ext.lld}

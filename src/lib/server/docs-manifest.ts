@@ -194,6 +194,36 @@ export const docsManifest: Record<string, ManifestEntry> = {
 		tags: ['security', 'traceability', 'requirements'],
 		themes: ['signing']
 	},
+	'docs/CAPABILITY_REFERENCE.md': {
+		section: 'reference',
+		audience: 'all',
+		order: 10,
+		tags: ['builtins', 'capabilities', 'catalog', 'reference']
+	},
+	'docs/GRAPH_DATABASE.md': {
+		section: 'reference',
+		audience: 'language-user',
+		order: 40,
+		tags: ['graph', 'database', 'builtins', 'modeling']
+	},
+	'docs/SECURE_NETWORKING.md': {
+		section: 'reference',
+		audience: 'language-user',
+		order: 42,
+		tags: ['network', 'tls', 'interception', 'builtins']
+	},
+	'docs/STRUCTURED_DATA.md': {
+		section: 'reference',
+		audience: 'language-user',
+		order: 44,
+		tags: ['json', 'encoding', 'compression', 'builtins']
+	},
+	'docs/RUNTIME_INTEGRATION.md': {
+		section: 'reference',
+		audience: 'integrator',
+		order: 46,
+		tags: ['lua', 'embedding', 'integration', 'builtins']
+	},
 	'docs/IMPLEMENTATION_GUIDE.md': {
 		section: 'tooling',
 		audience: 'integrator',

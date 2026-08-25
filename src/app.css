@@ -105,9 +105,30 @@
 	--color-accent-2: #b5d9fd;
 	--color-divider: color-mix(in srgb, #f2f2f3 20%, transparent);
 
+	/* The ramps are a lightness scale, so a dark ground mirrors them: the deep
+	   steps that carry text on paper become the light steps that carry text
+	   here, and the light steps that tint a surface become the deep ones. Rules
+	   keep reading the same step and keep meaning the same thing. */
+	--color-neutral-100: #232f3b;
+	--color-neutral-200: #2c3a48;
+	--color-neutral-300: #3a4a5a;
+	--color-neutral-400: #55677a;
+	--color-neutral-500: #74869a;
+	--color-neutral-600: #9aabbd;
+	--color-neutral-700: #bccadb;
+	--color-neutral-800: #dbe4ee;
+	--color-neutral-900: #eef2f7;
+
+	/* Only the two steps used for accent *text* mirror; 900 stays the deep panel
+	   ground the code panes and the editor mock are painted with. */
+	--color-accent-700: #94bce3;
+	--color-accent-800: #b5d9fd;
+
 	--ink-soft: color-mix(in srgb, #f2f2f3 68%, transparent);
 	--surface-muted: color-mix(in srgb, #f2f2f3 6%, transparent);
-	--code-bg: #16222e;
+	/* A shade under the ground so panels read as recessed, and dark enough that
+	   the highlighter's dimmest token — its comment colour — still clears AA. */
+	--code-bg: #121c26;
 	--code-ink: #f2f2f3;
 	--inline-code-bg: color-mix(in srgb, #f2f2f3 12%, transparent);
 	--chip-bg: color-mix(in srgb, #94bce3 16%, transparent);
@@ -125,6 +146,20 @@
 	--color-accent: #46f1ff;
 	--color-accent-2: #ff6fcf;
 	--color-divider: color-mix(in srgb, #8fa7ff 34%, transparent);
+
+	/* Mirrored for the same reason as the dark theme, tinted to this ground. */
+	--color-neutral-100: #141a2c;
+	--color-neutral-200: #1c2438;
+	--color-neutral-300: #2a3350;
+	--color-neutral-400: #45507a;
+	--color-neutral-500: #6b76a0;
+	--color-neutral-600: #9aa3c8;
+	--color-neutral-700: #c5c9e7;
+	--color-neutral-800: #e3e5f5;
+	--color-neutral-900: #f7f7ff;
+
+	--color-accent-700: #46f1ff;
+	--color-accent-800: #8ff7ff;
 
 	--ink-soft: #c5c9e7;
 	--surface-muted: #1a2239;
@@ -173,6 +208,10 @@ h6 {
 	font-family: var(--font-heading);
 	font-weight: var(--font-heading-weight);
 	line-height: 1.12;
+	/* Barlow Condensed is narrow enough that these fit; the system fallback,
+	   shown while the webfont loads, is not, and a single long word would push
+	   the page sideways on a phone. */
+	overflow-wrap: break-word;
 	letter-spacing: -0.015em;
 	margin: 0 0 var(--space-2);
 }
@@ -205,11 +244,6 @@ p {
 a {
 	color: var(--color-accent-700);
 	text-underline-offset: 3px;
-}
-
-:root[data-theme='dark'] a,
-:root[data-theme='artist'] a {
-	color: var(--color-accent);
 }
 
 img {
@@ -257,7 +291,7 @@ figcaption {
 	top: 0;
 	z-index: 100;
 	padding: var(--space-2) var(--space-4);
-	background: var(--color-accent);
+	background: var(--color-accent-700);
 	color: var(--color-bg);
 	font-family: var(--font-heading);
 	text-transform: uppercase;
@@ -361,19 +395,21 @@ figcaption {
 }
 
 .btn-primary {
-	background: var(--color-accent);
+	/* One step down the ramp from --color-accent: the drawn steel carries the
+	   paper-white label at only 3.7:1, and this is a button label. */
+	background: var(--color-accent-700);
 	color: var(--color-bg);
-	border-color: var(--color-accent);
+	border-color: var(--color-accent-700);
 }
 
 .btn-primary:hover {
-	background: var(--color-accent-600);
-	border-color: var(--color-accent-600);
+	background: var(--color-accent-800);
+	border-color: var(--color-accent-800);
 }
 
 .btn-primary:active {
-	background: var(--color-accent-700);
-	border-color: var(--color-accent-700);
+	background: var(--color-accent-900);
+	border-color: var(--color-accent-900);
 }
 
 :root[data-theme='dark'] .btn-primary,
@@ -384,6 +420,11 @@ figcaption {
 :root[data-theme='dark'] .btn-primary:hover {
 	background: var(--color-accent-300);
 	border-color: var(--color-accent-300);
+}
+
+:root[data-theme='dark'] .btn-primary:active {
+	background: var(--color-accent-500);
+	border-color: var(--color-accent-500);
 }
 
 .btn-secondary {
@@ -402,11 +443,6 @@ figcaption {
 	color: var(--color-accent-700);
 	border-color: transparent;
 	padding-inline: var(--space-1);
-}
-
-:root[data-theme='dark'] .btn-ghost,
-:root[data-theme='artist'] .btn-ghost {
-	color: var(--color-accent);
 }
 
 .btn-ghost:hover {
@@ -464,11 +500,6 @@ figcaption {
 :root[data-theme='artist'] .tag-neutral {
 	background: color-mix(in srgb, var(--color-text) 10%, transparent);
 	color: var(--color-text);
-}
-
-:root[data-theme='dark'] .tag-outline,
-:root[data-theme='artist'] .tag-outline {
-	color: var(--color-accent);
 }
 
 /* — forms — */
@@ -537,7 +568,7 @@ select.input {
 
 .seg-opt[aria-pressed='true'],
 .seg-opt.is-active {
-	background: var(--color-accent);
+	background: var(--color-accent-700);
 	color: var(--color-bg);
 }
 
@@ -925,7 +956,7 @@ html.theme-shift .blueprint {
 	flex-wrap: wrap;
 	font-family: var(--font-mono);
 	font-size: 11px;
-	color: var(--color-neutral-600);
+	color: var(--ink-soft);
 	border-top: 1px solid var(--color-divider);
 }
 
@@ -941,7 +972,7 @@ html.theme-shift .blueprint {
 	font-weight: 400;
 	letter-spacing: 0.16em;
 	text-transform: uppercase;
-	color: var(--color-neutral-600);
+	color: var(--ink-soft);
 }
 
 .kicker {
@@ -950,7 +981,7 @@ html.theme-shift .blueprint {
 	font-size: 11px;
 	letter-spacing: 0.16em;
 	text-transform: uppercase;
-	color: var(--color-neutral-600);
+	color: var(--ink-soft);
 }
 
 .big-title {
@@ -1047,14 +1078,14 @@ html.theme-shift .blueprint {
 }
 
 .cta-primary {
-	background: var(--color-accent);
-	border-color: var(--color-accent);
+	background: var(--color-accent-700);
+	border-color: var(--color-accent-700);
 	color: var(--color-bg);
 }
 
 .cta-primary:hover {
-	background: var(--color-accent-600);
-	border-color: var(--color-accent-600);
+	background: var(--color-accent-800);
+	border-color: var(--color-accent-800);
 }
 
 .cta-secondary {
@@ -1114,11 +1145,6 @@ html.theme-shift .blueprint {
 	font-size: 11px;
 	color: var(--color-accent-700);
 	text-decoration: none;
-}
-
-:root[data-theme='dark'] .source-note,
-:root[data-theme='artist'] .source-note {
-	color: var(--color-accent);
 }
 
 /* ==========================================================================
@@ -1197,8 +1223,8 @@ html.theme-shift .blueprint {
 }
 
 .pipeline-node.is-lit {
-	background: var(--color-accent);
-	border-color: var(--color-accent);
+	background: var(--color-accent-700);
+	border-color: var(--color-accent-700);
 	color: var(--color-bg);
 }
 
@@ -1236,6 +1262,10 @@ html.theme-shift .blueprint {
 	position: relative;
 	overflow: hidden;
 	cursor: grab;
+	/* The rail runs past the right edge; fading it there is what tells the
+	   reader there is more, without a scrollbar the drag interaction hides. */
+	-webkit-mask-image: linear-gradient(to right, #000 0 88%, transparent 100%);
+	mask-image: linear-gradient(to right, #000 0 88%, transparent 100%);
 }
 
 .carousel.is-dragging {
@@ -1251,22 +1281,44 @@ html.theme-shift .blueprint {
 
 .carousel-card {
 	flex: none;
-	width: 236px;
+	width: 268px;
 	padding: var(--space-4);
 	border: 1px solid var(--color-divider);
 	display: grid;
 	gap: var(--space-2);
-	align-content: start;
+	/* The contents list grows to fill, so every card's arrow sits on one line. */
+	grid-template-rows: auto auto 1fr auto;
 	text-decoration: none;
 	color: inherit;
 	transition:
 		border-color var(--fx-dur-fast) ease,
+		background var(--fx-dur-fast) ease,
 		transform var(--fx-dur-fast) var(--fx-ease-apple);
 }
 
 .carousel-card:hover {
 	border-color: var(--color-accent);
+	background: color-mix(in srgb, var(--color-accent) 6%, transparent);
 	transform: translateY(-2px);
+}
+
+.card-go {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	font-family: var(--font-mono);
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: var(--color-accent-700);
+}
+
+.card-go-arrow {
+	transition: transform var(--fx-dur-fast) var(--fx-ease-apple);
+}
+
+.carousel-card:hover .card-go-arrow {
+	transform: translateX(4px);
 }
 
 /* What the section actually contains, in place of the old hatched block. */
@@ -1299,6 +1351,29 @@ html.theme-shift .blueprint {
 	margin-right: 6px;
 }
 
+/* Feature-card marks: line drawings in the system's own grammar, one per card. */
+.card-mark {
+	fill: none;
+	stroke: var(--color-accent);
+	stroke-width: 1.5;
+	stroke-linecap: square;
+	overflow: visible;
+}
+
+.card-mark .mark-fill {
+	fill: var(--color-accent);
+	stroke: none;
+}
+
+.card-mark .mark-inner {
+	transform-origin: 12px 12px;
+	transition: transform var(--fx-dur-base) var(--fx-ease-apple);
+}
+
+.blueprint:hover .card-mark .mark-inner {
+	transform: rotate(45deg);
+}
+
 .repo-stats {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
@@ -1325,7 +1400,7 @@ html.theme-shift .blueprint {
 	font-size: 10px;
 	letter-spacing: 0.1em;
 	text-transform: uppercase;
-	color: var(--color-neutral-600);
+	color: var(--ink-soft);
 }
 
 /* M6 — install CTA pulse */
@@ -1423,7 +1498,7 @@ html.theme-shift .blueprint {
 .tree-toggle .sign {
 	font-family: var(--font-mono);
 	font-size: 12px;
-	color: var(--color-neutral-600);
+	color: var(--ink-soft);
 }
 
 .tree-links {
@@ -1442,11 +1517,6 @@ html.theme-shift .blueprint {
 	padding: 2px 0;
 }
 
-:root[data-theme='dark'] .tree-links a,
-:root[data-theme='artist'] .tree-links a {
-	color: var(--ink-soft);
-}
-
 .tree-links a:hover {
 	color: var(--color-text);
 }
@@ -1456,16 +1526,50 @@ html.theme-shift .blueprint {
 	font-weight: 500;
 }
 
-:root[data-theme='dark'] .tree-links a.is-current,
-:root[data-theme='artist'] .tree-links a.is-current {
-	color: var(--color-accent);
-}
-
 .tabs {
 	display: flex;
 	gap: 0;
 	border-bottom: 1px solid var(--color-divider);
 	margin: var(--space-4) 0;
+}
+
+/* A rule that fills as the article scrolls. These pages run to tens of screens
+   and nothing else on them says how much is left. Sits above the tabs so it
+   reads as a property of the document, not of the window. */
+.read-progress {
+	/* Above the sticky header (z-index 40), which is opaque and would otherwise
+	   cover it. */
+	position: fixed;
+	inset: 0 0 auto 0;
+	z-index: 41;
+	height: 2px;
+	background: transparent;
+	pointer-events: none;
+}
+
+.read-progress::after {
+	content: '';
+	display: block;
+	height: 100%;
+	width: var(--read, 0%);
+	background: var(--color-accent);
+}
+
+/* Switching tab swaps the whole body; replaying the entrance is what makes the
+   switch legible, since the surrounding layout does not move. */
+.tab-panel {
+	animation: tab-panel-in var(--fx-dur-fast) var(--fx-ease-apple) both;
+}
+
+@keyframes tab-panel-in {
+	from {
+		opacity: 0;
+		transform: translateY(6px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
 }
 
 .tab {
@@ -1477,7 +1581,7 @@ html.theme-shift .blueprint {
 	cursor: pointer;
 	font-family: var(--font-body);
 	font-size: 14px;
-	color: var(--color-neutral-600);
+	color: var(--ink-soft);
 }
 
 .tab:hover {
@@ -1504,7 +1608,7 @@ html.theme-shift .blueprint {
 	font-size: 12px;
 	line-height: 1.35;
 	text-decoration: none;
-	color: var(--color-neutral-600);
+	color: var(--ink-soft);
 	transition:
 		border-color var(--fx-dur-micro) ease,
 		color var(--fx-dur-micro) ease;
@@ -1518,11 +1622,6 @@ html.theme-shift .blueprint {
 .toc-list a.is-current {
 	color: var(--color-accent-700);
 	border-left-color: var(--color-accent);
-}
-
-:root[data-theme='dark'] .toc-list a.is-current,
-:root[data-theme='artist'] .toc-list a.is-current {
-	color: var(--color-accent);
 }
 
 .toc-level-3 a {
@@ -1542,7 +1641,7 @@ html.theme-shift .blueprint {
 	font-size: 11px;
 	letter-spacing: 0.04em;
 	margin-bottom: var(--space-4);
-	color: var(--color-neutral-600);
+	color: var(--ink-soft);
 }
 
 .breadcrumbs a {
@@ -1556,11 +1655,6 @@ html.theme-shift .blueprint {
 
 .breadcrumbs .current {
 	color: var(--color-accent-700);
-}
-
-:root[data-theme='dark'] .breadcrumbs .current,
-:root[data-theme='artist'] .breadcrumbs .current {
-	color: var(--color-accent);
 }
 
 .doc-rail-block {
@@ -1608,19 +1702,23 @@ html.theme-shift .blueprint {
 	font-size: 10px;
 	text-transform: uppercase;
 	letter-spacing: 0.1em;
-	color: var(--color-neutral-600);
+	color: var(--ink-soft);
+	/* Source paths are single unbreakable tokens ~40 characters long; without
+	   this they push the whole list off a narrow screen. */
+	overflow-wrap: anywhere;
 }
 
 .related-docs-list {
 	display: grid;
+	grid-template-columns: minmax(0, 1fr);
 	gap: var(--space-3);
 }
 
 /* — the code panel the artboards draw in accent-900 — */
 .code-panel {
 	position: relative;
-	background: var(--color-accent-900);
-	color: var(--color-bg);
+	background: var(--code-bg);
+	color: var(--code-ink);
 	padding: var(--space-4);
 	overflow-x: auto;
 }
@@ -1677,7 +1775,7 @@ html.theme-shift .blueprint {
 }
 
 .pg-editor {
-	background: var(--color-accent-900);
+	background: var(--code-bg);
 	padding: var(--space-4);
 	display: grid;
 	grid-template-rows: auto 1fr;
@@ -1691,7 +1789,7 @@ html.theme-shift .blueprint {
 	resize: vertical;
 	background: transparent;
 	border: 0;
-	color: var(--color-bg);
+	color: var(--code-ink);
 	caret-color: var(--color-accent-300);
 	font-family: var(--font-mono);
 	font-size: 13px;
@@ -1709,7 +1807,7 @@ html.theme-shift .blueprint {
 	font-size: 10px;
 	letter-spacing: 0.1em;
 	text-transform: uppercase;
-	color: var(--color-neutral-600);
+	color: var(--ink-soft);
 }
 
 .pg-editor .pane-label {
@@ -1945,23 +2043,6 @@ html.js [data-fx].fx-in .chart-bar {
 	color: var(--color-accent-400);
 }
 
-.side-counts {
-	font-family: var(--font-mono);
-	font-size: 11px;
-	color: var(--color-accent);
-}
-
-.showcase-plate .badge {
-	position: absolute;
-	left: var(--space-3);
-	bottom: var(--space-3);
-	padding: 3px var(--space-2);
-	background: var(--color-bg);
-	border: 1px solid var(--color-text);
-	font-family: var(--font-mono);
-	font-size: 11px;
-}
-
 .showcase-side {
 	display: grid;
 	grid-template-rows: repeat(3, 1fr);
@@ -1971,29 +2052,117 @@ html.js [data-fx].fx-in .chart-bar {
 	padding: var(--space-4);
 	display: grid;
 	gap: var(--space-2);
-	align-content: start;
+	/* Each item owns an equal third of the split, so distribute rather than
+	   stack at the top and leave a hole under the last line. */
+	align-content: space-between;
 	text-decoration: none;
 	color: inherit;
 	border-bottom: 1px solid var(--color-divider);
+	transition: background var(--fx-dur-fast) ease;
+}
+
+.showcase-side-item:hover {
+	background: color-mix(in srgb, var(--color-accent) 7%, transparent);
 }
 
 .showcase-side-item:last-child {
 	border-bottom: 0;
 }
 
-.showcase-side-item:hover .hatch-sm {
-	border-color: var(--color-accent);
+/* A stamp in the plate's corner naming what is on it — the plate shows either a
+   code excerpt or a chapter outline, and the two should not be guessed at. */
+.plate-stamp {
+	position: absolute;
+	right: var(--space-3);
+	bottom: var(--space-3);
+	padding: 3px var(--space-2);
+	font-family: var(--font-mono);
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	color: var(--code-ink);
+	border: 1px solid color-mix(in srgb, #fff 28%, transparent);
+	background: color-mix(in srgb, #000 38%, transparent);
 }
 
-.hatch-sm {
-	height: 56px;
-	border: 1px solid var(--color-divider);
-	background: repeating-linear-gradient(
-		135deg,
-		transparent 0 5px,
-		color-mix(in srgb, var(--color-text) 9%, transparent) 5px 6px
+/* An unfilled plate is paper, not a code panel, so the stamp flips to ink. */
+.showcase-plate:not(.has-code) .plate-stamp {
+	color: var(--color-text);
+	border-color: var(--color-text);
+	background: var(--color-bg);
+}
+
+/* A single light pass across the plate on hover — enough to say "this is one
+   object and it is interactive" without animating anything the reader is
+   trying to read. */
+.plate-sweep {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	transform: translateX(-100%);
+	background: linear-gradient(
+		115deg,
+		transparent 42%,
+		color-mix(in srgb, #fff 14%, transparent) 50%,
+		transparent 58%
 	);
-	transition: border-color var(--fx-dur-fast) ease;
+}
+
+html.js .showcase-plate:hover .plate-sweep {
+	animation: plate-sweep 900ms var(--fx-ease-apple);
+}
+
+@keyframes plate-sweep {
+	to {
+		transform: translateX(100%);
+	}
+}
+
+.side-kind {
+	font-family: var(--font-mono);
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	color: var(--color-accent-700);
+}
+
+.side-foot {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-2);
+}
+
+.side-arrow {
+	color: var(--color-accent);
+	transform: translateX(-5px);
+	opacity: 0;
+	transition:
+		transform var(--fx-dur-fast) var(--fx-ease-apple),
+		opacity var(--fx-dur-fast) ease;
+}
+
+.showcase-side-item:hover .side-arrow,
+.showcase-side-item:focus-visible .side-arrow {
+	transform: none;
+	opacity: 1;
+}
+
+/* Pressing a filter chip re-mounts the band; replaying the entrance is what
+   makes the swap legible, since the layout underneath does not move. */
+.showcase-swap {
+	animation: showcase-swap-in var(--fx-dur-base) var(--fx-ease-apple) both;
+}
+
+@keyframes showcase-swap-in {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
 }
 
 /* ==========================================================================
@@ -2035,8 +2204,8 @@ html.js [data-fx].fx-in .chart-bar {
 
 /* M12 — the editor whose completions type themselves */
 .editor-mock {
-	background: var(--color-accent-900);
-	color: var(--color-bg);
+	background: var(--code-bg);
+	color: var(--code-ink);
 	padding: var(--space-6);
 	display: grid;
 	gap: var(--space-3);
@@ -2125,8 +2294,9 @@ html.js [data-fx].fx-in .chart-bar {
 }
 
 .step-num.is-done {
-	background: var(--color-accent);
-	border-color: var(--color-accent);
+	/* Same fill-with-paper-label case as the primary button. */
+	background: var(--color-accent-700);
+	border-color: var(--color-accent-700);
 	color: var(--color-bg);
 }
 
@@ -2170,6 +2340,68 @@ html.js [data-fx].fx-in .chart-bar {
 	letter-spacing: 0.01em;
 	line-height: 1.15;
 	scroll-margin-top: 72px;
+}
+
+/* The Diagrams tab mounts its figures only when opened, and the panel already
+   animates in as a whole. Reveal-on-scroll would leave them hidden until an
+   observer happened to fire, so inside this panel they start visible. */
+#panel-diagrams [data-fx] {
+	opacity: 1;
+	transform: none;
+	clip-path: none;
+}
+
+/*
+ * Mermaid draws with its own palette — a grey that appears nowhere else here,
+ * and whose label/node pair lands under AA on the dark ground. Repaint the
+ * finished SVG instead of configuring mermaid: its themeVariables option breaks
+ * flowchart layout outright. !important is needed because mermaid inlines an
+ * id-scoped <style> block inside each SVG.
+ */
+.diagram-mermaid :is(.node, .cluster) :is(rect, polygon, circle, ellipse, path) {
+	fill: var(--color-surface) !important;
+	stroke: var(--color-accent-700) !important;
+}
+
+.diagram-mermaid :is(.nodeLabel, .edgeLabel, .cluster-label, .label) {
+	color: var(--color-text) !important;
+	fill: var(--color-text) !important;
+}
+
+.diagram-mermaid .edgeLabel :is(rect, .labelBkg, foreignObject > div) {
+	background-color: var(--color-bg) !important;
+	fill: var(--color-bg) !important;
+}
+
+.diagram-mermaid :is(.edgePath .path, .flowchart-link, .messageLine0, .messageLine1) {
+	stroke: var(--color-accent-700) !important;
+}
+
+.diagram-mermaid :is(.marker, .arrowMarkerPath) {
+	fill: var(--color-accent-700) !important;
+	stroke: var(--color-accent-700) !important;
+}
+
+/* Arrowheads and the edges that carry them must not inherit the node fill. */
+.diagram-mermaid .edgePath .path {
+	fill: none !important;
+}
+
+/* Permalink per heading — present for keyboard and hover, out of the way when
+   the reader is just reading. */
+.heading-anchor {
+	margin-left: var(--space-2);
+	font-family: var(--font-mono);
+	font-size: 0.7em;
+	text-decoration: none;
+	color: var(--color-accent-700);
+	opacity: 0;
+	transition: opacity var(--fx-dur-fast) ease;
+}
+
+.doc-content :is(h2, h3, h4):hover .heading-anchor,
+.heading-anchor:focus-visible {
+	opacity: 1;
 }
 
 .doc-content > *:first-child {
@@ -2294,7 +2526,7 @@ html.js [data-fx].fx-in .chart-bar {
 	font-size: 10px;
 	text-transform: uppercase;
 	letter-spacing: 0.1em;
-	color: var(--color-neutral-600);
+	color: var(--ink-soft);
 }
 
 .diagram-mermaid {
@@ -2338,7 +2570,7 @@ html.js [data-fx].fx-in .chart-bar {
 	font-size: 10px;
 	text-transform: uppercase;
 	letter-spacing: 0.1em;
-	color: var(--color-neutral-600);
+	color: var(--ink-soft);
 }
 
 .search-field input,

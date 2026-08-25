@@ -526,10 +526,11 @@ function applyDiagramFences(body: string): string {
 
 		if (lang.toLowerCase() === 'mermaid') {
 			const encoded = escapeAttribute(encodeURIComponent(diagramCode));
+			const kind = mermaidKind(diagramCode);
 			return [
-				'<figure class="diagram-shell">',
-				`  <div class="diagram-mermaid" data-diagram-source="${encoded}" aria-label="Mermaid diagram"></div>`,
-				'  <figcaption>Mermaid diagram</figcaption>',
+				'<figure class="diagram-shell" data-fx="fade-up">',
+				`  <div class="diagram-mermaid" data-diagram-source="${encoded}" aria-label="${escapeAttribute(kind)}"></div>`,
+				`  <figcaption>${kind}</figcaption>`,
 				'</figure>'
 			].join('\n');
 		}
@@ -537,12 +538,53 @@ function applyDiagramFences(body: string): string {
 		const encodedPlantUml = plantumlEncoder.encode(diagramCode);
 		const src = `https://www.plantuml.com/plantuml/svg/${encodedPlantUml}`;
 		return [
-			'<figure class="diagram-shell">',
+			'<figure class="diagram-shell" data-fx="fade-up">',
 			`  <img class="diagram-image" src="${src}" alt="PlantUML diagram" loading="lazy" decoding="async" />`,
-			'  <figcaption>PlantUML diagram</figcaption>',
+			'  <figcaption>Diagram</figcaption>',
 			'</figure>'
 		].join('\n');
 	});
+}
+
+/**
+ * "Mermaid diagram" tells a reader which library drew the picture, not what the
+ * picture is. Mermaid states its own kind on the first non-empty line, so use
+ * that; anything unrecognised keeps the generic caption.
+ */
+function mermaidKind(code: string): string {
+	const first = code
+		.split('\n')
+		.map((line) => line.trim())
+		.find((line) => line && !line.startsWith('%%') && !line.startsWith('---'));
+	if (!first) return 'Diagram';
+
+	const keyword = /^([A-Za-z-]+)/.exec(first)?.[1] ?? '';
+	switch (keyword.toLowerCase()) {
+		case 'flowchart':
+		case 'graph':
+			return 'Flowchart';
+		case 'sequencediagram':
+			return 'Sequence diagram';
+		case 'classdiagram':
+			return 'Class diagram';
+		case 'statediagram':
+		case 'statediagram-v2':
+			return 'State diagram';
+		case 'erdiagram':
+			return 'Entity relationship diagram';
+		case 'journey':
+			return 'User journey';
+		case 'gantt':
+			return 'Gantt chart';
+		case 'pie':
+			return 'Pie chart';
+		case 'mindmap':
+			return 'Mind map';
+		case 'timeline':
+			return 'Timeline';
+		default:
+			return 'Diagram';
+	}
 }
 
 function inferSection(fileName: string, source: string): SectionKey {
@@ -563,7 +605,15 @@ function inferSection(fileName: string, source: string): SectionKey {
 		return 'tooling';
 	}
 
-	if (/CANONICAL|QUICK_REFERENCE|MIGRATION|TRACEABILITY/.test(upper)) {
+	// Capability guides (the db_*, network, structured-data and Lua-embedding
+	// docs) are reference material. Without these names they fall through to the
+	// catch-all below and land in Overview, which is where the showcase's
+	// Overview filter started offering the graph-database doc.
+	if (
+		/CANONICAL|QUICK_REFERENCE|MIGRATION|TRACEABILITY|CAPABILITY|DATABASE|NETWORKING|STRUCTURED|RUNTIME_INTEGRATION/.test(
+			upper
+		)
+	) {
 		return 'reference';
 	}
 
@@ -650,7 +700,10 @@ function processMarkdown(
 			toc.push({ id, text: text.replace(/`/g, ''), level });
 		}
 
-		return `<h${level} id="${id}">${escapeHtml(text)}</h${level}>`;
+		// A permalink per heading: these documents are long and are linked into
+		// from issues and chat, and there is otherwise no way to copy a deep link.
+		const anchor = `<a class="heading-anchor" href="#${id}" aria-label="Link to this section">#</a>`;
+		return `<h${level} id="${id}">${escapeHtml(text)}${anchor}</h${level}>`;
 	});
 
 	return { body: processed.filter((line) => line !== null).join('\n'), toc };
