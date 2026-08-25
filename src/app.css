@@ -1176,6 +1176,10 @@ html.theme-shift .blueprint {
 	display: flex;
 	align-items: center;
 	gap: var(--space-2);
+	/* A five-stage graph cannot fit a 375px viewport. Let the graph scroll inside
+	   its own box rather than widen the page — nothing else should scroll sideways. */
+	overflow-x: auto;
+	overscroll-behavior-x: contain;
 }
 
 .pipeline-node {
@@ -2018,6 +2022,44 @@ html.theme-shift .blueprint {
 	padding: 0;
 }
 
+/*
+ * Highlighted code blocks — markup comes from src/lib/server/highlight.ts.
+ * Shiki’s inline background is stripped there so the panel keeps reading its
+ * ground from --code-bg and stays correct when the reader switches theme; only
+ * the token foregrounds ride on top.
+ */
+.code-block {
+	position: relative;
+	margin: var(--space-4) 0;
+}
+
+.code-block pre {
+	margin: 0;
+}
+
+.code-block[data-lang]::after {
+	content: attr(data-lang);
+	position: absolute;
+	top: 0;
+	right: 0;
+	padding: 2px 8px;
+	font-family: var(--font-heading);
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	color: var(--color-accent-300);
+	background: var(--code-bg);
+	border-left: 1px solid var(--color-divider);
+	border-bottom: 1px solid var(--color-divider);
+	pointer-events: none;
+}
+
+/* Fences with no language get no shiki colours; keep them on the theme ink. */
+.doc-content pre.shiki:not([style*='color']) {
+	color: var(--code-ink);
+}
+
 .doc-content blockquote {
 	border-left: 2px solid var(--color-accent);
 	margin-left: 0;
@@ -2030,6 +2072,10 @@ html.theme-shift .blueprint {
 	border-collapse: collapse;
 	margin: var(--space-6) 0;
 	font-size: 14px;
+	/* Reference tables in the corpus run to a dozen columns and cannot shrink
+	   below their content. Scroll them in place so the page itself never does. */
+	display: block;
+	overflow-x: auto;
 }
 
 .doc-content th {

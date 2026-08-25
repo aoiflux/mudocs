@@ -13,7 +13,12 @@ export const SITE = {
 		'Mutant: a programming language built for practical security work, forensic automation, and cross-platform analysis tooling.',
 	/** Canonical origin. Override with PUBLIC_SITE_URL at build time if the host changes. */
 	url: 'https://mudocs.netlify.app',
-	ogImage: '/og-image.svg'
+	/**
+	 * Raster, not the SVG source that sits beside it: X, Facebook, LinkedIn and
+	 * Slack all decline to render an SVG og:image, so a card pointing at one shows
+	 * nothing at all. Regenerate from og-image.svg whenever the artwork changes.
+	 */
+	ogImage: '/og-image.png'
 } as const;
 
 export const REPO = {

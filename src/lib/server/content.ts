@@ -7,6 +7,7 @@ import matter from 'gray-matter';
 import lunr from 'lunr';
 import { marked } from 'marked';
 import plantumlEncoder from 'plantuml-encoder';
+import { highlightFences } from './highlight';
 import { z } from 'zod';
 
 import {
@@ -527,7 +528,18 @@ function inferredFrontmatter(fileName: string, section: SectionKey): DocFrontmat
 	};
 }
 
-function processMarkdown(body: string): {
+function normalizeHeading(value: string): string {
+	return value
+		.replace(/`/g, "")
+		.replace(/\s+/g, " ")
+		.trim()
+		.toLowerCase();
+}
+
+function processMarkdown(
+	body: string,
+	pageTitle: string
+): {
 	body: string;
 	toc: Array<{ id: string; text: string; level: number }>;
 } {
@@ -538,7 +550,7 @@ function processMarkdown(body: string): {
 	let seenTopHeading = false;
 	const usedIds = new Map<string, number>();
 
-	const processed = lines.map((line) => {
+	const processed = lines.map((line): string | null => {
 		if (/^```/.test(line.trim())) {
 			inCodeFence = !inCodeFence;
 			return line;
@@ -552,12 +564,18 @@ function processMarkdown(body: string): {
 		const rawLevel = match[1].length;
 		const text = match[2].trim();
 
-		// The route already renders the doc's own <h1>, so a body H1 would give
-		// the page two top-level headings. Demote it; the first one is just the
-		// title repeated, so it stays out of the table of contents.
+		// The route already renders the doc's own <h1> from the title, and that
+		// title is usually taken from this very heading — rendering it again as
+		// an H2 showed the reader the same words twice. Drop it when it repeats
+		// the title; demote it when it genuinely differs (a frontmatter or
+		// manifest override), so the page still never has two top-level headings.
 		const level = rawLevel === 1 ? 2 : rawLevel;
-		const isTitleRepeat = rawLevel === 1 && !seenTopHeading;
+		const isTitleRepeat =
+			rawLevel === 1 &&
+			!seenTopHeading &&
+			normalizeHeading(text) === normalizeHeading(pageTitle);
 		if (rawLevel === 1) seenTopHeading = true;
+		if (isTitleRepeat) return null;
 
 		// Repeated headings would otherwise emit duplicate ids, breaking both
 		// deep links and the TOC scroll-spy.
@@ -566,14 +584,14 @@ function processMarkdown(body: string): {
 		usedIds.set(base, seenCount + 1);
 		const id = seenCount === 0 ? base : base + '-' + (seenCount + 1);
 
-		if (!isTitleRepeat && level >= 2 && level <= 4) {
+		if (level >= 2 && level <= 4) {
 			toc.push({ id, text: text.replace(/`/g, ''), level });
 		}
 
 		return `<h${level} id="${id}">${escapeHtml(text)}</h${level}>`;
 	});
 
-	return { body: processed.join('\n'), toc };
+	return { body: processed.filter((line) => line !== null).join('\n'), toc };
 }
 
 async function loadAllDocs(): Promise<DocItem[]> {
@@ -613,9 +631,15 @@ async function loadAllDocs(): Promise<DocItem[]> {
 
 			const slug = path.basename(file, '.md').toLowerCase();
 			const raw = parsed.content.trim();
-			const processed = processMarkdown(raw);
+			const title =
+				(typeof parsed.data.title === 'string' ? parsed.data.title : null) ??
+				firstHeading(raw) ??
+				frontmatter.title ??
+				titleize(slug);
+			const processed = processMarkdown(raw, title);
 			const body = processed.body;
-			const html = await marked.parse(body);
+			// Fences become finished HTML before marked runs; see highlightFences().
+			const html = await marked.parse(await highlightFences(body));
 			const tags = [...new Set((frontmatter.tags ?? []).map(normalizeToken).filter(Boolean))];
 			const themes = normalizeThemes([...(frontmatter.themes ?? []), ...tags]);
 			const audience = frontmatter.audience ?? inferred.audience ?? 'all';
@@ -624,11 +648,7 @@ async function loadAllDocs(): Promise<DocItem[]> {
 			return {
 				section: resolvedSection,
 				slug,
-				title:
-					(typeof parsed.data.title === 'string' ? parsed.data.title : null) ??
-					firstHeading(raw) ??
-					frontmatter.title ??
-					titleize(slug),
+				title,
 				description: frontmatter.description ?? excerptFromBody(parsed.content),
 				body,
 				raw,

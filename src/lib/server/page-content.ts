@@ -61,18 +61,29 @@ function plainText(markdown: string): string {
 /** The first prose paragraph of a markdown block, ignoring lists and fences. */
 function firstParagraph(markdown: string): string {
 	const blocks = markdown.split(/\r?\n\s*\r?\n/);
+	const candidates: string[] = [];
 	for (const block of blocks) {
 		const trimmed = block.trim();
 		if (!trimmed) continue;
 		if (trimmed.startsWith('```') || trimmed.startsWith('|')) continue;
 		const text = plainText(trimmed);
-		if (text.length > 24) return text;
+		if (text.length > 24) candidates.push(text);
 	}
-	return plainText(markdown);
+
+	// A paragraph ending on a colon only introduces whatever follows it, so
+	// prefer a self-contained one whenever the block offers any.
+	return candidates.find((text) => !text.endsWith(':')) ?? candidates[0] ?? plainText(markdown);
 }
 
 /** Trim prose to whole sentences, at most `max` characters. */
 function condense(text: string, max = 220): string {
+	const trimmed = trimToLength(text, max);
+	// A lead-in ending on a colon promises a list the summary does not carry.
+	// Closing the sentence keeps it faithful instead of leaving it hanging.
+	return trimmed.replace(/\s*:\s*$/, '.');
+}
+
+function trimToLength(text: string, max: number): string {
 	if (text.length <= max) return text;
 	const cut = text.slice(0, max);
 	const lastStop = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('; '));
@@ -123,7 +134,13 @@ function fencesOf(raw: string): { code: number; diagrams: number } {
  * prose. Walk past those and return the first block that actually says
  * something — falling back to its bullets when the section leads with a list.
  */
-function describe(markdown: string): string {
+/**
+ * The first block of real prose in a chapter, or an empty string when the
+ * chapter holds nothing but pointers, tables and code. Callers that have a
+ * better fallback than "whatever the first paragraph happens to be" should
+ * use this and supply their own.
+ */
+function prose(markdown: string): string {
 	const blocks = markdown.split(/\r?\n\s*\r?\n/);
 
 	for (const block of blocks) {
@@ -152,7 +169,11 @@ function describe(markdown: string): string {
 		return text;
 	}
 
-	return firstParagraph(markdown);
+	return '';
+}
+
+function describe(markdown: string): string {
+	return prose(markdown) || firstParagraph(markdown);
 }
 
 export function docHref(doc: Pick<DocItem, 'section' | 'slug'>): string {
@@ -245,7 +266,7 @@ export async function getLandingContent(): Promise<LandingContent> {
 		.filter((section): section is MarkdownSection => Boolean(section))
 		.map((section) => ({
 			title: section.title,
-			body: condense(firstParagraph(section.markdown), 150),
+			body: condense(describe(section.markdown), 150),
 			href: whatIsDoc ? `${docHref(whatIsDoc)}#${slugOf(section.title)}` : '/docs'
 		}));
 
@@ -257,7 +278,7 @@ export async function getLandingContent(): Promise<LandingContent> {
 			if (valueProps.some((prop) => prop.title === section.title)) continue;
 			valueProps.push({
 				title: section.title,
-				body: condense(firstParagraph(section.markdown), 150),
+				body: condense(describe(section.markdown), 150),
 				href: whatIsDoc ? `${docHref(whatIsDoc)}#${slugOf(section.title)}` : '/docs'
 			});
 		}
@@ -296,7 +317,7 @@ export async function getLandingContent(): Promise<LandingContent> {
 		extension: {
 			title: 'Mutant for VSCode',
 			summary: condense(
-				architecture ? firstParagraph(architecture.markdown) : (extensionDoc?.description ?? ''),
+				(architecture ? prose(architecture.markdown) : '') || (extensionDoc?.description ?? ''),
 				180
 			),
 			sourcePath: extensionDoc?.sourcePath ?? null,
@@ -371,7 +392,7 @@ export async function getShowcase(): Promise<ShowcaseContent> {
 	// The artboard annotates the featured plate "from DETAILED_EXPLANATIONS.md", but
 	// that document carries no code or diagram fences, so it is not a showcase entry
 	// at all. Feature the document with the most worked material instead — the sort
-	// above already ranks by diagrams first, then code blocks.
+	// above ranks by weight, counting a diagram as worth three code blocks.
 	const featured = scored[0] ?? null;
 	const rest = scored.filter((item) => item !== featured);
 
