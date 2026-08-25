@@ -47,7 +47,7 @@
 			<p class="lede" style="margin-top: var(--space-4);">{landing.hero.lede}</p>
 
 			<div class="cta-cluster">
-				<a class="btn btn-primary" href="/docs">Get Mutant</a>
+				<a class="btn btn-primary" href="https://github.com/aoiflux/mutant/releases">Get Mutant</a>
 				<a class="btn btn-secondary" href={REPO.url} target="_blank" rel="noopener noreferrer">Repo ↗</a>
 			</div>
 
