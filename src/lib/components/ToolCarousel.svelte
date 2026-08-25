@@ -16,8 +16,11 @@
 	<div class="carousel-track" bind:this={track}>
 		{#each items as item (item.href)}
 			<a class="carousel-card" href={item.href}>
-				<span class="card-kicker">{item.count} {item.count === 1 ? 'doc' : 'docs'}</span>
-				<span class="hatch" aria-hidden="true"></span>
+				<ul class="card-doclist">
+					{#each item.docs as doc (doc.href)}
+						<li>{doc.title}</li>
+					{/each}
+				</ul>
 				<span class="card-title">{item.title}</span>
 				<span class="card-body">{item.description}</span>
 			</a>

@@ -10,6 +10,7 @@
  */
 
 import { listAllDocs, listSections, type DocItem } from './content';
+import { highlightFences } from './highlight';
 import type { SectionKey } from './docs-manifest';
 
 // ---------------------------------------------------------------------------
@@ -114,6 +115,31 @@ function bulletsOf(markdown: string, limit: number): string[] {
 	return out;
 }
 
+/**
+ * The first substantial code fence in a document, highlighted, for the
+ * showcase plate. Diagram fences are skipped — they render as figures, not
+ * code, and carry nothing readable at thumbnail size.
+ */
+async function firstCodeFence(raw: string, maxLines = 10): Promise<string | null> {
+	const pattern = /```([A-Za-z0-9_+-]*)[^\n]*\n([\s\S]*?)```/g;
+	let match: RegExpExecArray | null;
+
+	while ((match = pattern.exec(raw)) !== null) {
+		const lang = (match[1] ?? '').toLowerCase();
+		if (lang === 'mermaid' || lang === 'plantuml' || lang === 'puml') continue;
+
+		const body = match[2].replace(/\s+$/, '');
+		const lines = body.split('\n');
+		if (lines.length < 2) continue;
+
+		const clipped = lines.slice(0, maxLines).join('\n');
+		// Round-trip through the same highlighter the doc pages use.
+		return await highlightFences('```' + lang + '\n' + clipped + '\n```');
+	}
+
+	return null;
+}
+
 function fencesOf(raw: string): { code: number; diagrams: number } {
 	const all = raw.match(/```([a-zA-Z]*)\s*\n/g) ?? [];
 	let code = 0;
@@ -199,6 +225,8 @@ export type ToolCard = {
 	description: string;
 	href: string;
 	count: number;
+	/** Titles of the first few docs in the section, so the card shows its contents. */
+	docs: Array<{ title: string; href: string }>;
 };
 
 export type LandingContent = {
@@ -288,7 +316,13 @@ export async function getLandingContent(): Promise<LandingContent> {
 		title: section.title,
 		description: condense(section.description, 110),
 		href: `/docs/${section.section}`,
-		count: section.count
+		count: section.count,
+		// What is actually in the section. The card used to show a hatched
+		// placeholder here, which told the reader nothing.
+		docs: docs
+			.filter((doc) => doc.section === section.section)
+			.slice(0, 3)
+			.map((doc) => ({ title: doc.title, href: docHref(doc) }))
 	}));
 
 	const extensionSections = extensionDoc ? splitSections(extensionDoc.raw) : [];
@@ -309,9 +343,11 @@ export async function getLandingContent(): Promise<LandingContent> {
 			sourcePath: whatIsDoc?.sourcePath ?? null,
 			href: whatIsDoc ? docHref(whatIsDoc) : null
 		},
-		// The compile path the runtime docs describe: source is parsed to an AST,
-		// lowered to the bytecode IR, then executed by the VM.
-		pipeline: ['AST', 'IR', 'EXEC'],
+		// The compile path exactly as docs/BYTECODE_IR.md §1 draws it. That
+		// document is explicit that nothing sits between the AST and the byte
+		// stream — "the compiler walks the AST and emits bytes directly" — so
+		// there is no IR stage to name here, and the repo has no ir/ package.
+		pipeline: ['AST', 'BYTECODE', 'VM'],
 		valueProps: valueProps.slice(0, 4),
 		tools,
 		extension: {
@@ -352,6 +388,10 @@ export type ShowcaseItem = {
 	tags: string[];
 	diagrams: number;
 	codeBlocks: number;
+	/** Highlighted HTML for the first code fence, or null when the doc has none. */
+	excerpt: string | null;
+	/** Section headings, shown on the plate for docs that carry no code at all. */
+	outline: string[];
 };
 
 export type ShowcaseContent = {
@@ -370,24 +410,36 @@ export type ShowcaseContent = {
 export async function getShowcase(): Promise<ShowcaseContent> {
 	const docs = await listAllDocs();
 
-	const scored: ShowcaseItem[] = docs
-		.map((doc) => {
-			const { code, diagrams } = fencesOf(doc.raw);
-			return {
-				section: doc.section,
-				sectionTitle: doc.sectionTitle,
-				slug: doc.slug,
-				title: doc.title,
-				description: condense(doc.description, 180),
-				href: docHref(doc),
-				sourcePath: doc.sourcePath,
-				tags: doc.tags.slice(0, 3),
-				diagrams,
-				codeBlocks: code
-			};
-		})
-		.filter((item) => item.diagrams > 0 || item.codeBlocks > 0)
-		.sort((a, b) => b.diagrams * 3 + b.codeBlocks - (a.diagrams * 3 + a.codeBlocks));
+	const ranked = docs
+		.map((doc) => ({ doc, ...fencesOf(doc.raw) }))
+		.filter((entry) => entry.diagrams > 0 || entry.code > 0)
+		.sort((a, b) => b.diagrams * 3 + b.code - (a.diagrams * 3 + a.code));
+
+	// Every item gets its plate content, not just the top one: the filter chips
+	// re-pick the featured document on the client, so any of these can end up
+	// in the plate. Excerpts are cheap here — the docs themselves are cached and
+	// each fence is at most ten lines.
+	const scored: ShowcaseItem[] = await Promise.all(
+		ranked.map(async ({ doc, code, diagrams }) => ({
+			section: doc.section,
+			sectionTitle: doc.sectionTitle,
+			slug: doc.slug,
+			title: doc.title,
+			description: condense(doc.description, 180),
+			href: docHref(doc),
+			sourcePath: doc.sourcePath,
+			tags: doc.tags.slice(0, 3),
+			diagrams,
+			codeBlocks: code,
+			excerpt: await firstCodeFence(doc.raw),
+			// A diagram-only document has no fence to show; its chapter list says
+			// what it covers just as well.
+			outline: doc.toc
+				.filter((entry) => entry.level === 2)
+				.map((entry) => unnumber(entry.text))
+				.slice(0, 7)
+		}))
+	);
 
 	// The artboard annotates the featured plate "from DETAILED_EXPLANATIONS.md", but
 	// that document carries no code or diagram fences, so it is not a showcase entry

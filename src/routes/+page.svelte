@@ -87,10 +87,14 @@
 		<div data-fx="fade-up">
 			<p class="eyebrow">Pipeline</p>
 			<!-- M3 — traced left to right when the band scrolls into view. -->
-			<PipelineDiagram nodes={landing.pipeline} label="Source is parsed to an AST, lowered to bytecode IR, then executed" />
+			<PipelineDiagram
+				nodes={landing.pipeline}
+				label="The parser builds an AST, the compiler emits bytecode from it, the VM runs the bytecode"
+			/>
 			<p class="text-muted" style="margin-top: var(--space-4); font-size: 13px; max-width: 42ch;">
-				Source is parsed to an AST, lowered to the bytecode IR, then executed by the VM — with polymorphic
-				stages applied on the way through.
+				The parser builds an AST and the compiler walks it, emitting a flat byte stream directly —
+				nothing sits in between. The VM then runs those bytes on an expression stack, with the
+				polymorphic engine free to mutate them on the way through.
 			</p>
 			<a class="source-note" href="/docs/runtime/bytecode_ir">Bytecode IR reference ↗</a>
 		</div>
@@ -111,7 +115,7 @@
 <section class="band">
 	<div class="band-head">
 		<p class="eyebrow" style="margin-bottom: var(--space-4);">Tool carousel · drag to scroll</p>
-		<a class="source-note" href="/docs">All {landing.totalDocs} docs ↗</a>
+		<a class="source-note" href="/docs">All docs ↗</a>
 	</div>
 	<ToolCarousel items={landing.tools} />
 </section>

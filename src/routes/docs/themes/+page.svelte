@@ -34,7 +34,6 @@
 					data-fx="fade-up"
 					style="padding: var(--space-4); display: grid; gap: var(--space-2); align-content: start; text-decoration: none; color: inherit;"
 				>
-					<span class="card-kicker">{theme.count} {theme.count === 1 ? 'doc' : 'docs'}</span>
 					<span class="card-title">{theme.title}</span>
 					<span class="card-body">{theme.description}</span>
 				</Blueprint>

@@ -15,7 +15,7 @@
 
 	async function copyInstall() {
 		try {
-			await navigator.clipboard.writeText(EXTENSION.installCommand);
+			await navigator.clipboard.writeText(EXTENSION.cloneCommand);
 			copied = true;
 			clearTimeout(copyTimer);
 			copyTimer = window.setTimeout(() => (copied = false), 1600);
@@ -24,8 +24,8 @@
 		}
 	}
 
-	// M11 — the install CTA acknowledges the click before handing off to the
-	// marketplace, which opens in a new tab.
+	// M11 — the CTA acknowledges the click before handing off to the extension
+	// source on GitHub, which opens in a new tab.
 	function onInstall() {
 		installed = true;
 		window.setTimeout(() => (installed = false), 2000);
@@ -47,17 +47,17 @@
 		<div class="cta-cluster">
 			<a
 				class="btn btn-primary pulse"
-				href={EXTENSION.marketplaceUrl}
+				href={EXTENSION.sourceUrl}
 				target="_blank"
 				rel="noopener noreferrer"
 				onclick={onInstall}
 			>
-				{installed ? 'Opening ✓' : 'Install'}
+				{installed ? 'Opening ✓' : 'Build from source ↗'}
 			</a>
 		</div>
 
 		<div class="copy-row" style="margin-top: var(--space-4);">
-			<span>{EXTENSION.installCommand}</span>
+			<span>{EXTENSION.cloneCommand}</span>
 			<button type="button" onclick={copyInstall}>{copied ? 'copied' : 'copy'}</button>
 		</div>
 	</div>
@@ -65,9 +65,9 @@
 	<!-- M12 — the completions type themselves. -->
 	<EditorMock
 		suggestions={[
-			'forensics_timeline(target)',
-			'process_scan(pid, "deep")',
-			'artifact_sign(report, key)'
+			'fs_entropy(path)',
+			'fs_magic(path)',
+			'fs_extract_strings(path, 8)'
 		]}
 	/>
 </div>

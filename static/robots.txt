@@ -7,4 +7,4 @@ Disallow: /search
 Disallow: /docs/quality
 Disallow: /theme-lab
 
-Sitemap: https://mudocs.netlify.app/sitemap.xml
+Sitemap: https://mudocs.aoiflux.xyz/sitemap.xml

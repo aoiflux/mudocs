@@ -12,7 +12,7 @@ export const SITE = {
 	description:
 		'Mutant: a programming language built for practical security work, forensic automation, and cross-platform analysis tooling.',
 	/** Canonical origin. Override with PUBLIC_SITE_URL at build time if the host changes. */
-	url: 'https://mudocs.netlify.app',
+	url: 'https://mudocs.aoiflux.xyz',
 	/**
 	 * Raster, not the SVG source that sits beside it: X, Facebook, LinkedIn and
 	 * Slack all decline to render an SVG og:image, so a card pointing at one shows
@@ -35,12 +35,22 @@ export const REPO = {
 		return `https://api.github.com/repos/${this.owner}/${this.name}`;
 	},
 	/** Docs are authored in the language repo, so "Open in GitHub" resolves there. */
-	docsBlobBase: 'https://github.com/aoiflux/mutant/blob/master'
+	/** The repo's default branch is main; /blob/master only resolves via a redirect. */
+	docsBlobBase: 'https://github.com/aoiflux/mutant/blob/main'
 } as const;
 
+/**
+ * The extension is not published to any marketplace. It lives inside the
+ * language repo and is built from source: clone, then npm install and
+ * npm run compile inside mutant-vscode-extension/, then F5 to launch an
+ * Extension Development Host (docs/LSP_EXTENSION_ONBOARDING_60_MIN.md §4.2-4.3).
+ *
+ * An earlier version of this file advertised `ext install mutant` alongside a
+ * Marketplace search URL. Neither resolves to anything that exists.
+ */
 export const EXTENSION = {
-	installCommand: 'ext install mutant',
-	marketplaceUrl: 'https://marketplace.visualstudio.com/search?term=mutant&target=VSCode'
+	cloneCommand: 'git clone https://github.com/aoiflux/mutant',
+	sourceUrl: 'https://github.com/aoiflux/mutant/tree/main/mutant-vscode-extension'
 } as const;
 
 /** Primary navigation, in the order the artboards draw it. */

@@ -1269,14 +1269,34 @@ html.theme-shift .blueprint {
 	transform: translateY(-2px);
 }
 
-.carousel-card .hatch {
-	height: 68px;
-	background: repeating-linear-gradient(
-		135deg,
-		transparent 0 5px,
-		color-mix(in srgb, var(--color-accent) 20%, transparent) 5px 6px
-	);
-	border: 1px solid var(--color-divider);
+/* What the section actually contains, in place of the old hatched block. */
+.card-doclist {
+	margin: 0;
+	padding: var(--space-2) 0 var(--space-2) 0;
+	list-style: none;
+	border-top: 1px solid var(--color-divider);
+	border-bottom: 1px solid var(--color-divider);
+	display: grid;
+	gap: 4px;
+	min-height: 68px;
+	align-content: start;
+}
+
+.card-doclist li {
+	font-size: 12px;
+	line-height: 1.35;
+	color: var(--color-neutral-700);
+	overflow: hidden;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	-webkit-box-orient: vertical;
+}
+
+.card-doclist li::before {
+	content: '·';
+	color: var(--color-accent);
+	margin-right: 6px;
 }
 
 .repo-stats {
@@ -1772,6 +1792,163 @@ html.theme-shift .blueprint {
 		transparent 0 5px,
 		color-mix(in srgb, var(--color-accent) 18%, transparent) 5px 6px
 	);
+	overflow: hidden;
+	display: block;
+}
+
+/* Once the plate carries an excerpt it is a code panel, not a texture. */
+.showcase-plate.has-code {
+	background: var(--code-bg);
+}
+
+.plate-code {
+	pointer-events: none;
+}
+
+.plate-code pre {
+	margin: 0;
+	padding: var(--space-4);
+	background: transparent;
+	border: 0;
+	font-size: 12px;
+	line-height: 1.55;
+	overflow: hidden;
+	/* The plate is an <a>; without this the excerpt inherits the link colour. */
+	color: var(--code-ink);
+	white-space: pre;
+}
+
+/* The excerpt is a teaser and is clipped mid-listing — fade it out rather
+   than ending on a hard horizontal cut through a line of code. */
+.plate-code,
+.plate-outline {
+	-webkit-mask-image: linear-gradient(to bottom, #000 68%, transparent 100%);
+	mask-image: linear-gradient(to bottom, #000 68%, transparent 100%);
+}
+
+.plate-code .code-block::after {
+	display: none;
+}
+
+/*
+ * Charts derived from a document's own numbers (src/lib/server/charts.ts).
+ * Bars grow from nothing when the figure scrolls into view, staggered down the
+ * column; with JavaScript off, or reduced motion on, they are simply drawn at
+ * full length.
+ */
+.chart-shell {
+	margin: var(--space-6) 0;
+	padding: var(--space-4);
+	border: 1px solid var(--color-divider);
+	background: var(--diagram-bg);
+}
+
+.chart-title {
+	font-family: var(--font-heading);
+	font-size: 13px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	color: var(--color-text);
+	margin-bottom: var(--space-4);
+}
+
+.chart-rows {
+	display: grid;
+	gap: 5px;
+}
+
+.chart-row {
+	display: grid;
+	grid-template-columns: minmax(84px, 22%) 1fr auto;
+	align-items: center;
+	gap: var(--space-3);
+}
+
+.chart-label {
+	font-size: 12px;
+	color: var(--color-neutral-700);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.chart-track {
+	position: relative;
+	height: 14px;
+	border: 1px solid var(--color-divider);
+	background: color-mix(in srgb, var(--color-text) 3%, transparent);
+}
+
+.chart-bar {
+	position: absolute;
+	inset: 0 auto 0 0;
+	width: var(--w);
+	background: var(--color-accent);
+	transform-origin: left center;
+}
+
+.chart-value {
+	font-family: var(--font-mono);
+	font-size: 12px;
+	color: var(--color-accent-700);
+	min-width: 3ch;
+	text-align: right;
+}
+
+
+/* Only animate when scripting is on — the reveal class never arrives otherwise. */
+html.js .chart-bar {
+	transform: scaleX(0);
+	transition: transform var(--fx-dur-slow) var(--fx-ease-apple);
+	transition-delay: calc(var(--i, 0) * 26ms);
+}
+
+html.js [data-fx].fx-in .chart-bar {
+	transform: scaleX(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	html.js .chart-bar {
+		transform: none;
+		transition: none;
+	}
+}
+
+/* The chapter list a diagram-only document shows in place of a code fence. */
+.plate-outline {
+	margin: 0;
+	padding: var(--space-4) var(--space-4) var(--space-4) calc(var(--space-4) + 18px);
+	counter-reset: plate;
+	list-style: none;
+	display: grid;
+	gap: 6px;
+	pointer-events: none;
+}
+
+.plate-outline li {
+	position: relative;
+	font-family: var(--font-mono);
+	font-size: 12px;
+	line-height: 1.5;
+	color: var(--code-ink);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	counter-increment: plate;
+}
+
+.plate-outline li::before {
+	content: counter(plate, decimal-leading-zero);
+	position: absolute;
+	left: -22px;
+	color: var(--color-accent-400);
+}
+
+.side-counts {
+	font-family: var(--font-mono);
+	font-size: 11px;
+	color: var(--color-accent);
 }
 
 .showcase-plate .badge {

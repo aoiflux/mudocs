@@ -22,7 +22,7 @@
 
 		<div class="footer-col">
 			<p class="eyebrow">Docs</p>
-			<a href="/docs">All docs{totalDocs ? ` (${totalDocs})` : ''}</a>
+			<a href="/docs">All docs</a>
 			<a href="/docs/overview">Overview</a>
 			<a href="/docs/reference">Reference</a>
 			<a href="/docs/runtime">Runtime</a>

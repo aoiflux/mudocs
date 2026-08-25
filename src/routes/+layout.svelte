@@ -114,6 +114,10 @@
 		}
 	}
 
+	function onRenderDiagramsRequest() {
+		void renderMermaidDiagrams();
+	}
+
 	async function refreshReveals() {
 		await tick();
 		stopReveals?.();
@@ -171,11 +175,14 @@
 		media.addEventListener('change', onSchemeChange);
 		window.addEventListener('keydown', onGlobalKeydown);
 		window.addEventListener('mudocs:set-theme', onThemeRequest as EventListener);
+		// Any view that reveals diagram nodes after mount asks for a render.
+		window.addEventListener('mudocs:render-diagrams', onRenderDiagramsRequest);
 
 		return () => {
 			media.removeEventListener('change', onSchemeChange);
 			window.removeEventListener('keydown', onGlobalKeydown);
 			window.removeEventListener('mudocs:set-theme', onThemeRequest as EventListener);
+			window.removeEventListener('mudocs:render-diagrams', onRenderDiagramsRequest);
 			stopReveals?.();
 		};
 	});

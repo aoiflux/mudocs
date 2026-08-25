@@ -76,7 +76,10 @@ for (let i = 0; i < len(items); i = i+1) {
 		}
 	];
 
-	const EXEC_STAGES = ['parse', 'lower', 'mutate', 'verify', 'exec'];
+	// The stages docs/BYTECODE_IR.md §1 actually names, in order. An earlier
+	// version of this list invented "lower" and "verify"; neither word appears
+	// anywhere in that document, and the language has no lowering step.
+	const EXEC_STAGES = ['lex', 'parse', 'compile', 'bytecode', 'vm'];
 
 	let selectedPreset = $state(presets[0].id);
 	let code = $state(presets[0].code);
@@ -348,7 +351,11 @@ for (let i = 0; i < len(items); i = i+1) {
 <section class="band" style="border-bottom: 0;">
 	<p class="eyebrow">Execution graph</p>
 
-	<PipelineDiagram nodes={EXEC_STAGES} activeIndex={stageIndex} label="parse, lower, mutate, verify, exec" />
+	<PipelineDiagram
+		nodes={EXEC_STAGES}
+		activeIndex={stageIndex}
+		label="lex, parse, compile, bytecode, vm"
+	/>
 
 	<p class="text-muted" style="margin-top: var(--space-4); font-size: 13px; max-width: 62ch;">
 		The compile path the runtime docs describe. The browser REPL reports a single result rather than

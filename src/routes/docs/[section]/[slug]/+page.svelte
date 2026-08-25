@@ -5,6 +5,7 @@
 	import DocsToc from '$lib/components/DocsToc.svelte';
 	import Tabs from '$lib/components/Tabs.svelte';
 	import CodePanel from '$lib/components/CodePanel.svelte';
+	import { tick } from 'svelte';
 	import { extractDiagrams } from '$lib/diagrams';
 	import { REPO } from '$lib/site';
 
@@ -60,6 +61,16 @@
 
 	$effect(() => {
 		if (activeTab === 'source') void loadSource();
+	});
+
+	$effect(() => {
+		// The Diagrams tab mounts its figures only when opened, so the mermaid
+		// nodes it inserts have never been rendered. Ask the layout to run over
+		// them once the panel is in the DOM.
+		if (activeTab !== 'diagrams') return;
+		void tick().then(() => {
+			window.dispatchEvent(new CustomEvent('mudocs:render-diagrams'));
+		});
 	});
 </script>
 

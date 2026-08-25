@@ -13,9 +13,9 @@
 		filter === 'all' ? showcase.all : showcase.all.filter((item) => item.section === filter)
 	);
 
-	// The unfiltered view leads with the curated pick the artboard annotates
-	// (DETAILED_EXPLANATIONS.md); filtering re-composes the whole band from that
-	// section rather than only the grid below it.
+	// The unfiltered view leads with the highest-ranked document overall;
+	// filtering re-composes the whole band from that section rather than only
+	// the grid below it, so the featured item changes with the chips.
 	const featured = $derived(
 		filter === 'all' ? (showcase.featured ?? visible[0] ?? null) : (visible[0] ?? null)
 	);
@@ -45,7 +45,7 @@
 					aria-pressed={filter === option.key}
 					onclick={() => (filter = option.key)}
 				>
-					{option.label} <span class="text-muted">{option.count}</span>
+					{option.label}
 				</button>
 			{/each}
 		</div>
@@ -61,11 +61,24 @@
 {#if featured}
 	<div class="showcase-split">
 		<div class="showcase-featured">
-			<a class="showcase-plate" href={featured.href} aria-label={featured.title}>
-				<span class="badge">
-					▸ {featured.diagrams} {featured.diagrams === 1 ? 'diagram' : 'diagrams'} ·
-					{featured.codeBlocks} {featured.codeBlocks === 1 ? 'code block' : 'code blocks'}
-				</span>
+			<a
+				class={featured.excerpt || featured.outline.length
+					? 'showcase-plate has-code'
+					: 'showcase-plate'}
+				href={featured.href}
+				aria-label={featured.title}
+			>
+				{#if featured.excerpt}
+					<!-- The document's own first code fence, highlighted server-side. -->
+					<div class="plate-code" aria-hidden="true">{@html featured.excerpt}</div>
+				{:else if featured.outline.length}
+					<!-- Diagram-only documents carry no fence; show what they cover. -->
+					<ol class="plate-outline" aria-hidden="true">
+						{#each featured.outline as heading (heading)}
+							<li>{heading}</li>
+						{/each}
+					</ol>
+				{/if}
 			</a>
 
 			<div>
@@ -99,8 +112,8 @@
 		<div class="showcase-side">
 			{#each secondary as item (item.slug)}
 				<a class="showcase-side-item" href={item.href}>
-					<span class="hatch-sm" aria-hidden="true"></span>
 					<span class="card-title">{item.title}</span>
+					<span class="card-body">{item.description}</span>
 					<span class="card-meta">{item.sectionTitle}</span>
 				</a>
 			{/each}

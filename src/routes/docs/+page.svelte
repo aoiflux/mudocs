@@ -62,7 +62,6 @@
 						data-fx="fade-up"
 						style="padding: var(--space-4); display: grid; gap: var(--space-2); align-content: start; text-decoration: none; color: inherit;"
 					>
-						<span class="card-kicker">{section.count} {section.count === 1 ? 'doc' : 'docs'}</span>
 						<span class="card-title">{section.title}</span>
 						<span class="card-body">{section.description}</span>
 					</Blueprint>

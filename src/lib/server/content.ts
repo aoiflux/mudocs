@@ -8,6 +8,7 @@ import lunr from 'lunr';
 import { marked } from 'marked';
 import plantumlEncoder from 'plantuml-encoder';
 import { highlightFences } from './highlight';
+import { injectCharts } from './charts';
 import { z } from 'zod';
 
 import {
@@ -336,6 +337,67 @@ function excerptFromBody(body: string): string {
 	return flattened.slice(0, 220) + (flattened.length > 220 ? '...' : '');
 }
 
+/**
+ * A document's own opening prose.
+ *
+ * Every doc used to fall back to sectionCatalog[section].description, and no
+ * doc in the corpus carries a description in its frontmatter — so all seven
+ * security docs described themselves with one identical sentence, on their
+ * cards and in their <meta name="description">. This gives each doc the
+ * sentence it actually opens with.
+ */
+function leadParagraph(raw: string): string | null {
+	const blocks = raw.split(/\r?\n\s*\r?\n/);
+	const leadIns: string[] = [];
+
+	for (const block of blocks) {
+		const trimmed = block.trim();
+		if (!trimmed) continue;
+		// Headings, fences, tables, quotes, images, lists and bare links are not prose.
+		if (/^(#|```|\||>|!\[)/.test(trimmed)) continue;
+		if (/^\s*[-*+]\s/.test(trimmed)) continue;
+		if (/^\s*\d+[.)]\s/.test(trimmed)) continue;
+		if (/^\[[^\]]+\]\([^)]+\)$/.test(trimmed)) continue;
+		// A paragraph that is nothing but one code span is a format string or a
+		// path, not a description of the document.
+		if (/^`[^`]+`$/.test(trimmed)) continue;
+
+		const text = trimmed
+			.replace(/`([^`]+)`/g, '$1')
+			.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+			.replace(/[*_]/g, '')
+			.replace(/\s+/g, ' ')
+			.trim();
+
+		if (text.length < 40) continue;
+
+		// Reject ASCII diagrams and envelope layouts, which pass a length test but
+		// are mostly punctuation. Real prose is overwhelmingly letters and spaces.
+		const letters = (text.match(/[A-Za-z ]/g) ?? []).length;
+		if (letters / text.length < 0.8) continue;
+		if ((text.match(/ /g) ?? []).length < 6) continue;
+
+		// A colon lead-in introduces a list rather than standing on its own, so it
+		// is only used when the document offers nothing better.
+		if (text.endsWith(':')) {
+			leadIns.push(text.replace(/\s*:\s*$/, '.'));
+			continue;
+		}
+
+		return clampSentence(text);
+	}
+
+	return leadIns.length ? clampSentence(leadIns[0]) : null;
+}
+
+/** Trim to whole sentences, at most ~200 characters. */
+function clampSentence(text: string): string {
+	if (text.length <= 200) return text;
+	const cut = text.slice(0, 200);
+	const stop = cut.lastIndexOf('. ');
+	return stop > 80 ? cut.slice(0, stop + 1) : cut.replace(/\s+\S*$/, '') + '…';
+}
+
 function slugifyHeading(value: string): string {
 	return value
 		.toLowerCase()
@@ -636,7 +698,7 @@ async function loadAllDocs(): Promise<DocItem[]> {
 				firstHeading(raw) ??
 				frontmatter.title ??
 				titleize(slug);
-			const processed = processMarkdown(raw, title);
+			const processed = processMarkdown(injectCharts(raw), title);
 			const body = processed.body;
 			// Fences become finished HTML before marked runs; see highlightFences().
 			const html = await marked.parse(await highlightFences(body));
@@ -649,7 +711,12 @@ async function loadAllDocs(): Promise<DocItem[]> {
 				section: resolvedSection,
 				slug,
 				title,
-				description: frontmatter.description ?? excerptFromBody(parsed.content),
+				// The section blurb is the last resort, not the first: it describes a
+				// whole track, so using it here made every doc in a track identical.
+				description:
+					(typeof parsed.data.description === 'string' ? parsed.data.description : null) ??
+					leadParagraph(raw) ??
+					sectionCatalog[resolvedSection].description,
 				body,
 				raw,
 				html,
