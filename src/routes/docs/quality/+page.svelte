@@ -1,10 +1,18 @@
 <script lang="ts">
+	import SeoHead from '$lib/components/SeoHead.svelte';
+
 	let { data } = $props();
 </script>
 
+<SeoHead
+	title="Docs quality report"
+	description="Generated metadata and structural checks across the Mutant documentation corpus."
+	index={false}
+/>
+
 <section class="panel" style="margin-bottom: 1rem;">
-	<p class="kicker">Quality Dashboard</p>
-	<h1 style="margin: 0; text-transform: uppercase;">Docs Quality Report</h1>
+	<p class="eyebrow">Quality dashboard</p>
+	<h1 style="margin: 0;">Docs quality report</h1>
 	<p class="lede">
 		Generated quality checks for the definitive guide corpus. Use this page to track metadata hygiene,
 		discoverability, and structural completeness.
@@ -55,7 +63,7 @@
 		{#each Object.entries(data.report.issueCounts) as [kind, count]}
 			<div class="related-doc-link">
 				<strong>{kind}</strong><br />
-				<span style="font-size: 0.95rem; color: #2c2a27;">{count} affected docs</span>
+				<span style="font-size: 0.95rem; color: var(--ink-soft);">{count} affected docs</span>
 			</div>
 		{/each}
 	</div>
@@ -70,7 +78,7 @@
 			{#each data.report.rows as row}
 				<article class="related-doc-link">
 					<strong>{row.title}</strong><br />
-					<span style="font-size: 0.85rem; text-transform: uppercase; color: #2c2a27;">
+					<span style="font-size: 0.85rem; text-transform: uppercase; color: var(--ink-soft);">
 						{row.section} // {row.sourcePath} // audience: {row.audience}
 					</span>
 					<ul style="margin-top: 0.6rem; margin-bottom: 0; padding-left: 1.1rem;">

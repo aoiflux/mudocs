@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
 
-import { listDocsByTheme, listThemes } from '$lib/server/content';
+import { listDocsByTheme, listThemes, toDocSummary } from '$lib/server/content';
 
 export async function load({ params }) {
 	const [themes, docs] = await Promise.all([listThemes(), listDocsByTheme(params.theme)]);
@@ -10,5 +10,6 @@ export async function load({ params }) {
 		throw error(404, 'Theme not found');
 	}
 
-	return { themes, current, docs };
+	// Summaries only — this page renders cards, not article bodies.
+	return { themes, current, docs: docs.map(toDocSummary) };
 }

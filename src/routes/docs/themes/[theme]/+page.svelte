@@ -1,28 +1,46 @@
 <script lang="ts">
+	import SeoHead from '$lib/components/SeoHead.svelte';
+	import DocsSidebar from '$lib/components/DocsSidebar.svelte';
+	import Blueprint from '$lib/components/Blueprint.svelte';
+
 	let { data } = $props();
 </script>
 
-<section class="panel" style="margin-bottom: 1rem;">
-	<p class="kicker">Theme</p>
-	<h1 style="margin: 0; text-transform: uppercase;">{data.current.title}</h1>
-	<p class="lede">{data.current.description}</p>
-	<div class="meta-row">
-		<span class="meta-chip">{data.docs.length} docs</span>
-	</div>
-</section>
+<SeoHead title={data.current.title} description={data.current.description} />
 
-<section class="grid">
-	{#each data.docs as doc}
-		<article class="card">
-			<h3>{doc.title}</h3>
-			<p>{doc.description}</p>
-			<div class="meta-row">
-				<span class="meta-chip">{doc.sectionTitle}</span>
-				<span class="meta-chip">Audience: {doc.audience}</span>
-			</div>
-			<p style="margin-bottom: 0; margin-top: 0.8rem;">
-				<a href={`/docs/${doc.section}/${doc.slug}`}>Open document</a>
-			</p>
-		</article>
-	{/each}
-</section>
+<div class="docs-layout is-two-col">
+	<DocsSidebar tree={data.tree} />
+
+	<div class="docs-main">
+		<nav class="breadcrumbs" aria-label="Breadcrumb">
+			<a href="/docs">Docs</a>
+			<span aria-hidden="true">/</span>
+			<a href="/docs/themes">Themes</a>
+			<span aria-hidden="true">/</span>
+			<span class="current">{data.current.title}</span>
+		</nav>
+
+		<p class="eyebrow">Theme</p>
+		<h1>{data.current.title}</h1>
+		<p class="lede">{data.current.description}</p>
+		<div class="meta-row">
+			<span class="meta-chip">{data.docs.length} docs</span>
+		</div>
+
+		<div class="three-up" style="margin-top: var(--space-8);" data-fx="fade-up" data-fx-stagger="80">
+			{#each data.docs as doc (doc.slug)}
+				<Blueprint
+					as="a"
+					liftable
+					href={`/docs/${doc.section}/${doc.slug}`}
+					data-fx="fade-up"
+					style="padding: var(--space-4); display: grid; gap: var(--space-2); align-content: start; text-decoration: none; color: inherit;"
+				>
+					<span class="card-kicker">{doc.sectionTitle}</span>
+					<span class="card-title">{doc.title}</span>
+					<span class="card-body">{doc.description}</span>
+				</Blueprint>
+			{/each}
+		</div>
+	</div>
+</div>

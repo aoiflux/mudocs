@@ -1,101 +1,162 @@
 <script lang="ts">
+	/** Artboard 2b — sidebar / body with tabs / sticky TOC. */
+	import SeoHead from '$lib/components/SeoHead.svelte';
+	import DocsSidebar from '$lib/components/DocsSidebar.svelte';
+	import DocsToc from '$lib/components/DocsToc.svelte';
+	import Tabs from '$lib/components/Tabs.svelte';
+	import CodePanel from '$lib/components/CodePanel.svelte';
+	import { extractDiagrams } from '$lib/diagrams';
+	import { REPO } from '$lib/site';
+
 	let { data } = $props();
 
-	const sectionHref = $derived(`/docs/${data.doc.section}`);
+	const doc = $derived(data.doc);
+	const sectionHref = $derived(`/docs/${doc.section}`);
+	const githubUrl = $derived(`${REPO.docsBlobBase}/${doc.sourcePath}`);
+
+	// Derived from the HTML we already have, so the figures are not shipped twice.
+	const diagrams = $derived(extractDiagrams(doc.html));
+
+	let activeTab = $state('guide');
+
+	const tabs = $derived([
+		{ id: 'guide', label: 'Guide' },
+		{
+			id: 'diagrams',
+			label: `Diagrams${diagrams.length ? ` (${diagrams.length})` : ''}`,
+			disabled: diagrams.length === 0
+		},
+		{ id: 'source', label: 'Source' }
+	]);
+
+	// The source markdown is fetched on first open rather than serialized into
+	// every page load — it is another 59 KB on the larger references.
+	let source = $state<string | null>(null);
+	let sourceError = $state('');
+	let loadingSource = $state(false);
+
+	$effect(() => {
+		// Reset when navigating between documents.
+		void doc.slug;
+		source = null;
+		sourceError = '';
+		activeTab = 'guide';
+	});
+
+	async function loadSource() {
+		if (source !== null || loadingSource) return;
+		loadingSource = true;
+		sourceError = '';
+		try {
+			const response = await fetch(`/docs/${doc.section}/${doc.slug}/raw`);
+			if (!response.ok) throw new Error(`HTTP ${response.status}`);
+			source = await response.text();
+		} catch (error) {
+			sourceError = error instanceof Error ? error.message : 'Could not load the source.';
+		} finally {
+			loadingSource = false;
+		}
+	}
+
+	$effect(() => {
+		if (activeTab === 'source') void loadSource();
+	});
 </script>
 
-<article class="panel doc-content">
-	<nav class="breadcrumbs" aria-label="Breadcrumb">
-		<a href="/">Home</a>
-		<span>/</span>
-		<a href="/docs">Docs</a>
-		<span>/</span>
-		<a href={sectionHref}>{data.doc.sectionTitle}</a>
-		<span>/</span>
-		<strong>{data.doc.title}</strong>
-	</nav>
+<SeoHead title={doc.title} description={doc.description} type="article" />
 
-	<p class="kicker">{data.doc.section}</p>
-	<h1 style="margin-top: 0;">{data.doc.title}</h1>
-	<p class="lede">{data.doc.description}</p>
+<div class="docs-layout">
+	<DocsSidebar tree={data.tree} />
 
-	<section class="doc-rail-block" style="margin-top: 0.9rem;">
-		<h2 class="doc-rail-title">Context Rail</h2>
-		<div class="related-docs-list">
-			<a class="related-doc-link" href={sectionHref}>Back to {data.doc.sectionTitle} section</a>
-			<a class="related-doc-link" href="/search?q={encodeURIComponent(data.doc.title)}">Search this topic</a>
+	<article class="docs-main">
+		<nav class="breadcrumbs" aria-label="Breadcrumb">
+			<a href="/docs">Docs</a>
+			<span aria-hidden="true">/</span>
+			<a href={sectionHref}>{doc.sectionTitle}</a>
+			<span aria-hidden="true">/</span>
+			<span class="current">{doc.title}</span>
+		</nav>
+
+		<h1>{doc.title}</h1>
+		<p class="lede">{doc.description}</p>
+
+		<div class="meta-row">
+			{#if doc.frontmatter.last_reviewed}
+				<span class="meta-chip">Reviewed {doc.frontmatter.last_reviewed}</span>
+			{/if}
+			<span class="meta-chip">Audience: {doc.audience}</span>
+			<span class="meta-chip">{doc.sourcePath}</span>
+			{#each doc.themes as theme (theme)}
+				<a class="meta-chip" href={`/docs/themes/${theme}`}>theme: {theme}</a>
+			{/each}
 		</div>
-	</section>
 
-	<div class="meta-row" style="margin-bottom: 1rem;">
-		{#if data.doc.frontmatter.last_reviewed}
-			<span class="meta-chip">Reviewed: {data.doc.frontmatter.last_reviewed}</span>
-		{/if}
-		{#if data.doc.frontmatter.review_owner}
-			<span class="meta-chip">Owner: {data.doc.frontmatter.review_owner}</span>
-		{/if}
-		{#if data.doc.frontmatter.source_repo}
-			<span class="meta-chip">Repo: {data.doc.frontmatter.source_repo}</span>
-		{/if}
-		{#if data.doc.frontmatter.source_ref}
-			<span class="meta-chip">Ref: {data.doc.frontmatter.source_ref}</span>
-		{/if}
-		<span class="meta-chip">Audience: {data.doc.audience}</span>
-		<span class="meta-chip">Source: {data.doc.sourcePath}</span>
-	</div>
+		<Tabs {tabs} bind:active={activeTab} />
 
-	{#if data.doc.tags.length > 0 || data.doc.themes.length > 0}
-		<section class="doc-rail-block">
-			<h2 class="doc-rail-title">Tags and Themes</h2>
-			<div class="meta-row" style="margin-top: 0;">
-				{#each data.doc.tags as tag}
-					<span class="meta-chip">tag: {tag}</span>
-				{/each}
-				{#each data.doc.themes as theme}
-					<a class="meta-chip" href={`/docs/themes/${theme}`}>theme: {theme}</a>
-				{/each}
+		{#if activeTab === 'guide'}
+			<div id="panel-guide" role="tabpanel" aria-labelledby="tab-guide" class="doc-content">
+				{@html doc.html}
 			</div>
-		</section>
-	{/if}
-
-	{#if data.doc.toc.length > 0}
-		<section class="doc-rail-block">
-			<h2 class="doc-rail-title">On This Page</h2>
-			<ul class="toc-list">
-				{#each data.doc.toc as item}
-					<li class={`toc-level-${item.level}`}>
-						<a href={`#${item.id}`}>{item.text}</a>
-					</li>
-				{/each}
-			</ul>
-		</section>
-	{/if}
-
-	{@html data.doc.html}
-
-	<section class="doc-footer-grid">
-		{#if data.doc.previousDoc}
-			<a class="doc-nav-card" href={`/docs/${data.doc.previousDoc.section}/${data.doc.previousDoc.slug}`}>
-				<span class="doc-nav-label">Previous</span>
-				<strong>{data.doc.previousDoc.title}</strong>
-			</a>
-		{/if}
-		{#if data.doc.nextDoc}
-			<a class="doc-nav-card" href={`/docs/${data.doc.nextDoc.section}/${data.doc.nextDoc.slug}`}>
-				<span class="doc-nav-label">Next</span>
-				<strong>{data.doc.nextDoc.title}</strong>
-			</a>
-		{/if}
-	</section>
-
-	{#if data.doc.relatedDocs.length > 0}
-		<section class="doc-rail-block">
-			<h2 class="doc-rail-title">Related Reading</h2>
-			<div class="related-docs-list">
-				{#each data.doc.relatedDocs as related}
-					<a class="related-doc-link" href={`/docs/${related.section}/${related.slug}`}>{related.title}</a>
-				{/each}
+		{:else if activeTab === 'diagrams'}
+			<div id="panel-diagrams" role="tabpanel" aria-labelledby="tab-diagrams" class="doc-content">
+				{#if diagrams.length}
+					{#each diagrams as figure, index (index)}
+						{@html figure}
+					{/each}
+				{:else}
+					<p class="text-muted">This document has no diagram figures.</p>
+				{/if}
 			</div>
-		</section>
-	{/if}
-</article>
+		{:else}
+			<div id="panel-source" role="tabpanel" aria-labelledby="tab-source">
+				<p class="text-muted" style="font-size: 13px;">
+					The markdown behind this page, exactly as it sits in
+					<a href={githubUrl} target="_blank" rel="noopener noreferrer">{doc.sourcePath}</a>.
+				</p>
+
+				{#if source !== null}
+					<CodePanel code={source} label={doc.sourcePath} />
+				{:else if sourceError}
+					<p class="diagram-error">Could not load the source ({sourceError}).</p>
+				{:else}
+					<p class="text-muted">Loading source…</p>
+				{/if}
+			</div>
+		{/if}
+
+		<nav class="doc-footer-grid" aria-label="Document navigation">
+			{#if doc.previousDoc}
+				<a class="doc-nav-card" href={`/docs/${doc.previousDoc.section}/${doc.previousDoc.slug}`}>
+					<span class="doc-nav-label">← Previous</span>
+					<strong>{doc.previousDoc.title}</strong>
+				</a>
+			{/if}
+			{#if doc.nextDoc}
+				<a
+					class="doc-nav-card"
+					href={`/docs/${doc.nextDoc.section}/${doc.nextDoc.slug}`}
+					style="text-align: right;"
+				>
+					<span class="doc-nav-label">Next →</span>
+					<strong>{doc.nextDoc.title}</strong>
+				</a>
+			{/if}
+		</nav>
+
+		{#if doc.relatedDocs.length > 0}
+			<section class="doc-rail-block">
+				<h2 class="doc-rail-title">Related reading</h2>
+				<div class="related-docs-list">
+					{#each doc.relatedDocs as related (related.slug)}
+						<a class="related-doc-link" href={`/docs/${related.section}/${related.slug}`}>
+							<span class="doc-nav-label">{related.section}</span>
+							<strong>{related.title}</strong>
+						</a>
+					{/each}
+				</div>
+			</section>
+		{/if}
+	</article>
+
+	<DocsToc toc={doc.toc} {githubUrl} />
+</div>

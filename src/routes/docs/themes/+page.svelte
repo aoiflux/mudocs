@@ -1,24 +1,44 @@
 <script lang="ts">
+	import SeoHead from '$lib/components/SeoHead.svelte';
+	import DocsSidebar from '$lib/components/DocsSidebar.svelte';
+	import Blueprint from '$lib/components/Blueprint.svelte';
+
 	let { data } = $props();
 </script>
 
-<section class="panel" style="margin-bottom: 1rem;">
-	<p class="kicker">Themes</p>
-	<h1 style="margin: 0; text-transform: uppercase;">Documentation Themes</h1>
-	<p class="lede">Cross-link the definitive guide by technical themes across sections.</p>
-</section>
+<SeoHead
+	title="Themes"
+	description="Cross-link the Mutant documentation by technical theme — bytecode, sandboxing, signing, REPL and LSP."
+/>
 
-<section class="grid">
-	{#each data.themes as theme}
-		<article class="card">
-			<h3>{theme.title}</h3>
-			<p>{theme.description}</p>
-			<div class="meta-row">
-				<span class="meta-chip">{theme.count} docs</span>
-			</div>
-			<p style="margin-bottom: 0; margin-top: 0.8rem;">
-				<a href={`/docs/themes/${theme.theme}`}>Explore theme</a>
-			</p>
-		</article>
-	{/each}
-</section>
+<div class="docs-layout is-two-col">
+	<DocsSidebar tree={data.tree} />
+
+	<div class="docs-main">
+		<nav class="breadcrumbs" aria-label="Breadcrumb">
+			<a href="/docs">Docs</a>
+			<span aria-hidden="true">/</span>
+			<span class="current">Themes</span>
+		</nav>
+
+		<p class="eyebrow">Themes</p>
+		<h1>Documentation themes</h1>
+		<p class="lede">Cross-link the corpus by technical theme, across every section.</p>
+
+		<div class="three-up" style="margin-top: var(--space-8);" data-fx="fade-up" data-fx-stagger="80">
+			{#each data.themes as theme (theme.theme)}
+				<Blueprint
+					as="a"
+					liftable
+					href={`/docs/themes/${theme.theme}`}
+					data-fx="fade-up"
+					style="padding: var(--space-4); display: grid; gap: var(--space-2); align-content: start; text-decoration: none; color: inherit;"
+				>
+					<span class="card-kicker">{theme.count} {theme.count === 1 ? 'doc' : 'docs'}</span>
+					<span class="card-title">{theme.title}</span>
+					<span class="card-body">{theme.description}</span>
+				</Blueprint>
+			{/each}
+		</div>
+	</div>
+</div>

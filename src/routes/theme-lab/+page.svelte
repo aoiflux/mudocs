@@ -1,5 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import SeoHead from '$lib/components/SeoHead.svelte';
+
+	// These two sheets are this route's alone. They used to load globally from
+	// +layout.svelte, which shipped ~1200 lines of neon showcase CSS on every page.
+	import '$lib/artist/artist-fx.css';
+	import '$lib/artist/theme-lab.css';
 
 	import {
 		attachMagnetic,
@@ -282,6 +288,12 @@
 		};
 	});
 </script>
+
+<SeoHead
+	title="Theme lab"
+	description="The animation and effects showcase. Not part of the documentation corpus."
+	index={false}
+/>
 
 <canvas class="fx-cursor-canvas" bind:this={cursorCanvas} aria-hidden="true"></canvas>
 

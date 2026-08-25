@@ -1,11 +1,13 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import { afterNavigate } from '$app/navigation';
-	import { onMount } from 'svelte';
+	import { goto, afterNavigate } from '$app/navigation';
+	import { page } from '$app/state';
+	import { onMount, tick } from 'svelte';
 
 	import favicon from '$lib/assets/favicon.svg';
 	import '../app.css';
-	import '$lib/artist/artist-fx.css';
+	import SiteHeader from '$lib/components/SiteHeader.svelte';
+	import SiteFooter from '$lib/components/SiteFooter.svelte';
+	import { initScrollReveals } from '$lib/artist/motion';
 
 	let { children } = $props();
 	type ThemeMode = 'light' | 'dark' | 'artist' | 'auto';
@@ -24,6 +26,7 @@
 	};
 
 	let hasMounted = false;
+	let stopReveals: (() => void) | null = null;
 
 	function resolveAutoTheme(): 'light' | 'dark' {
 		return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -91,7 +94,9 @@
 			return;
 		}
 		const activeTheme = document.documentElement.getAttribute('data-theme');
-		const mermaidTheme = activeTheme === 'dark' || activeTheme === 'artist' ? 'dark' : 'default';
+		// "neutral" is the mermaid theme closest to Industry's line-drawing look;
+		// the dark ground gets mermaid's dark theme so the strokes stay legible.
+		const mermaidTheme = activeTheme === 'dark' || activeTheme === 'artist' ? 'dark' : 'neutral';
 		mermaid.initialize({ startOnLoad: false, theme: mermaidTheme });
 
 		for (const target of targets) {
@@ -107,6 +112,12 @@
 				target.innerHTML = '<p class="diagram-error">Diagram failed to render. Check syntax.</p>';
 			}
 		}
+	}
+
+	async function refreshReveals() {
+		await tick();
+		stopReveals?.();
+		stopReveals = initScrollReveals(document);
 	}
 
 	function onGlobalKeydown(event: KeyboardEvent) {
@@ -146,6 +157,7 @@
 
 		applyTheme(themeMode);
 		void renderMermaidDiagrams();
+		void refreshReveals();
 		hasMounted = true;
 
 		const media = window.matchMedia('(prefers-color-scheme: dark)');
@@ -159,16 +171,19 @@
 		media.addEventListener('change', onSchemeChange);
 		window.addEventListener('keydown', onGlobalKeydown);
 		window.addEventListener('mudocs:set-theme', onThemeRequest as EventListener);
-		afterNavigate(() => {
-			applyTheme(themeMode);
-			void renderMermaidDiagrams();
-		});
 
 		return () => {
 			media.removeEventListener('change', onSchemeChange);
 			window.removeEventListener('keydown', onGlobalKeydown);
 			window.removeEventListener('mudocs:set-theme', onThemeRequest as EventListener);
+			stopReveals?.();
 		};
+	});
+
+	afterNavigate(() => {
+		applyTheme(themeMode);
+		void renderMermaidDiagrams();
+		void refreshReveals();
 	});
 </script>
 
@@ -177,49 +192,17 @@
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
 	<link
-		href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;700;800&display=swap"
+		href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap"
 		rel="stylesheet"
 	/>
-	<title>Mudocs</title>
 </svelte:head>
 
-<div class="page-shell">
-	<header class="panel" style="margin-bottom: 1rem;">
-		<div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: center;">
-			<a class="site-brand" href="/">
-				<img src={favicon} alt="Mudocs logo" />
-				<span>mu docs // next</span>
-			</a>
-			<form action="/search" method="GET" class="quick-search" role="search">
-				<input name="q" type="search" placeholder="Search docs..." aria-label="Search docs" required />
-				<button type="submit">Find</button>
-			</form>
-			<nav style="display: flex; gap: 0.9rem; flex-wrap: wrap;">
-				<a href="/docs">Docs</a>
-				<a href="/search">Search</a>
-				<a href="/playground">Playground</a>
-				<a href="/theme-lab">Theme Lab</a>
-				<a href="https://github.com/aoiflux/mutant" target="_blank" rel="noopener noreferrer">GitHub</a>
-				<a href="/docs/overview">Overview</a>
-				<a href="/docs/reference">Reference</a>
-				<a href="/docs/security">Security</a>
-				<a href="/docs/runtime">Runtime</a>
-				<a href="/docs/tooling">Tooling</a>
-				<a href="/docs/themes">Themes</a>
-				<a href="/docs/quality">Quality</a>
-				<a href="/about">About</a>
-			</nav>
-			<label class="theme-control">
-				<span>Theme</span>
-				<select value={themeMode} onchange={onThemeChange}>
-					<option value="light">Light</option>
-					<option value="dark">Dark</option>
-					<option value="artist">Artist</option>
-					<option value="auto">Auto</option>
-				</select>
-			</label>
-		</div>
-	</header>
+<a class="skip-link" href="#main">Skip to content</a>
 
+<SiteHeader {themeMode} {onThemeChange} />
+
+<main id="main" class="page-shell" data-pathname={page.url.pathname}>
 	{@render children()}
-</div>
+</main>
+
+<SiteFooter />

@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="mudocs — documentation for the Mutant language">
+	<rect width="1200" height="630" fill="#f2f2f3"/>
+
+	<g stroke="#5980a6" stroke-opacity="0.14" stroke-width="1">
+		<path d="M0 63h1200M0 126h1200M0 189h1200M0 252h1200M0 315h1200M0 378h1200M0 441h1200M0 504h1200M0 567h1200"/>
+		<path d="M63 0v630M126 0v630M189 0v630M252 0v630M315 0v630M378 0v630M441 0v630M504 0v630M567 0v630M630 0v630M693 0v630M756 0v630M819 0v630M882 0v630M945 0v630M1008 0v630M1071 0v630M1134 0v630"/>
+	</g>
+
+	<g stroke="#1d1f20" stroke-width="1" fill="none">
+		<rect x="80" y="80" width="1040" height="470"/>
+	</g>
+	<g stroke="#5980a6" stroke-width="2">
+		<path d="M80 66v28M66 80h28"/>
+		<path d="M1120 66v28M1106 80h28"/>
+		<path d="M80 536v28M66 550h28"/>
+		<path d="M1120 536v28M1106 550h28"/>
+	</g>
+
+	<g transform="translate(140, 150)">
+		<rect width="26" height="26" fill="#1d1f20"/>
+		<text x="44" y="21" font-family="'Barlow Condensed', 'Arial Narrow', sans-serif" font-size="30" font-weight="600" letter-spacing="1.4" fill="#1d1f20">MUDOCS</text>
+	</g>
+
+	<text x="140" y="300" font-family="'Barlow Condensed', 'Arial Narrow', sans-serif" font-size="82" font-weight="600" fill="#1d1f20">A language that mutates</text>
+	<text x="140" y="380" font-family="'Barlow Condensed', 'Arial Narrow', sans-serif" font-size="82" font-weight="600" fill="#1d1f20">its own bytecode</text>
+
+	<text x="140" y="440" font-family="'Barlow', Arial, sans-serif" font-size="25" fill="#5d5d60">Practical security work, forensic automation and cross-platform analysis tooling.</text>
+
+	<g transform="translate(140, 480)">
+		<rect width="118" height="42" fill="#5980a6"/>
+		<text x="26" y="27" font-family="'Barlow Condensed', 'Arial Narrow', sans-serif" font-size="17" font-weight="600" letter-spacing="1.1" fill="#f2f2f3">GET MUTANT</text>
+	</g>
+
+	<g transform="translate(700, 460)" font-family="ui-monospace, Menlo, monospace" font-size="16" fill="#1d1f20">
+		<rect x="0" y="0" width="62" height="34" fill="none" stroke="#1d1f20"/>
+		<text x="18" y="22">AST</text>
+		<line x1="62" y1="17" x2="122" y2="17" stroke="#5980a6" stroke-width="2"/>
+		<rect x="122" y="0" width="52" height="34" fill="none" stroke="#1d1f20"/>
+		<text x="140" y="22">IR</text>
+		<line x1="174" y1="17" x2="234" y2="17" stroke="#5980a6" stroke-width="2"/>
+		<rect x="234" y="0" width="76" height="34" fill="#5980a6" stroke="#1d1f20"/>
+		<text x="252" y="22" fill="#f2f2f3">EXEC</text>
+	</g>
+</svg>

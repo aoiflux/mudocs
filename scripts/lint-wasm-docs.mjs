@@ -5,10 +5,6 @@ const workspaceRoot = process.cwd();
 
 const targets = [
 	{
-		path: 'docs/PLAYGROUND_EXAMPLES.md',
-		extractMode: 'mutant-fences'
-	},
-	{
 		path: 'docs/WASM_REPL_REFERENCE.md',
 		extractMode: 'mutant-fences'
 	},

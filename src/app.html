@@ -3,7 +3,30 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<meta name="text-scale" content="scale" />
+		<meta name="theme-color" content="#f2f2f3" />
+		<script>
+			// Stamp the stored theme before first paint. Without this the page
+			// renders light, then +layout.svelte's onMount flips it — a visible flash
+			// on every load, and worse on the prerendered routes.
+			(function () {
+				try {
+					var mode = localStorage.getItem('mudocs-theme-mode') || 'auto';
+					var resolved =
+						mode === 'auto'
+							? window.matchMedia('(prefers-color-scheme: dark)').matches
+								? 'dark'
+								: 'light'
+							: mode;
+					document.documentElement.setAttribute('data-theme', resolved);
+					// Scroll-reveal starts elements at opacity 0; without this flag a
+					// no-JS visitor (or a crawler that does not run scripts) would see
+					// an empty page.
+					document.documentElement.classList.add('js');
+				} catch (e) {
+					document.documentElement.setAttribute('data-theme', 'light');
+				}
+			})();
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

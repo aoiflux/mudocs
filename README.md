@@ -3,7 +3,13 @@
 This directory contains the production SvelteKit implementation for mudocs. It
 includes:
 
-- Material-Brutalist visual baseline
+- Industry design-system baseline (steel accent on a paper ground, Barlow
+  Condensed over Barlow, square hairline "blueprint" frames with `+`
+  registration marks) — tokens live at the top of `src/app.css`
+- Reusable components in `src/lib/components/`; motion primitives in
+  `src/lib/artist/motion.ts` (no animation dependency)
+- Marketing copy is derived from the markdown corpus at request/build time by
+  `src/lib/server/page-content.ts` — it is never hand-written in the routes
 - Server-side markdown ingestion from `./docs` (override with
   `MUDOCS_DOCS_ROOT`)
 - Full-text docs search route at `/search` powered by Lunr indexing
@@ -17,8 +23,14 @@ includes:
   - `/search`
   - `/docs/[section]`
   - `/docs/[section]/[slug]`
+  - `/docs/[section]/[slug]/raw` (source markdown, fetched by the Source tab)
+  - `/docs/themes`, `/docs/themes/[theme]`, `/docs/quality`
   - `/about`
   - `/playground` (worker-based WASM REPL path)
+  - `/showcase`
+  - `/extension`
+  - `/theme-lab` (effects showcase; not indexed)
+  - `/sitemap.xml` (generated from the live corpus on every build)
 
 ## Run locally
 

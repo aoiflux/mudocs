@@ -146,6 +146,8 @@ export type DocItem = {
 	title: string;
 	description: string;
 	body: string;
+	/** The markdown exactly as it sits on disk, before diagram/heading rewriting. */
+	raw: string;
 	html: string;
 	toc: Array<{ id: string; text: string; level: number }>;
 	frontmatter: DocFrontmatter;
@@ -161,6 +163,20 @@ export type DocItem = {
 	previousDoc: { section: SectionKey; slug: string; title: string } | null;
 	nextDoc: { section: SectionKey; slug: string; title: string } | null;
 };
+
+/**
+ * A doc without its rendered HTML or its source markdown.
+ *
+ * List pages only need the card fields, but a DocItem carries the doc's full
+ * `html` and `raw`. Sending those for all 27 documents made /docs a 1.6 MB
+ * response. Loads that render lists must map through toDocSummary().
+ */
+export type DocSummary = Omit<DocItem, 'html' | 'raw' | 'body' | 'toc'>;
+
+export function toDocSummary(doc: DocItem): DocSummary {
+	const { html: _html, raw: _raw, body: _body, toc: _toc, ...summary } = doc;
+	return summary;
+}
 
 export type SectionSummary = {
 	section: SectionKey;
@@ -279,6 +295,28 @@ let docsCache: DocsCacheEntry | null = null;
 let searchIndexCache: SearchIndexCacheEntry | null = null;
 
 marked.setOptions({ gfm: true, breaks: false });
+
+/**
+ * The document's own first `# ` heading.
+ *
+ * No doc in the corpus carries frontmatter, so without this every title falls
+ * back to the SCREAMING_FILENAME ("BYTECODE IR"). The H1 is the title the
+ * authors actually wrote ("Mutant IR / ByteCode Reference"), and it is the same
+ * heading processMarkdown() demotes for exactly that reason.
+ */
+function firstHeading(body: string): string | null {
+	let inFence = false;
+	for (const line of body.split(/\r?\n/)) {
+		if (line.trim().startsWith('```')) {
+			inFence = !inFence;
+			continue;
+		}
+		if (inFence) continue;
+		const match = /^#\s+(.+)$/.exec(line);
+		if (match) return match[1].trim().replace(/`/g, '');
+	}
+	return null;
+}
 
 function titleize(input: string): string {
 	return input
@@ -497,6 +535,8 @@ function processMarkdown(body: string): {
 	const toc: Array<{ id: string; text: string; level: number }> = [];
 	const lines = withDiagrams.split(/\r?\n/);
 	let inCodeFence = false;
+	let seenTopHeading = false;
+	const usedIds = new Map<string, number>();
 
 	const processed = lines.map((line) => {
 		if (/^```/.test(line.trim())) {
@@ -509,11 +549,24 @@ function processMarkdown(body: string): {
 		const match = /^(#{1,4})\s+(.+)$/.exec(line);
 		if (!match) return line;
 
-		const level = match[1].length;
+		const rawLevel = match[1].length;
 		const text = match[2].trim();
-		const id = slugifyHeading(text);
 
-		if (level >= 2 && level <= 4) {
+		// The route already renders the doc's own <h1>, so a body H1 would give
+		// the page two top-level headings. Demote it; the first one is just the
+		// title repeated, so it stays out of the table of contents.
+		const level = rawLevel === 1 ? 2 : rawLevel;
+		const isTitleRepeat = rawLevel === 1 && !seenTopHeading;
+		if (rawLevel === 1) seenTopHeading = true;
+
+		// Repeated headings would otherwise emit duplicate ids, breaking both
+		// deep links and the TOC scroll-spy.
+		const base = slugifyHeading(text);
+		const seenCount = usedIds.get(base) ?? 0;
+		usedIds.set(base, seenCount + 1);
+		const id = seenCount === 0 ? base : base + '-' + (seenCount + 1);
+
+		if (!isTitleRepeat && level >= 2 && level <= 4) {
 			toc.push({ id, text: text.replace(/`/g, ''), level });
 		}
 
@@ -559,7 +612,8 @@ async function loadAllDocs(): Promise<DocItem[]> {
 			});
 
 			const slug = path.basename(file, '.md').toLowerCase();
-			const processed = processMarkdown(parsed.content.trim());
+			const raw = parsed.content.trim();
+			const processed = processMarkdown(raw);
 			const body = processed.body;
 			const html = await marked.parse(body);
 			const tags = [...new Set((frontmatter.tags ?? []).map(normalizeToken).filter(Boolean))];
@@ -570,9 +624,14 @@ async function loadAllDocs(): Promise<DocItem[]> {
 			return {
 				section: resolvedSection,
 				slug,
-				title: frontmatter.title ?? inferred.title ?? titleize(slug),
+				title:
+					(typeof parsed.data.title === 'string' ? parsed.data.title : null) ??
+					firstHeading(raw) ??
+					frontmatter.title ??
+					titleize(slug),
 				description: frontmatter.description ?? excerptFromBody(parsed.content),
 				body,
+				raw,
 				html,
 				toc: processed.toc,
 				frontmatter,

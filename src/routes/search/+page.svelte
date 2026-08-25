@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SeoHead from '$lib/components/SeoHead.svelte';
 	import { onMount } from 'svelte';
 
 	let { data } = $props();
@@ -13,9 +14,15 @@
 	});
 </script>
 
+<SeoHead
+	title="Search"
+	description="Full-text search across the Mutant documentation corpus."
+	index={false}
+/>
+
 <section class="panel" style="margin-bottom: 1rem;">
-	<p class="kicker">Search Engine</p>
-	<h1 style="margin: 0; text-transform: uppercase;">Docs Search</h1>
+	<p class="eyebrow">Search engine</p>
+	<h1 style="margin: 0;">Docs search</h1>
 	<p class="lede">
 		Full-text search across titles, headings, tags, descriptions, and body content.
 	</p>
@@ -58,7 +65,7 @@
 			</select>
 		</div>
 		<div class="search-actions">
-			<button type="submit">Search</button>
+			<button class="btn btn-primary" type="submit">Search</button>
 		</div>
 	</form>
 </section>

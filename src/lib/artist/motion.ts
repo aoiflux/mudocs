@@ -586,3 +586,235 @@ export function createTimeline(): Timeline {
 
 	return timeline;
 }
+
+// ---------------------------------------------------------------------------
+// 6. Hero field — cursor-reactive blueprint nodes (M2)
+// ---------------------------------------------------------------------------
+
+/**
+ * A lattice of square nodes drifting on the hero's blueprint grid. Nodes near
+ * the cursor are pulled toward it on a spring and wired to it with hairlines.
+ *
+ * Deliberately separate from initCursorFX(): that one is a neon particle trail
+ * hardcoded to the artist palette (hue 187/322) and gated to the artist theme.
+ * This one draws in the Industry idiom and reads its color from the live
+ * --color-accent token, so it follows light/dark without a second code path.
+ */
+export function initHeroField(canvas: HTMLCanvasElement): Cleanup {
+	if (typeof window === 'undefined' || prefersReducedMotion()) return () => {};
+
+	const ctx = canvas.getContext('2d');
+	if (!ctx) return () => {};
+
+	const dpr = Math.max(window.devicePixelRatio || 1, 1);
+	const SPACING = 64;
+	const REACH = 132;
+
+	type Node = { hx: number; hy: number; s: Spring };
+	let nodes: Node[] = [];
+	let width = 0;
+	let height = 0;
+	let raf = 0;
+	let mouseX = -9999;
+	let mouseY = -9999;
+	let accent = '#5980a6';
+
+	const readAccent = () => {
+		const value = getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim();
+		if (value) accent = value;
+	};
+
+	const build = () => {
+		const rect = canvas.getBoundingClientRect();
+		width = rect.width;
+		height = rect.height;
+		canvas.width = Math.floor(width * dpr);
+		canvas.height = Math.floor(height * dpr);
+		ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+		nodes = [];
+		for (let y = SPACING / 2; y < height; y += SPACING) {
+			for (let x = SPACING / 2; x < width; x += SPACING) {
+				nodes.push({ hx: x, hy: y, s: { x, y, vx: 0, vy: 0 } });
+			}
+		}
+	};
+
+	const onMove = (event: PointerEvent) => {
+		const rect = canvas.getBoundingClientRect();
+		mouseX = event.clientX - rect.left;
+		mouseY = event.clientY - rect.top;
+	};
+
+	const onLeave = () => {
+		mouseX = -9999;
+		mouseY = -9999;
+	};
+
+	const render = () => {
+		ctx.clearRect(0, 0, width, height);
+
+		for (const node of nodes) {
+			const dx = mouseX - node.hx;
+			const dy = mouseY - node.hy;
+			const dist = Math.hypot(dx, dy);
+			const pull = dist < REACH ? (1 - dist / REACH) * 0.42 : 0;
+
+			springStep(node.s, node.hx + dx * pull, node.hy + dy * pull, 0.1, 0.74);
+
+			const near = pull > 0;
+			ctx.fillStyle = accent;
+			ctx.globalAlpha = near ? 0.28 + pull * 0.62 : 0.18;
+			const size = near ? 2.4 + pull * 2.6 : 2;
+			ctx.fillRect(node.s.x - size / 2, node.s.y - size / 2, size, size);
+
+			if (near) {
+				ctx.globalAlpha = pull * 0.34;
+				ctx.strokeStyle = accent;
+				ctx.lineWidth = 1;
+				ctx.beginPath();
+				ctx.moveTo(node.s.x, node.s.y);
+				ctx.lineTo(mouseX, mouseY);
+				ctx.stroke();
+			}
+		}
+
+		ctx.globalAlpha = 1;
+		raf = requestAnimationFrame(render);
+	};
+
+	const themeObserver = new MutationObserver(readAccent);
+	themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+	readAccent();
+	build();
+	window.addEventListener('resize', build);
+	window.addEventListener('pointermove', onMove, { passive: true });
+	window.addEventListener('pointerleave', onLeave, { passive: true });
+	raf = requestAnimationFrame(render);
+
+	return () => {
+		cancelAnimationFrame(raf);
+		themeObserver.disconnect();
+		window.removeEventListener('resize', build);
+		window.removeEventListener('pointermove', onMove);
+		window.removeEventListener('pointerleave', onLeave);
+	};
+}
+
+// ---------------------------------------------------------------------------
+// 7. Counter roll (M7) — tick a number up to its target on reveal
+// ---------------------------------------------------------------------------
+
+export function rollCounter(el: HTMLElement, to: number, duration = 900): Cleanup {
+	if (typeof window === 'undefined') {
+		el.textContent = String(to);
+		return () => {};
+	}
+	if (prefersReducedMotion()) {
+		el.textContent = to.toLocaleString();
+		return () => {};
+	}
+
+	let raf = 0;
+	let start = 0;
+
+	const step = (now: number) => {
+		if (!start) start = now;
+		const t = Math.min((now - start) / duration, 1);
+		// ease-out cubic, so the last digits settle rather than snap
+		const eased = 1 - Math.pow(1 - t, 3);
+		el.textContent = Math.round(to * eased).toLocaleString();
+		if (t < 1) raf = requestAnimationFrame(step);
+	};
+
+	raf = requestAnimationFrame(step);
+	return () => cancelAnimationFrame(raf);
+}
+
+// ---------------------------------------------------------------------------
+// 8. Momentum carousel (M5) — drag with inertia, clamped to the track
+// ---------------------------------------------------------------------------
+
+export function attachMomentumScroll(viewport: HTMLElement, track: HTMLElement): Cleanup {
+	if (typeof window === 'undefined') return () => {};
+
+	let offset = 0;
+	let velocity = 0;
+	let dragging = false;
+	let lastX = 0;
+	let raf = 0;
+
+	const maxOffset = () => Math.min(0, viewport.clientWidth - track.scrollWidth);
+
+	const apply = () => {
+		track.style.transform = `translate3d(${offset.toFixed(2)}px, 0, 0)`;
+	};
+
+	const loop = () => {
+		if (!dragging) {
+			offset += velocity;
+			velocity *= 0.94;
+
+			const min = maxOffset();
+			// rubber-band back into range rather than hard-stopping at the edge
+			if (offset > 0) {
+				offset += (0 - offset) * 0.18;
+				velocity = 0;
+			} else if (offset < min) {
+				offset += (min - offset) * 0.18;
+				velocity = 0;
+			}
+			if (Math.abs(velocity) < 0.02) velocity = 0;
+			apply();
+		}
+		raf = requestAnimationFrame(loop);
+	};
+
+	const onDown = (event: PointerEvent) => {
+		dragging = true;
+		lastX = event.clientX;
+		velocity = 0;
+		viewport.classList.add('is-dragging');
+		viewport.setPointerCapture(event.pointerId);
+	};
+
+	const onMove = (event: PointerEvent) => {
+		if (!dragging) return;
+		const dx = event.clientX - lastX;
+		lastX = event.clientX;
+		offset += dx;
+		velocity = dx;
+		apply();
+	};
+
+	const onUp = (event: PointerEvent) => {
+		if (!dragging) return;
+		dragging = false;
+		viewport.classList.remove('is-dragging');
+		if (viewport.hasPointerCapture(event.pointerId)) viewport.releasePointerCapture(event.pointerId);
+	};
+
+	const onWheel = (event: WheelEvent) => {
+		const dx = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+		if (!dx) return;
+		event.preventDefault();
+		velocity = -dx * 0.5;
+	};
+
+	viewport.addEventListener('pointerdown', onDown);
+	viewport.addEventListener('pointermove', onMove);
+	viewport.addEventListener('pointerup', onUp);
+	viewport.addEventListener('pointercancel', onUp);
+	viewport.addEventListener('wheel', onWheel, { passive: false });
+	raf = requestAnimationFrame(loop);
+
+	return () => {
+		cancelAnimationFrame(raf);
+		viewport.removeEventListener('pointerdown', onDown);
+		viewport.removeEventListener('pointermove', onMove);
+		viewport.removeEventListener('pointerup', onUp);
+		viewport.removeEventListener('pointercancel', onUp);
+		viewport.removeEventListener('wheel', onWheel);
+	};
+}

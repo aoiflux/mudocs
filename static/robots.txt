@@ -1,3 +1,10 @@
 # allow crawling everything by default
 User-agent: *
 Disallow:
+
+# query-dependent and internal pages
+Disallow: /search
+Disallow: /docs/quality
+Disallow: /theme-lab
+
+Sitemap: https://mudocs.netlify.app/sitemap.xml

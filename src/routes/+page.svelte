@@ -1,152 +1,166 @@
 <script lang="ts">
+	/** Artboard 2a — hero → what/pipeline → why → carousel → extension → repo. */
+	import { onMount } from 'svelte';
+	import SeoHead from '$lib/components/SeoHead.svelte';
+	import Blueprint from '$lib/components/Blueprint.svelte';
+	import HeroField from '$lib/components/HeroField.svelte';
+	import Mascot from '$lib/components/Mascot.svelte';
+	import PipelineDiagram from '$lib/components/PipelineDiagram.svelte';
+	import ToolCarousel from '$lib/components/ToolCarousel.svelte';
+	import FeatureCard from '$lib/components/FeatureCard.svelte';
+	import { loadRepoStats, type RepoStats } from '$lib/github';
+	import { rollCounter } from '$lib/artist/motion';
+	import { REPO } from '$lib/site';
+
 	let { data } = $props();
+	const landing = $derived(data.landing);
 
-	const totalDocs = $derived(data.sections.reduce((sum: number, section: { count: number }) => sum + section.count, 0));
+	let stats = $state<RepoStats | null>(null);
+	let starsEl: HTMLSpanElement | undefined = $state();
+	let forksEl: HTMLSpanElement | undefined = $state();
 
-	const launchChapters = [
-		{
-			title: 'Polymorphic Runtime Core',
-			copy: 'Mutant delivers a hardened runtime with polymorphic bytecode and execution controls engineered for resilient operation.',
-			label: 'Runtime Focus',
-			primaryHref: 'https://github.com/aoiflux/mutant',
-			primaryText: 'View Runtime In GitHub',
-			secondaryHref: '/docs/runtime',
-			secondaryText: 'Read Runtime Docs'
-		},
-		{
-			title: 'Security As Architecture',
-			copy: 'Security is not bolted on. It is part of the language and platform story from probes to sandbox controls to trust flows.',
-			label: 'Security Focus',
-			primaryHref: 'https://github.com/aoiflux/mutant',
-			primaryText: 'Inspect Security Design',
-			secondaryHref: '/docs/security',
-			secondaryText: 'Open Security Docs'
-		},
-		{
-			title: 'Tooling Ready For Teams',
-			copy: 'From LSP enablement to REPL workflows, Mutant gives integrators a practical path from exploration to production workflows.',
-			label: 'Tooling Focus',
-			primaryHref: 'https://github.com/aoiflux/mutant',
-			primaryText: 'Explore Source & Workflow',
-			secondaryHref: '/docs/tooling',
-			secondaryText: 'See Tooling Docs'
-		}
-	];
+	onMount(async () => {
+		stats = await loadRepoStats();
+	});
+
+	// M7 — counters roll once the numbers land and the band is on screen.
+	$effect(() => {
+		if (!stats || !starsEl || !forksEl) return;
+		const stops = [rollCounter(starsEl, stats.stars), rollCounter(forksEl, stats.forks)];
+		return () => stops.forEach((stop) => stop());
+	});
 </script>
 
-<section class="panel mutant-launch" style="margin-bottom: 1rem;">
-	<div class="mutant-spotlight" aria-hidden="true"></div>
-	<p class="kicker">Mutant Platform</p>
-	<h1 class="big-title">Build With Mutant</h1>
-	<p class="lede">
-		A secure-by-design language and runtime stack with deep documentation, practical workflows, and architecture
-		clarity. Start at the source and move directly into implementation.
-	</p>
-	<div class="hero-evidence-grid" style="margin-top: 0.95rem;">
-		<div class="hero-evidence-item">
-			<span class="doc-nav-label">Repository</span>
-			<strong>aoiflux/mutant</strong>
-		</div>
-		<div class="hero-evidence-item">
-			<span class="doc-nav-label">Documentation Surface</span>
-			<strong>{totalDocs} pages mapped</strong>
-		</div>
-		<div class="hero-evidence-item">
-			<span class="doc-nav-label">Tracks</span>
-			<strong>Runtime, Security, Tooling</strong>
-		</div>
-	</div>
-	<div class="cta-cluster">
-		<a class="cta-primary" href="https://github.com/aoiflux/mutant" target="_blank" rel="noopener noreferrer">
-			Go To Mutant GitHub
-		</a>
-		<a class="cta-secondary" href="/docs">Open Documentation</a>
-		<a class="cta-secondary" href="/playground">Try Playground</a>
-	</div>
-</section>
+<SeoHead
+	title="Mutant documentation"
+	description={landing.hero.lede || undefined}
+/>
 
-<section class="snap-deck" style="margin-top: 1rem;">
-	{#each launchChapters as chapter}
-		<article class="panel snap-chapter">
-			<p class="kicker">{chapter.label}</p>
-			<h2 class="chapter-title">{chapter.title}</h2>
-			<p class="lede" style="margin-top: 0.4rem;">{chapter.copy}</p>
+<!-- ── Hero ─────────────────────────────────────────────────────────────── -->
+<section class="hero">
+	<HeroField />
+
+	<div class="hero-inner">
+		<div class="hero-copy">
+			<p class="eyebrow">{landing.hero.kicker}</p>
+			<h1 class="big-title">{landing.hero.title}</h1>
+			<p class="lede" style="margin-top: var(--space-4);">{landing.hero.lede}</p>
+
 			<div class="cta-cluster">
-				<a
-					class="cta-primary"
-					href={chapter.primaryHref}
-					target="_blank"
-					rel="noopener noreferrer"
-				>
-					{chapter.primaryText}
-				</a>
-				<a class="cta-secondary" href={chapter.secondaryHref}>{chapter.secondaryText}</a>
+				<a class="btn btn-primary" href="/docs">Get Mutant</a>
+				<a class="btn btn-secondary" href={REPO.url} target="_blank" rel="noopener noreferrer">Repo ↗</a>
 			</div>
-		</article>
-	{/each}
+
+			{#if landing.hero.sourcePath && landing.hero.href}
+				<p style="margin-top: var(--space-6);">
+					<a class="source-note" href={landing.hero.href}>from {landing.hero.sourcePath} ↗</a>
+				</p>
+			{/if}
+		</div>
+
+		<div class="mascot-slot" aria-hidden="true">
+			<Mascot size={168} />
+		</div>
+	</div>
 </section>
 
-<section class="grid" style="margin-top: 1rem;">
-	{#each data.sections as section}
-		<article class="card">
-			<h3>{section.title}</h3>
-			<p>{section.description}</p>
-			<div class="meta-row">
-				<span class="meta-chip">{section.count} pages</span>
-			</div>
-			<p style="margin-bottom: 0; margin-top: 0.9rem;">
-				<a href={`/docs/${section.section}`}>Explore {section.title}</a>
-			</p>
-		</article>
-	{/each}
-</section>
+<!-- ── What is Mutant · Pipeline ────────────────────────────────────────── -->
+<section class="band">
+	<div class="two-up">
+		<div data-fx="fade-up">
+			<p class="eyebrow">What is Mutant</p>
+			<p style="max-width: 46ch;">{landing.whatIs.summary}</p>
 
-<section class="panel" style="margin-top: 1rem;">
-	<p class="kicker">Reading Paths</p>
-	<h2 style="margin-top: 0; text-transform: uppercase;">Pick A Path</h2>
-	<div class="grid" style="margin-top: 0.8rem;">
-		{#each data.readingPaths as path}
-			<article class="card" style="grid-column: span 4;">
-				<h3>{path.title}</h3>
-				<p>{path.description}</p>
-				<div class="meta-row">
-					<span class="meta-chip">Audience: {path.audience}</span>
-				</div>
-				<div class="related-docs-list" style="margin-top: 0.75rem;">
-					{#each path.steps as step, index}
-						<a class="related-doc-link" href={`/docs/${step.section}/${step.slug}`}>
-							<span class="doc-nav-label">Step {index + 1}</span>
-							<strong>{step.title}</strong>
-						</a>
+			{#if landing.whatIs.bullets.length}
+				<ul style="margin: 0 0 var(--space-4); padding-left: var(--space-4); font-size: 14px; color: var(--ink-soft);">
+					{#each landing.whatIs.bullets as bullet (bullet)}
+						<li>{bullet}</li>
 					{/each}
-				</div>
-			</article>
+				</ul>
+			{/if}
+
+			{#if landing.whatIs.sourcePath && landing.whatIs.href}
+				<a class="source-note" href={landing.whatIs.href}>from {landing.whatIs.sourcePath} ↗</a>
+			{/if}
+		</div>
+
+		<div data-fx="fade-up">
+			<p class="eyebrow">Pipeline</p>
+			<!-- M3 — traced left to right when the band scrolls into view. -->
+			<PipelineDiagram nodes={landing.pipeline} label="Source is parsed to an AST, lowered to bytecode IR, then executed" />
+			<p class="text-muted" style="margin-top: var(--space-4); font-size: 13px; max-width: 42ch;">
+				Source is parsed to an AST, lowered to the bytecode IR, then executed by the VM — with polymorphic
+				stages applied on the way through.
+			</p>
+			<a class="source-note" href="/docs/runtime/bytecode_ir">Bytecode IR reference ↗</a>
+		</div>
+	</div>
+</section>
+
+<!-- ── Why Mutant ───────────────────────────────────────────────────────── -->
+<section class="band">
+	<p class="eyebrow">Why Mutant · four value props</p>
+	<div class="four-up" data-fx="fade-up" data-fx-stagger="90">
+		{#each landing.valueProps as prop (prop.title)}
+			<FeatureCard title={prop.title} body={prop.body} href={prop.href} />
 		{/each}
 	</div>
 </section>
 
-<section class="panel" style="margin-top: 1rem;">
-	<p class="kicker">Experimental Design</p>
-	<h2 style="margin-top: 0; text-transform: uppercase;">Theme Lab</h2>
-	<p class="lede" style="margin-top: 0.25rem; max-width: 60ch;">
-		The full animation-heavy theme showcase now lives on a dedicated route so this landing page stays focused on
-		driving discovery of Mutant and its source repository.
-	</p>
-	<p style="margin-bottom: 0; margin-top: 0.95rem;">
-		<a class="cta-secondary" href="/theme-lab">Open Theme Lab</a>
-	</p>
+<!-- ── Tool carousel ────────────────────────────────────────────────────── -->
+<section class="band">
+	<div class="band-head">
+		<p class="eyebrow" style="margin-bottom: var(--space-4);">Tool carousel · drag to scroll</p>
+		<a class="source-note" href="/docs">All {landing.totalDocs} docs ↗</a>
+	</div>
+	<ToolCarousel items={landing.tools} />
 </section>
 
-<section class="panel" style="margin-top: 1rem;">
-	<p class="kicker">Themes</p>
-	<h2 style="margin-top: 0; text-transform: uppercase;">Cross-Link By Theme</h2>
-	<div class="related-docs-list">
-		{#each data.themes as theme}
-			<a class="related-doc-link" href={`/docs/themes/${theme.theme}`}>
-				<strong>{theme.title}</strong><br />
-				<span style="font-size: 0.9rem; color: var(--ink-soft);">{theme.description}</span><br />
-				<span class="doc-nav-label">{theme.count} docs</span>
-			</a>
-		{/each}
+<!-- ── Extension · Repo ─────────────────────────────────────────────────── -->
+<section class="band" style="border-bottom: 0;">
+	<div class="two-up">
+		<div data-fx="fade-up">
+			<p class="eyebrow">VSCode extension</p>
+			<h2 class="chapter-title">{landing.extension.title}</h2>
+			<p class="lede" style="font-size: 15px; margin-top: var(--space-3);">{landing.extension.summary}</p>
+			<div class="cta-cluster">
+				<!-- M6 — the install CTA pulses. -->
+				<a class="btn btn-primary pulse" href="/extension">Install</a>
+				{#if landing.extension.href}
+					<a class="btn btn-ghost" href={landing.extension.href}>Onboarding guide</a>
+				{/if}
+			</div>
+			{#if landing.extension.sourcePath}
+				<p style="margin-top: var(--space-4);">
+					<span class="source-note">from {landing.extension.sourcePath}</span>
+				</p>
+			{/if}
+		</div>
+
+		<div data-fx="fade-up">
+			<p class="eyebrow">Repo</p>
+			{#if stats}
+				<div class="repo-stats">
+					<Blueprint class="stat-card">
+						<span class="stat-value" bind:this={starsEl}>0</span>
+						<span class="stat-label">Stars</span>
+					</Blueprint>
+					<Blueprint class="stat-card">
+						<span class="stat-value" bind:this={forksEl}>0</span>
+						<span class="stat-label">Forks</span>
+					</Blueprint>
+				</div>
+			{:else}
+				<!-- No counters rather than zeros: the API is rate-limited per IP and
+				     a real repo reading "0 stars" is worse than reading nothing. -->
+				<p class="text-muted" style="font-size: 14px;">{REPO.slug}</p>
+			{/if}
+
+			<div class="cta-cluster">
+				<a class="btn btn-secondary" href={REPO.url} target="_blank" rel="noopener noreferrer">
+					Browse repo ↗
+				</a>
+			</div>
+		</div>
 	</div>
 </section>

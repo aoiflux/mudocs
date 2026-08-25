@@ -9,5 +9,8 @@ export async function load({ params }) {
 		throw error(404, 'Document not found');
 	}
 
-	return { doc };
+	// `raw` is only needed by the Source tab, and for a doc like BYTECODE_IR it is
+	// another 59 KB in the payload. The tab fetches it from ./raw on first open.
+	const { raw: _raw, ...clientDoc } = doc;
+	return { doc: clientDoc };
 }
