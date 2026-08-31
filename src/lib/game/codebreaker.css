@@ -1,0 +1,1378 @@
+/*
+ * Mutant Codebreaker — the overlay's entire stylesheet.
+ *
+ * Imported only from `CodebreakerOverlay.svelte`, which is itself dynamically
+ * imported, so Vite emits this as a separate CSS chunk that no ordinary page
+ * visitor ever downloads.
+ *
+ * Two rules govern this file:
+ *
+ *   1. Every custom property is declared on `.cb-root`, never on `:root`. The
+ *      game opens from light, dark or artist, and must look identical in all
+ *      three; inheriting site tokens would make it look like three games.
+ *   2. Every selector is prefixed `cb-`. Nothing here can reach the page behind
+ *      the overlay, and nothing is added to `app.css`.
+ *
+ * The four glitch/scanline/grain keyframes are copied from `artist-fx.css`,
+ * renamed under the `cb-` prefix and *ungated* — the originals only animate
+ * under `:root[data-theme='artist']`, which is not where this game opens from.
+ */
+
+/* ==========================================================================
+   Tokens
+   ========================================================================== */
+
+.cb-root {
+	color-scheme: dark;
+
+	--cb-void: #05070c;
+	--cb-panel: #0b101b;
+	--cb-panel-2: #111827;
+	--cb-hairline: #223049;
+
+	--cb-neon: #46f1ff;
+	--cb-magenta: #ff2eb8;
+	--cb-blue: #4a7dff;
+	--cb-amber: #ffd93b;
+	--cb-red: #ff3d5a;
+
+	--cb-ink: #e9f2ff;
+	--cb-ink-soft: #8fa2c4;
+
+	/* The site already loads both — no webfont is added by this feature. */
+	--cb-mono: var(--font-mono);
+	--cb-display: var(--font-heading);
+
+	--cb-glow-sm: 0 0 8px color-mix(in srgb, var(--cb-neon) 45%, transparent);
+	--cb-glow-md: 0 0 20px color-mix(in srgb, var(--cb-neon) 38%, transparent);
+
+	--cb-ease-snap: cubic-bezier(0.85, 0, 0.15, 1);
+	--cb-ease-micro: cubic-bezier(0.34, 1.56, 0.64, 1);
+	--cb-ease-apple: cubic-bezier(0.22, 1, 0.36, 1);
+
+	--cb-dur-micro: 140ms;
+	--cb-dur-fast: 320ms;
+	--cb-dur-base: 620ms;
+
+	--cb-z: 200;
+
+	/*
+	 * Mapped 1:1 from the TextMate scope names in `mutant-grammar.ts`, so the
+	 * colours here and Shiki's colours in the docs agree by construction.
+	 */
+	--cb-tok-keyword: #ff2eb8; /* keyword.control.mutant */
+	--cb-tok-storage: #4a7dff; /* storage.type.mutant */
+	--cb-tok-type: #7cf7c8; /* entity.name.type.mutant */
+	--cb-tok-fn: #46f1ff; /* entity.name.function.mutant */
+	--cb-tok-macro: #ff7de9; /* keyword.other.macro.mutant */
+	--cb-tok-operator: #b9c6de; /* keyword.operator.mutant */
+	--cb-tok-assign: #d7e1f2; /* keyword.operator.assignment.mutant */
+	--cb-tok-number: #ffd93b; /* constant.numeric.mutant */
+	--cb-tok-constant: #ffa86b; /* constant.language.mutant */
+	--cb-tok-string: #9ef07a; /* string.quoted.double.mutant */
+	--cb-tok-comment: #5a6c8c; /* comment.line.double-slash.mutant */
+	--cb-tok-punct: #6d7f9c;
+
+	position: fixed;
+	inset: 0;
+	z-index: var(--cb-z);
+	display: block;
+	font-family: var(--cb-mono);
+	color: var(--cb-ink);
+	/*
+	 * NOTE: `position: fixed` resolves against the viewport only because no
+	 * ancestor of `.site-footer` establishes a containing block (no transform,
+	 * filter or `contain: paint`). If one is ever added there, this overlay must
+	 * move up to `+layout.svelte`.
+	 */
+}
+
+/* ==========================================================================
+   Structure
+   ========================================================================== */
+
+.cb-backdrop {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	appearance: none;
+	cursor: default;
+	background: color-mix(in srgb, var(--cb-void) 86%, transparent);
+	backdrop-filter: blur(6px);
+	-webkit-backdrop-filter: blur(6px);
+}
+
+.cb-backdrop:focus-visible {
+	outline: 1px solid var(--cb-neon);
+	outline-offset: -3px;
+}
+
+.cb-shell {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	/* The gap *is* the hairline: 1px of the background shows between panes. */
+	gap: 1px;
+	background: var(--cb-hairline);
+	grid-template-columns: minmax(0, 1fr) minmax(320px, 0.82fr);
+	grid-template-rows: 46px minmax(0, 1fr) minmax(148px, 26vh);
+	grid-template-areas:
+		'bar bar'
+		'term tray'
+		'stream stream';
+}
+
+.cb-particles,
+.cb-drag-layer {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+}
+
+.cb-particles {
+	z-index: 3;
+	/* A canvas is a replaced element: `inset: 0` alone leaves `width: auto`
+	   resolving to the *intrinsic* size, i.e. the `width`/`height` attributes
+	   `particles.ts` writes. Pinning it to the containing block here means the
+	   layout box can never be driven by the backing store. */
+	width: 100%;
+	height: 100%;
+}
+
+.cb-drag-layer {
+	z-index: 4;
+}
+
+/* ==========================================================================
+   Panes
+   ========================================================================== */
+
+.cb-pane {
+	position: relative;
+	min-width: 0;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	background: var(--cb-panel);
+	border-radius: 0;
+}
+
+.cb-pane-head {
+	flex: none;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	padding: 0.5rem 0.85rem;
+	border-bottom: 1px solid var(--cb-hairline);
+	font-family: var(--cb-display);
+	font-size: 0.72rem;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
+	color: var(--cb-ink-soft);
+}
+
+.cb-pane-body {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: auto;
+	overscroll-behavior: contain;
+	padding: 0.85rem;
+}
+
+/* Registration marks — the `.blueprint > .corner` geometry from `app.css`,
+   re-declared locally so this never depends on `.blueprint` being present. */
+.cb-corner {
+	position: absolute;
+	width: 11px;
+	height: 11px;
+	color: color-mix(in srgb, var(--cb-neon) 42%, transparent);
+	pointer-events: none;
+	z-index: 2;
+}
+
+.cb-corner::before,
+.cb-corner::after {
+	content: '';
+	position: absolute;
+	background: currentColor;
+}
+
+.cb-corner::before {
+	left: 5px;
+	top: 0;
+	width: 1px;
+	height: 100%;
+}
+
+.cb-corner::after {
+	top: 5px;
+	left: 0;
+	width: 100%;
+	height: 1px;
+}
+
+.cb-corner.tl {
+	top: -6px;
+	left: -6px;
+}
+.cb-corner.tr {
+	top: -6px;
+	right: -6px;
+}
+.cb-corner.bl {
+	bottom: -6px;
+	left: -6px;
+}
+.cb-corner.br {
+	bottom: -6px;
+	right: -6px;
+}
+
+/* ==========================================================================
+   Top bar
+   ========================================================================== */
+
+.cb-bar {
+	grid-area: bar;
+	display: flex;
+	align-items: center;
+	gap: 0.9rem;
+	padding: 0 0.6rem 0 0.85rem;
+	background: var(--cb-panel-2);
+	font-family: var(--cb-display);
+	font-size: 0.74rem;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+.cb-bar-mark {
+	flex: none;
+	color: var(--cb-neon);
+	filter: drop-shadow(0 0 6px color-mix(in srgb, var(--cb-neon) 60%, transparent));
+	transition: filter var(--cb-dur-micro) var(--cb-ease-micro);
+}
+
+.cb-bar-title {
+	flex: none;
+	color: var(--cb-ink);
+}
+
+.cb-bar-progress {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	color: var(--cb-ink-soft);
+}
+
+.cb-bar-actions {
+	flex: none;
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+}
+
+.cb-wave {
+	flex: none;
+	display: block;
+	color: var(--cb-magenta);
+}
+
+.cb-wave rect {
+	fill: currentColor;
+	transition:
+		height var(--cb-dur-fast) var(--cb-ease-snap),
+		y var(--cb-dur-fast) var(--cb-ease-snap);
+}
+
+/* ==========================================================================
+   Buttons & chips
+   ========================================================================== */
+
+.cb-btn {
+	appearance: none;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	padding: 0.34rem 0.7rem;
+	border: 1px solid var(--cb-hairline);
+	border-radius: 0;
+	background: transparent;
+	color: var(--cb-ink-soft);
+	font-family: var(--cb-display);
+	font-size: 0.72rem;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
+	cursor: pointer;
+	transition:
+		border-color var(--cb-dur-micro) var(--cb-ease-apple),
+		color var(--cb-dur-micro) var(--cb-ease-apple),
+		box-shadow var(--cb-dur-micro) var(--cb-ease-apple);
+}
+
+.cb-btn:hover:not(:disabled),
+.cb-btn:focus-visible {
+	border-color: var(--cb-neon);
+	color: var(--cb-ink);
+	box-shadow: var(--cb-glow-sm);
+	outline: none;
+}
+
+.cb-btn:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+.cb-btn-primary {
+	border-color: color-mix(in srgb, var(--cb-neon) 60%, transparent);
+	color: var(--cb-neon);
+}
+
+.cb-btn[aria-pressed='true'] {
+	color: var(--cb-neon);
+	border-color: color-mix(in srgb, var(--cb-neon) 60%, transparent);
+}
+
+.cb-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	padding: 0.24rem 0.55rem;
+	border: 1px solid var(--cb-hairline);
+	font-size: 0.66rem;
+	letter-spacing: 0.14em;
+	color: var(--cb-ink-soft);
+	position: relative;
+	overflow: hidden;
+}
+
+.cb-chip[data-status='ready'] {
+	border-color: color-mix(in srgb, var(--cb-neon) 55%, transparent);
+	color: var(--cb-neon);
+}
+
+.cb-chip[data-status='failed'],
+.cb-chip[data-status='disabled'] {
+	border-color: color-mix(in srgb, var(--cb-red) 45%, transparent);
+	color: color-mix(in srgb, var(--cb-red) 82%, var(--cb-ink));
+}
+
+.cb-chip[data-status='downloading'] {
+	border-color: color-mix(in srgb, var(--cb-amber) 55%, transparent);
+	color: var(--cb-amber);
+}
+
+.cb-chip.is-sweeping::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(
+		100deg,
+		transparent 0%,
+		color-mix(in srgb, var(--cb-amber) 22%, transparent) 45%,
+		transparent 70%
+	);
+	animation: cb-chip-sweep 1.6s linear infinite;
+}
+
+/* ==========================================================================
+   Terminal pane
+   ========================================================================== */
+
+.cb-term {
+	grid-area: term;
+	background:
+		radial-gradient(
+			120% 90% at 50% 0%,
+			color-mix(in srgb, var(--cb-blue) 8%, transparent) 0%,
+			transparent 62%
+		),
+		var(--cb-panel);
+}
+
+/* Scanlines and grain. Both are decorative overlays above the pane content but
+   below the interactive layers, and neither takes pointer events. */
+.cb-crt::before,
+.cb-crt::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	z-index: 1;
+}
+
+.cb-crt::before {
+	background: repeating-linear-gradient(
+		to bottom,
+		color-mix(in srgb, var(--cb-void) 55%, transparent) 0px,
+		color-mix(in srgb, var(--cb-void) 55%, transparent) 1px,
+		transparent 1px,
+		transparent 3px
+	);
+	opacity: 0.5;
+	animation: cb-scanline-flicker 5.4s steps(1) infinite;
+}
+
+.cb-crt::after {
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+	opacity: 0.05;
+	mix-blend-mode: overlay;
+	animation: cb-grain-jitter 620ms steps(2) infinite;
+}
+
+.cb-brief {
+	margin: 0 0 0.9rem;
+	font-size: 0.82rem;
+	line-height: 1.6;
+	color: var(--cb-ink-soft);
+	white-space: pre-wrap;
+	position: relative;
+	z-index: 2;
+}
+
+.cb-brief strong {
+	color: var(--cb-ink);
+	font-weight: 600;
+}
+
+.cb-source {
+	position: relative;
+	z-index: 2;
+	margin: 0;
+	font-family: var(--cb-mono);
+	font-size: 0.84rem;
+	line-height: 2;
+	tab-size: 4;
+}
+
+.cb-source.is-sweeping {
+	background: linear-gradient(
+		100deg,
+		transparent 20%,
+		color-mix(in srgb, var(--cb-neon) 14%, transparent) 45%,
+		transparent 70%
+	);
+	background-size: 300% 100%;
+	animation: cb-holo-sweep 240ms linear 1;
+}
+
+.cb-line {
+	display: flex;
+	align-items: baseline;
+	gap: 0.75rem;
+	white-space: pre;
+}
+
+.cb-ln {
+	flex: none;
+	width: 1.6rem;
+	text-align: right;
+	color: color-mix(in srgb, var(--cb-ink-soft) 45%, transparent);
+	font-size: 0.72rem;
+	user-select: none;
+}
+
+.cb-line-body {
+	min-width: 0;
+	white-space: pre;
+	overflow-x: auto;
+	overscroll-behavior: contain;
+}
+
+.cb-out {
+	position: relative;
+	z-index: 2;
+	margin: 1rem 0 0;
+	padding-top: 0.75rem;
+	border-top: 1px dashed var(--cb-hairline);
+	font-size: 0.8rem;
+	line-height: 1.7;
+	color: color-mix(in srgb, var(--cb-tok-string) 85%, var(--cb-ink));
+	white-space: pre-wrap;
+}
+
+/* ==========================================================================
+   Tokens (fixed text and tile faces share these colours)
+   ========================================================================== */
+
+.cb-tok {
+	color: var(--cb-ink);
+}
+
+.cb-tok[data-cat='keyword'] {
+	color: var(--cb-tok-keyword);
+}
+.cb-tok[data-cat='storage'] {
+	color: var(--cb-tok-storage);
+}
+.cb-tok[data-cat='type'] {
+	color: var(--cb-tok-type);
+}
+.cb-tok[data-cat='function'] {
+	color: var(--cb-tok-fn);
+}
+.cb-tok[data-cat='macro'] {
+	color: var(--cb-tok-macro);
+}
+.cb-tok[data-cat='operator'] {
+	color: var(--cb-tok-operator);
+}
+.cb-tok[data-cat='assignment'] {
+	color: var(--cb-tok-assign);
+}
+.cb-tok[data-cat='number'] {
+	color: var(--cb-tok-number);
+}
+.cb-tok[data-cat='constant'] {
+	color: var(--cb-tok-constant);
+}
+.cb-tok[data-cat='string'] {
+	color: var(--cb-tok-string);
+}
+.cb-tok[data-cat='comment'] {
+	color: var(--cb-tok-comment);
+}
+.cb-tok[data-cat='punctuation'] {
+	color: var(--cb-tok-punct);
+}
+.cb-tok[data-cat='identifier'] {
+	color: var(--cb-ink);
+}
+
+/* ==========================================================================
+   Slots
+   ========================================================================== */
+
+.cb-slots {
+	display: contents;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.cb-slot {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	vertical-align: baseline;
+	min-height: 1.65rem;
+	padding: 0 0.35rem;
+	border: 1px dashed color-mix(in srgb, var(--cb-ink-soft) 45%, transparent);
+	border-radius: 0;
+	background: color-mix(in srgb, var(--cb-void) 55%, transparent);
+	color: var(--cb-ink-soft);
+	font-family: var(--cb-mono);
+	font-size: 0.84rem;
+	line-height: 1;
+	cursor: pointer;
+	appearance: none;
+	transition:
+		border-color var(--cb-dur-micro) var(--cb-ease-apple),
+		box-shadow var(--cb-dur-micro) var(--cb-ease-apple),
+		background-color var(--cb-dur-micro) var(--cb-ease-apple);
+}
+
+.cb-slot:focus-visible {
+	outline: 1px solid var(--cb-neon);
+	outline-offset: 2px;
+}
+
+.cb-slot.is-armed {
+	border-style: solid;
+	border-color: var(--cb-neon);
+	box-shadow: 0 0 12px color-mix(in srgb, var(--cb-neon) 55%, transparent);
+}
+
+.cb-slot.is-filled {
+	border-style: solid;
+	border-color: color-mix(in srgb, var(--cb-ink-soft) 55%, transparent);
+	background: color-mix(in srgb, var(--cb-panel-2) 90%, transparent);
+}
+
+.cb-slot.is-verified {
+	border-color: var(--cb-neon);
+	box-shadow: var(--cb-glow-md);
+}
+
+.cb-slot.is-error {
+	border-style: solid;
+	border-color: var(--cb-red);
+	box-shadow: 0 0 12px color-mix(in srgb, var(--cb-red) 45%, transparent);
+}
+
+.cb-slot.is-cursor {
+	border-color: var(--cb-amber);
+}
+
+/* ==========================================================================
+   Token tray
+   ========================================================================== */
+
+.cb-tray {
+	grid-area: tray;
+	background: var(--cb-panel-2);
+}
+
+.cb-tray-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+	gap: 0.5rem;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.cb-tile {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 42px;
+	padding: 0.4rem 0.3rem;
+	border: 1px solid var(--cb-hairline);
+	border-radius: 0;
+	background: color-mix(in srgb, var(--cb-void) 60%, transparent);
+	font-family: var(--cb-mono);
+	font-size: 0.82rem;
+	text-align: center;
+	overflow: hidden;
+	cursor: grab;
+	touch-action: none;
+	user-select: none;
+	transition:
+		border-color var(--cb-dur-micro) var(--cb-ease-apple),
+		box-shadow var(--cb-dur-micro) var(--cb-ease-apple),
+		transform var(--cb-dur-micro) var(--cb-ease-micro);
+}
+
+/* The 12% holographic sweep — the tray is the only surface with a gradient,
+   which is exactly why it reads as the interactive one. */
+.cb-tile::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(
+		100deg,
+		transparent 0%,
+		color-mix(in srgb, var(--cb-neon) 12%, transparent) 45%,
+		transparent 70%
+	);
+	background-size: 300% 100%;
+	animation: cb-holo-sweep 4.2s linear infinite;
+	pointer-events: none;
+}
+
+.cb-tile:hover,
+.cb-tile:focus-visible {
+	border-color: var(--cb-neon);
+	box-shadow: var(--cb-glow-sm);
+	outline: none;
+}
+
+.cb-tile.is-selected {
+	border-color: var(--cb-magenta);
+	box-shadow: 0 0 14px color-mix(in srgb, var(--cb-magenta) 50%, transparent);
+}
+
+.cb-tile.is-cursor {
+	border-color: color-mix(in srgb, var(--cb-neon) 70%, transparent);
+}
+
+.cb-tile-label {
+	position: relative;
+	z-index: 1;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 100%;
+}
+
+/* Drag proxy and its source ghost. `dnd.ts` adds both class names. */
+.cb-tile-ghost {
+	opacity: 0.22;
+}
+
+.cb-tile-proxy {
+	position: fixed;
+	top: 0;
+	left: 0;
+	margin: 0;
+	pointer-events: none;
+	will-change: transform;
+	border-color: var(--cb-neon);
+	box-shadow: var(--cb-glow-md);
+	z-index: 1;
+}
+
+/* ==========================================================================
+   Compiler stream
+   ========================================================================== */
+
+.cb-stream {
+	grid-area: stream;
+	background: var(--cb-panel);
+	flex-direction: row;
+}
+
+.cb-stream-side {
+	flex: none;
+	width: clamp(190px, 30%, 280px);
+	display: flex;
+	flex-direction: column;
+	gap: 0.6rem;
+	padding: 0.75rem;
+	border-right: 1px solid var(--cb-hairline);
+	min-height: 0;
+	overflow: auto;
+	overscroll-behavior: contain;
+}
+
+.cb-stream-log {
+	flex: 1 1 auto;
+	min-width: 0;
+	min-height: 0;
+	overflow: auto;
+	overscroll-behavior: contain;
+	padding: 0.75rem 0.9rem;
+	font-size: 0.78rem;
+	line-height: 1.75;
+}
+
+.cb-log-line {
+	display: flex;
+	gap: 0.55rem;
+	white-space: pre-wrap;
+	word-break: break-word;
+	color: var(--cb-ink-soft);
+}
+
+.cb-log-line[data-kind='error'] {
+	color: var(--cb-red);
+}
+.cb-log-line[data-kind='warning'] {
+	color: var(--cb-amber);
+}
+.cb-log-line[data-kind='ok'] {
+	color: var(--cb-tok-string);
+}
+.cb-log-line[data-kind='info'] {
+	color: var(--cb-tok-type);
+}
+.cb-log-line[data-kind='wasm'] {
+	color: var(--cb-tok-fn);
+}
+.cb-log-line[data-kind='bytecode'] {
+	color: var(--cb-magenta);
+}
+
+.cb-log-source {
+	flex: none;
+	color: color-mix(in srgb, var(--cb-ink-soft) 60%, transparent);
+	font-size: 0.7rem;
+	letter-spacing: 0.08em;
+}
+
+.cb-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+}
+
+/* ==========================================================================
+   Pipeline strip
+   ========================================================================== */
+
+.cb-pipeline {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.3rem;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.cb-stage {
+	flex: 1 1 auto;
+	padding: 0.24rem 0.4rem;
+	border: 1px solid var(--cb-hairline);
+	font-family: var(--cb-display);
+	font-size: 0.62rem;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+	text-align: center;
+	color: color-mix(in srgb, var(--cb-ink-soft) 55%, transparent);
+	transition:
+		color var(--cb-dur-micro) var(--cb-ease-apple),
+		border-color var(--cb-dur-micro) var(--cb-ease-apple),
+		box-shadow var(--cb-dur-micro) var(--cb-ease-apple),
+		transform var(--cb-dur-micro) var(--cb-ease-micro);
+}
+
+.cb-stage.is-reached {
+	color: var(--cb-neon);
+	border-color: color-mix(in srgb, var(--cb-neon) 55%, transparent);
+	box-shadow: var(--cb-glow-sm);
+}
+
+.cb-stage.is-failed {
+	color: var(--cb-red);
+	border-color: var(--cb-red);
+	box-shadow: 0 0 10px color-mix(in srgb, var(--cb-red) 45%, transparent);
+	animation: cb-stage-flash 480ms steps(1) 3;
+}
+
+.cb-stage.is-complete {
+	transform: scale(1.05);
+}
+
+/* ==========================================================================
+   Boot / prompt / refusal
+   ========================================================================== */
+
+.cb-boot {
+	position: absolute;
+	inset: 0;
+	z-index: 5;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	justify-content: center;
+	gap: 0.9rem;
+	padding: clamp(1.5rem, 6vw, 5rem);
+	background: var(--cb-void);
+	font-family: var(--cb-mono);
+	font-size: clamp(0.8rem, 2.4vw, 0.95rem);
+	line-height: 1.9;
+}
+
+.cb-boot-text {
+	margin: 0;
+	white-space: pre-wrap;
+	color: var(--cb-ink);
+	max-width: 62ch;
+}
+
+.cb-boot-text .cb-dim {
+	color: var(--cb-ink-soft);
+}
+
+.cb-boot-choices {
+	display: flex;
+	gap: 0.5rem;
+	margin-top: 0.4rem;
+}
+
+.cb-boot-skip {
+	margin-top: 0.6rem;
+	color: color-mix(in srgb, var(--cb-ink-soft) 70%, transparent);
+	font-size: 0.72rem;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+/* ==========================================================================
+   Reward card
+   ========================================================================== */
+
+.cb-reward {
+	position: absolute;
+	inset: 0;
+	z-index: 6;
+	display: grid;
+	place-items: center;
+	padding: 1.25rem;
+	background: color-mix(in srgb, var(--cb-void) 78%, transparent);
+	backdrop-filter: blur(4px);
+	-webkit-backdrop-filter: blur(4px);
+}
+
+.cb-reward-card {
+	position: relative;
+	width: min(560px, 100%);
+	max-height: 100%;
+	overflow: auto;
+	overscroll-behavior: contain;
+	padding: clamp(1.1rem, 3vw, 1.9rem);
+	border: 1px solid color-mix(in srgb, var(--cb-neon) 45%, transparent);
+	background:
+		linear-gradient(
+			140deg,
+			color-mix(in srgb, var(--cb-neon) 10%, transparent) 0%,
+			transparent 42%,
+			color-mix(in srgb, var(--cb-magenta) 10%, transparent) 100%
+		),
+		color-mix(in srgb, var(--cb-panel-2) 92%, transparent);
+	box-shadow: var(--cb-glow-md);
+	transform-style: preserve-3d;
+}
+
+.cb-reward-title {
+	margin: 0 0 0.35rem;
+	font-family: var(--cb-display);
+	font-size: clamp(1.5rem, 5vw, 2.3rem);
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--cb-ink);
+}
+
+.cb-reward-sub {
+	margin: 0 0 1.1rem;
+	color: var(--cb-ink-soft);
+	font-size: 0.82rem;
+	line-height: 1.7;
+}
+
+.cb-reward-stats {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+	gap: 1px;
+	margin: 0 0 1.1rem;
+	background: var(--cb-hairline);
+	border: 1px solid var(--cb-hairline);
+}
+
+.cb-stat {
+	padding: 0.6rem 0.7rem;
+	background: var(--cb-panel);
+}
+
+.cb-stat dt {
+	font-family: var(--cb-display);
+	font-size: 0.62rem;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
+	color: var(--cb-ink-soft);
+}
+
+.cb-stat dd {
+	margin: 0.2rem 0 0;
+	font-size: 1.15rem;
+	color: var(--cb-neon);
+}
+
+.cb-reward-links {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+}
+
+.cb-reward-links a {
+	color: var(--cb-neon);
+	text-decoration: none;
+	border-bottom: 1px solid color-mix(in srgb, var(--cb-neon) 45%, transparent);
+	font-size: 0.78rem;
+}
+
+.cb-reward-links a:hover,
+.cb-reward-links a:focus-visible {
+	border-bottom-color: var(--cb-neon);
+	text-shadow: var(--cb-glow-sm);
+}
+
+/* ==========================================================================
+   Utilities
+   ========================================================================== */
+
+.cb-visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	clip-path: inset(50%);
+	white-space: nowrap;
+	border: 0;
+}
+
+/*
+ * `attachTilt` and `createTypewriter` from `motion.ts` add these class names,
+ * but their rules live in `artist-fx.css`, which this overlay does not load.
+ * Re-declared locally, minus the artist theme gate.
+ */
+.cb-root .fx-tilt {
+	transform-style: preserve-3d;
+	will-change: transform;
+}
+
+.cb-root .fx-typewriter {
+	white-space: pre-wrap;
+}
+
+.cb-root .fx-typewriter::after {
+	content: '▍';
+	display: inline-block;
+	margin-left: 0.06em;
+	color: var(--cb-neon);
+	animation: cb-caret-blink 0.85s steps(1) infinite;
+	text-shadow: 0 0 12px color-mix(in srgb, var(--cb-neon) 80%, transparent);
+}
+
+.cb-root .fx-typewriter-done::after {
+	animation-duration: 1.2s;
+}
+
+/* Chromatic clones for the on-demand error glitch. Ungated — unlike
+   `.fx-glitch::before/::after`, which only animates under the artist theme. */
+.cb-glitch {
+	position: relative;
+}
+
+.cb-glitch[data-text]::before,
+.cb-glitch[data-text]::after {
+	content: attr(data-text);
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	opacity: 0;
+	white-space: pre-wrap;
+}
+
+.cb-glitch[data-text]::before {
+	color: var(--cb-neon);
+	animation: cb-glitch-shift-a 2.4s steps(1) infinite;
+}
+
+.cb-glitch[data-text]::after {
+	color: var(--cb-magenta);
+	animation: cb-glitch-shift-b 2.9s steps(1) infinite;
+}
+
+/* ==========================================================================
+   Keyframes — `cb-` copies of the artist-fx originals, plus this game's own
+   ========================================================================== */
+
+@keyframes cb-glitch-shift-a {
+	0%,
+	86%,
+	100% {
+		transform: none;
+		clip-path: inset(0 0 0 0);
+		opacity: 0;
+	}
+	87% {
+		transform: translate(-3px, 1px);
+		clip-path: inset(12% 0 62% 0);
+		opacity: 0.85;
+	}
+	90% {
+		transform: translate(3px, -1px);
+		clip-path: inset(58% 0 8% 0);
+		opacity: 0.85;
+	}
+	93% {
+		transform: translate(-2px, 0);
+		clip-path: inset(30% 0 38% 0);
+		opacity: 0.85;
+	}
+	96% {
+		transform: none;
+		opacity: 0;
+	}
+}
+
+@keyframes cb-glitch-shift-b {
+	0%,
+	85%,
+	100% {
+		transform: none;
+		clip-path: inset(0 0 0 0);
+		opacity: 0;
+	}
+	88% {
+		transform: translate(3px, -1px);
+		clip-path: inset(66% 0 4% 0);
+		opacity: 0.7;
+	}
+	91% {
+		transform: translate(-3px, 1px);
+		clip-path: inset(6% 0 74% 0);
+		opacity: 0.7;
+	}
+	95% {
+		transform: translate(2px, 0);
+		clip-path: inset(40% 0 30% 0);
+		opacity: 0.7;
+	}
+	97% {
+		transform: none;
+		opacity: 0;
+	}
+}
+
+@keyframes cb-scanline-flicker {
+	0%,
+	100% {
+		opacity: 0.55;
+	}
+	4% {
+		opacity: 0.2;
+	}
+	8% {
+		opacity: 0.6;
+	}
+	62% {
+		opacity: 0.45;
+	}
+	64% {
+		opacity: 0.75;
+	}
+	66% {
+		opacity: 0.4;
+	}
+}
+
+@keyframes cb-grain-jitter {
+	0% {
+		transform: translate(0, 0);
+	}
+	25% {
+		transform: translate(-6%, 4%);
+	}
+	50% {
+		transform: translate(4%, -5%);
+	}
+	75% {
+		transform: translate(-3%, -2%);
+	}
+	100% {
+		transform: translate(5%, 3%);
+	}
+}
+
+@keyframes cb-caret-blink {
+	0%,
+	55% {
+		opacity: 1;
+	}
+	56%,
+	100% {
+		opacity: 0;
+	}
+}
+
+@keyframes cb-holo-sweep {
+	0% {
+		background-position: 180% 0;
+	}
+	100% {
+		background-position: -80% 0;
+	}
+}
+
+@keyframes cb-chip-sweep {
+	0% {
+		transform: translateX(-100%);
+	}
+	100% {
+		transform: translateX(100%);
+	}
+}
+
+@keyframes cb-stage-flash {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.25;
+	}
+}
+
+@keyframes cb-glyph-pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.55;
+	}
+}
+
+/* ==========================================================================
+   Tablet — 640px to 1023px
+   ========================================================================== */
+
+@media (max-width: 1023px) {
+	.cb-shell {
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-rows: 46px 34vh minmax(0, 1fr) 140px;
+		grid-template-areas:
+			'bar'
+			'term'
+			'tray'
+			'stream';
+	}
+
+	.cb-bar-title {
+		display: none;
+	}
+
+	.cb-tray-grid {
+		grid-auto-flow: column;
+		grid-auto-columns: minmax(76px, 1fr);
+		grid-template-columns: none;
+		grid-template-rows: repeat(2, minmax(42px, auto));
+		overflow-x: auto;
+		overscroll-behavior: contain;
+		padding-bottom: 0.35rem;
+	}
+}
+
+/* ==========================================================================
+   Phone — below 640px. The layout changes shape rather than shrinking.
+   ========================================================================== */
+
+@media (max-width: 639px) {
+	.cb-root {
+		/* dvh, not vh: mobile browser chrome would clip the tab bar. */
+		height: 100dvh;
+	}
+
+	.cb-shell {
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-rows: 42px minmax(0, 1fr) 64px 44px;
+		grid-template-areas:
+			'bar'
+			'pane'
+			'rail'
+			'tabs';
+	}
+
+	/* One pane at a time, chosen by the tab bar. */
+	.cb-term,
+	.cb-stream {
+		grid-area: pane;
+	}
+
+	.cb-shell[data-pane='stream'] .cb-term,
+	.cb-shell[data-pane='source'] .cb-stream {
+		display: none;
+	}
+
+	.cb-stream {
+		flex-direction: column;
+	}
+
+	.cb-stream-side {
+		width: auto;
+		border-right: 0;
+		border-bottom: 1px solid var(--cb-hairline);
+	}
+
+	/*
+	 * The tray is never a tab: it collapses to a rail that stays pinned above
+	 * the tab bar in every mode, so the interaction is always
+	 * tap-a-tile-then-tap-a-slot and no pane switching is ever required.
+	 */
+	.cb-tray {
+		grid-area: rail;
+		flex-direction: row;
+		align-items: center;
+	}
+
+	.cb-tray .cb-pane-head {
+		display: none;
+	}
+
+	.cb-tray .cb-pane-body {
+		padding: 0.35rem 0.5rem;
+		overflow-x: auto;
+		overflow-y: hidden;
+	}
+
+	.cb-tray-grid {
+		grid-auto-flow: column;
+		grid-auto-columns: minmax(72px, auto);
+		grid-template-columns: none;
+		grid-template-rows: 1fr;
+	}
+
+	.cb-tile {
+		min-height: 40px;
+	}
+
+	.cb-tabs {
+		grid-area: tabs;
+		display: flex;
+		background: var(--cb-panel-2);
+	}
+
+	.cb-tab {
+		flex: 1 1 0;
+		appearance: none;
+		border: 0;
+		border-radius: 0;
+		border-top: 2px solid transparent;
+		background: transparent;
+		color: var(--cb-ink-soft);
+		font-family: var(--cb-display);
+		font-size: 0.68rem;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		cursor: pointer;
+	}
+
+	.cb-tab[aria-selected='true'] {
+		color: var(--cb-neon);
+		border-top-color: var(--cb-neon);
+	}
+
+	.cb-bar {
+		gap: 0.5rem;
+		padding: 0 0.35rem 0 0.5rem;
+		font-size: 0.66rem;
+	}
+
+	.cb-bar-progress {
+		letter-spacing: 0.1em;
+	}
+}
+
+@media (min-width: 640px) {
+	/* The tab bar exists only on phones. */
+	.cb-tabs {
+		display: none;
+	}
+}
+
+/* ==========================================================================
+   Reduced motion — designed, not degraded.
+
+   `app.css` already collapses every transition and animation to ~1ms with
+   `!important`, so the ambient loops below are stopped for free. What it does
+   *not* cover is `requestAnimationFrame` and WAAPI, which `particles.ts`,
+   `dnd.ts` and every `element.animate()` call guard themselves. All that is
+   left here is to replace the animated CRT texture with a static one.
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+	.cb-crt::before {
+		opacity: 0.32;
+	}
+
+	.cb-crt::after {
+		opacity: 0.04;
+	}
+
+	.cb-tile::before,
+	.cb-chip.is-sweeping::after,
+	.cb-glitch[data-text]::before,
+	.cb-glitch[data-text]::after {
+		display: none;
+	}
+
+	.cb-slot.is-error {
+		/* No shake, so the outline has to carry it alone. */
+		border-width: 2px;
+	}
+}

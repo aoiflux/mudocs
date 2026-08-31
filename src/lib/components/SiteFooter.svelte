@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { REPO, SITE } from '$lib/site';
+	import CodebreakerGlyph from '$lib/game/CodebreakerGlyph.svelte';
 
 	let { totalDocs = 0 }: { totalDocs?: number } = $props();
 </script>
@@ -50,5 +51,6 @@
 	<div class="footer-colophon">
 		<span>{SITE.name} · built from the Mutant docs corpus</span>
 		<a href="/sitemap.xml">sitemap.xml</a>
+		<CodebreakerGlyph />
 	</div>
 </footer>
