@@ -17,6 +17,7 @@ import {
 	type ManifestEntry,
 	type SectionKey
 } from '$lib/server/docs-manifest';
+import { REPO } from '$lib/site';
 
 function resolveDocsRoot(): string {
 	const configuredRoot = process.env.MUDOCS_DOCS_ROOT?.trim();
@@ -398,13 +399,21 @@ function clampSentence(text: string): string {
 	return stop > 80 ? cut.slice(0, stop + 1) : cut.replace(/\s+\S*$/, '') + '…';
 }
 
-function slugifyHeading(value: string): string {
+/**
+ * GitHub's heading-anchor algorithm, deliberately including the part that looks
+ * like a bug: punctuation is dropped *before* spaces become hyphens, so
+ * "7. Symbol Table & Scoping" anchors as `7-symbol-table--scoping` with two
+ * hyphens. The corpus is authored against GitHub, and its own cross-references
+ * use those anchors — collapsing runs of whitespace here left links such as
+ * `#10-closures--free-variables` and `#notes--limits` pointing at nothing.
+ */
+export function slugifyHeading(value: string): string {
 	return value
 		.toLowerCase()
 		.replace(/<[^>]+>/g, '')
 		.replace(/[^a-z0-9\s-]/g, '')
 		.trim()
-		.replace(/\s+/g, '-');
+		.replace(/\s/g, '-');
 }
 
 function escapeHtml(value: string): string {
@@ -640,6 +649,60 @@ function inferredFrontmatter(fileName: string, section: SectionKey): DocFrontmat
 	};
 }
 
+/**
+ * The docs corpus is authored inside the language repo, so its links assume the
+ * files that sit beside docs/ over there. None of them exist here: rendered
+ * as-is, `../examples/...`, `builtin/net.go` and even a sibling
+ * `SECURITY_LLD.md` all resolve against /docs/<section>/<slug> and 404.
+ *
+ * A link to another document in the corpus becomes this site's page for it;
+ * everything else becomes an absolute URL into the language repo. One base
+ * serves files and directories alike because GitHub redirects a /tree/ path
+ * that names a file to its /blob/ view, fragment intact.
+ */
+function rewriteRepoLinks(body: string, docPages: Map<string, string>): string {
+	let inCodeFence = false;
+	return body
+		.split(/\r?\n/)
+		.map((line) => {
+			if (/^```/.test(line.trim())) {
+				inCodeFence = !inCodeFence;
+				return line;
+			}
+			if (inCodeFence) return line;
+
+			return line.replace(/\]\(([^)\s]+)\)/g, (match, target: string) => {
+				const resolved = resolveRepoLink(target, docPages);
+				return resolved ? `](${resolved})` : match;
+			});
+		})
+		.join('\n');
+}
+
+function resolveRepoLink(target: string, docPages: Map<string, string>): string | null {
+	// Absolute URLs, protocol-relative links and in-page anchors already work.
+	if (/^([a-z][a-z0-9+.-]*:|\/\/|#|\/)/i.test(target)) return null;
+
+	const hashIndex = target.indexOf('#');
+	const fragment = hashIndex === -1 ? '' : target.slice(hashIndex);
+	const filePath = (hashIndex === -1 ? target : target.slice(0, hashIndex)).replace(/^\.\//, '');
+	if (!filePath) return null;
+
+	// `../` steps out of docs/ to the repo root; every other path in this corpus
+	// is written from the repo root already, except a bare sibling document.
+	const isSibling = !filePath.includes('/') && filePath.toLowerCase().endsWith('.md');
+	const repoPath = isSibling ? `docs/${filePath}` : filePath.replace(/^(\.\.\/)+/, '');
+
+	// A line anchor (#L42) only means something in GitHub's file view, so a doc
+	// carrying one keeps pointing at the repo rather than at the rendered page.
+	if (!/^#L\d/.test(fragment) && repoPath.toLowerCase().startsWith('docs/')) {
+		const page = docPages.get(repoPath.slice('docs/'.length).toLowerCase());
+		if (page) return `${page}${fragment}`;
+	}
+
+	return `${REPO.url}/tree/main/${repoPath.replace(/\/+$/, '')}${fragment}`;
+}
+
 function normalizeHeading(value: string): string {
 	return value
 		.replace(/`/g, "")
@@ -727,7 +790,9 @@ async function loadAllDocs(): Promise<DocItem[]> {
 		return docsCache.docs;
 	}
 
-	const docs = await Promise.all(
+	// Two passes: a document can only be linked to its page on this site once
+	// every document's section is known, and sections are resolved per file.
+	const parsedFiles = await Promise.all(
 		files.map(async (file) => {
 			const source = await fs.readFile(file, 'utf8');
 			const parsed = matter(source);
@@ -751,7 +816,46 @@ async function loadAllDocs(): Promise<DocItem[]> {
 				firstHeading(raw) ??
 				frontmatter.title ??
 				titleize(slug);
-			const processed = processMarkdown(injectCharts(raw), title);
+
+			return {
+				file,
+				fileName,
+				sourcePath,
+				manifestEntry,
+				inferred,
+				frontmatter,
+				resolvedSection,
+				slug,
+				raw,
+				title,
+				data: parsed.data
+			};
+		})
+	);
+
+	/** Lower-cased file name (as the corpus links to it) → this site's page. */
+	const docPages = new Map(
+		parsedFiles.map((entry) => [
+			entry.fileName.toLowerCase(),
+			`/docs/${entry.resolvedSection}/${entry.slug}`
+		])
+	);
+
+	const docs = await Promise.all(
+		parsedFiles.map(async (entry) => {
+			const {
+				file,
+				sourcePath,
+				manifestEntry,
+				inferred,
+				frontmatter,
+				resolvedSection,
+				slug,
+				raw,
+				title,
+				data
+			} = entry;
+			const processed = processMarkdown(rewriteRepoLinks(injectCharts(raw), docPages), title);
 			const body = processed.body;
 			// Fences become finished HTML before marked runs; see highlightFences().
 			const html = await marked.parse(await highlightFences(body));
@@ -767,7 +871,7 @@ async function loadAllDocs(): Promise<DocItem[]> {
 				// The section blurb is the last resort, not the first: it describes a
 				// whole track, so using it here made every doc in a track identical.
 				description:
-					(typeof parsed.data.description === 'string' ? parsed.data.description : null) ??
+					(typeof data.description === 'string' ? data.description : null) ??
 					leadParagraph(raw) ??
 					sectionCatalog[resolvedSection].description,
 				body,

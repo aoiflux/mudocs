@@ -9,7 +9,7 @@
  * page can show its own provenance the way the artboards do.
  */
 
-import { listAllDocs, listSections, type DocItem } from './content';
+import { listAllDocs, listSections, slugifyHeading as slugOf, type DocItem } from './content';
 import { highlightFences } from './highlight';
 import type { SectionKey } from './docs-manifest';
 
@@ -449,16 +449,6 @@ export async function getLandingContent(): Promise<LandingContent> {
 		},
 		totalDocs: docs.length
 	};
-}
-
-/** Matches content.ts's slugifyHeading so in-page anchors actually resolve. */
-function slugOf(value: string): string {
-	return value
-		.toLowerCase()
-		.replace(/<[^>]+>/g, '')
-		.replace(/[^a-z0-9\s-]/g, '')
-		.trim()
-		.replace(/\s+/g, '-');
 }
 
 // ---------------------------------------------------------------------------
