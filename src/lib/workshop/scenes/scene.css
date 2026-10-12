@@ -1,0 +1,59 @@
+/*
+ * Shared look of the concept scenes. Imported by each scene component; every
+ * rule is scoped under .scene so nothing leaks into the page.
+ */
+.scene {
+	display: grid;
+	gap: var(--space-4);
+	padding: var(--space-4);
+	border: 1px solid var(--color-divider);
+	font-family: var(--font-mono);
+	font-size: 13px;
+	overflow-x: auto;
+}
+
+.scene [data-on] {
+	outline: 2px solid var(--color-accent);
+	outline-offset: 2px;
+	animation: scene-focus var(--fx-dur-fast) var(--fx-ease-apple);
+}
+
+.scene [data-dim] {
+	opacity: 0.45;
+}
+
+.scene .scene-tag {
+	font-size: 11px;
+	padding: 0 var(--space-2);
+	border: 1px solid currentColor;
+	white-space: nowrap;
+}
+
+.scene .scene-flag {
+	color: var(--color-accent-700);
+	font-weight: 600;
+}
+
+.scene .scene-reveal {
+	animation: scene-reveal var(--fx-dur-fast) var(--fx-ease-apple);
+}
+
+@keyframes scene-focus {
+	from {
+		outline-color: transparent;
+	}
+}
+
+@keyframes scene-reveal {
+	from {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.scene [data-on],
+	.scene .scene-reveal {
+		animation: none;
+	}
+}

@@ -63,10 +63,16 @@ export function scanProgram(source) {
 		for (const name of m[1].split(',')) if (name.trim()) bound.add(name.trim());
 	}
 	const calls = new Set();
-	for (const m of code.matchAll(/\b([A-Za-z_]\w*)\s*\(/g)) {
+	// A name after a dot is a member of an imported module (quilldrop.ready), not a builtin.
+	for (const m of code.matchAll(/(?<![.\w])([A-Za-z_]\w*)\s*\(/g)) {
 		if (!KEYWORDS.has(m[1])) calls.add(m[1]);
 	}
 	return { calls, bound };
+}
+
+/** The files a program imports, as written (`import "lib/x.mut";`). */
+export function importsOf(source) {
+	return [...source.matchAll(/^\s*import\s+"([^"]+)"/gm)].map((m) => m[1]);
 }
 
 /**

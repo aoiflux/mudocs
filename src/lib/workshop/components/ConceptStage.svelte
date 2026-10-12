@@ -5,8 +5,27 @@
 	 * fully without the drawing and with motion reduced.
 	 */
 	import type { ResolvedConcept } from '../resolved';
-	import type { HiveModel } from '../scenes/data';
+	import type { Component } from 'svelte';
 	import RegistryTree from '../scenes/RegistryTree.svelte';
+	import MftRecord from '../scenes/MftRecord.svelte';
+	import RedirectChain from '../scenes/RedirectChain.svelte';
+	import CookieJar from '../scenes/CookieJar.svelte';
+	import CaseBoard from '../scenes/CaseBoard.svelte';
+	import RecordModel from '../scenes/RecordModel.svelte';
+	import CidrBlock from '../scenes/CidrBlock.svelte';
+	import type { SceneName } from '../scenes/data';
+
+	type SceneProps = { data: never; shown: ReadonlySet<string>; focus: string };
+	/** The loader has checked sceneData against SCENE_DATA[scene], so each scene gets its own shape. */
+	const SCENES: Record<SceneName, Component<SceneProps>> = {
+		RegistryTree,
+		MftRecord,
+		RedirectChain,
+		CookieJar,
+		CaseBoard,
+		RecordModel,
+		CidrBlock
+	} as unknown as Record<SceneName, Component<SceneProps>>;
 
 	let { stage, onready }: { stage: ResolvedConcept; onready: () => void } = $props();
 
@@ -14,6 +33,7 @@
 	const last = $derived(index === stage.steps.length - 1);
 	const shown = $derived(new Set(stage.steps.slice(0, index + 1).map((s) => s.focus)));
 	const focus = $derived(stage.steps[index].focus);
+	const Scene = $derived(SCENES[stage.scene]);
 
 	$effect(() => {
 		if (last) onready();
@@ -25,9 +45,7 @@
 
 	<div class="cs-body">
 		<div class="cs-scene">
-			{#if stage.scene === 'RegistryTree'}
-				<RegistryTree data={stage.sceneData as HiveModel} {shown} {focus} />
-			{/if}
+			<Scene data={stage.sceneData as never} {shown} {focus} />
 		</div>
 
 		<ol class="cs-steps">
@@ -49,10 +67,20 @@
 		<summary>Where this comes from</summary>
 		<ul>
 			{#each stage.sources as source, i (i)}
-				<li><code>{source.ref}</code>{source.note ? ` · ${source.note}` : ''}</li>
+				<li>
+					{#if source.kind === 'external-spec' && source.ref.startsWith('https://')}
+						<a href={source.ref}>{source.ref}</a>
+					{:else}
+						<code>{source.ref}</code>
+					{/if}{source.note ? ` · ${source.note}` : ''}
+				</li>
 			{/each}
 		</ul>
-		{#if stage.reviewedBy}<p>Checked against its sources by {stage.reviewedBy}, {stage.reviewedAt}.</p>{/if}
+		{#if stage.reviewedBy}
+			<p>Checked against its sources by {stage.reviewedBy}, {stage.reviewedAt}.</p>
+		{:else}
+			<p>Not yet checked against its sources.</p>
+		{/if}
 	</details>
 </div>
 

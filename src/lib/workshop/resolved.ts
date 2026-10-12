@@ -5,8 +5,10 @@
 import type { Stage, StageOf, WorkshopModuleData } from './schema';
 
 export type ResolvedWalkthrough = StageOf<'walkthrough'> & {
+	/** One highlighted HTML string per program line. */
 	programLines: string[];
-	goldenLines: string[];
+	/** The golden's lines, or the simulated output when there is no golden. */
+	outputLines: string[];
 	programUrl: string;
 };
 export type ResolvedConcept = StageOf<'concept'> & { sceneData: unknown };

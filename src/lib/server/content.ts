@@ -442,8 +442,8 @@ function resolveRepoFilesRoot(): string | null {
 	return fsSync.existsSync(candidate) && fsSync.statSync(candidate).isDirectory() ? candidate : null;
 }
 
-async function markdownUnder(root: string, prefix: string): Promise<DocFile[]> {
-	const files = await fg(path.join(root, '**/*.md').replace(/\\/g, '/'), { dot: false });
+async function markdownUnder(root: string, prefix: string, ignore: string[] = []): Promise<DocFile[]> {
+	const files = await fg(path.join(root, '**/*.md').replace(/\\/g, '/'), { dot: false, ignore });
 	return files.map((file) => ({ file, repoPath: `${prefix}${path.relative(root, file).split(path.sep).join('/')}` }));
 }
 
@@ -452,7 +452,9 @@ async function resolveDocsFilesWithCacheKey(root: string): Promise<{ files: DocF
 	const repoRoot = resolveRepoFilesRoot();
 	const files = [
 		...(await markdownUnder(root, 'docs/')),
-		...(repoRoot ? await markdownUnder(repoRoot, '') : [])
+		// examples/ holds the workshop's sources (case brief, run sheet): read by
+		// the workshop pages, not published as docs.
+		...(repoRoot ? await markdownUnder(repoRoot, '', ['**/examples/**']) : [])
 	].sort((a, b) => a.repoPath.localeCompare(b.repoPath));
 
 	const statParts = await Promise.all(

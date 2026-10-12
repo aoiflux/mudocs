@@ -4,7 +4,7 @@
 //   - the module does not match the schema (V-B3: concept, walkthrough, check
 //     and resources stages in every tier), or names another release than the lock
 //   - it names a Mutant file that is not mirrored (scripts/mutant-sync.mjs)
-//   - a walkthrough step points past the end of its program or golden, or the
+//   - a walkthrough step points past the end of its program or output, or the
 //     golden is not the program's own (V-B2)
 //   - a program calls something that is neither a builtin at the pin nor its
 //     own binding, or a builtin with no teaching doc, not stable, or not on
@@ -22,7 +22,7 @@
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { builtinsCalled } from './lib/mutant-source.mjs';
+import { builtinsCalled, importsOf } from './lib/mutant-source.mjs';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const contentDir = path.join(siteRoot, 'src', 'lib', 'workshop', 'content');
@@ -48,9 +48,10 @@ function filesNamed(module) {
 	for (const tier of module.tiers) {
 		for (const stage of tier.stages) {
 			if (stage.kind === 'concept') {
-				files.push(stage.data, ...stage.sources.filter((s) => s.kind === 'mutant-file').map((s) => s.ref));
+				if (stage.data) files.push(stage.data);
+				files.push(...stage.sources.filter((s) => s.kind === 'mutant-file').map((s) => s.ref));
 			}
-			if (stage.kind === 'walkthrough') files.push(stage.program, stage.golden);
+			if (stage.kind === 'walkthrough') files.push(stage.program, ...(stage.golden ? [stage.golden] : []));
 			if (stage.kind === 'resources') files.push(...stage.files.map((f) => f.path));
 		}
 	}
@@ -63,8 +64,14 @@ async function checkModule(file, ctx) {
 	const { spec } = await importTs(file);
 	const parsed = ctx.schema.workshopModule.safeParse(spec);
 	if (!parsed.success) {
-		for (const issue of parsed.error.issues) errors.push(`schema: ${issue.path.join('.') || '(module)'}: ${issue.message}`);
-		return { id: spec?.id ?? path.basename(file), errors, blockers, builtins: [] };
+		for (const issue of parsed.error.issues)
+			errors.push(`schema: ${issue.path.join('.') || '(module)'}: ${issue.message}`);
+		return {
+			id: spec?.id ?? path.basename(file),
+			errors,
+			blockers,
+			builtins: []
+		};
 	}
 	const module = parsed.data;
 
@@ -74,58 +81,100 @@ async function checkModule(file, ctx) {
 	}
 	const entry = ctx.pathMap.find((m) => m.id === module.id);
 	if (!entry) errors.push('not on the path map (WORKSHOP_MODULES)');
-	else if (entry.href !== `/workshop/${module.id}`) errors.push(`path map links ${entry.href}, the page is /workshop/${module.id}`);
+	else if (entry.href !== `/workshop/${module.id}`)
+		errors.push(`path map links ${entry.href}, the page is /workshop/${module.id}`);
 
 	for (const repoPath of filesNamed(module)) {
-		if (!ctx.mirrored.has(repoPath)) errors.push(`${repoPath} is not mirrored: add it to WORKSHOP_FILES in scripts/mutant-sync.mjs`);
+		if (!ctx.mirrored.has(repoPath))
+			errors.push(`${repoPath} is not mirrored: add it to WORKSHOP_FILES in scripts/mutant-sync.mjs`);
 	}
 
 	const builtins = new Set();
+	const blockBuiltins = [];
+	let simulated = 0;
 	for (const tier of module.tiers) {
 		for (const stage of tier.stages) {
 			const where = `${tier.id}/${stage.id}`;
-			if (stage.kind === 'concept' && !stage.reviewedBy) blockers.push(`${where}: scene not yet checked against its sources (reviewedBy)`);
+			if (stage.kind === 'concept' && !stage.reviewedBy)
+				blockers.push(`${where}: scene not yet checked against its sources (reviewedBy)`);
+			if (stage.kind === 'build') {
+				for (const block of stage.blocks) for (const name of block.builtins) blockBuiltins.push({ where, name });
+			}
 			if (stage.kind !== 'walkthrough') continue;
-			if (stage.golden !== stage.program.replace(/\.mut$/, '.golden')) {
+			if (stage.golden && stage.golden !== stage.program.replace(/\.mut$/, '.golden')) {
 				errors.push(`${where}: ${stage.golden} is not the recorded output of ${stage.program}`);
 			}
-			if (!ctx.mirrored.has(stage.program) || !ctx.mirrored.has(stage.golden)) continue;
-			const program = await readFile(path.join(mirrorRoot, ...stage.program.split('/')), 'utf8');
-			const golden = await readFile(path.join(mirrorRoot, ...stage.golden.split('/')), 'utf8');
+			if (!stage.golden) simulated += 1;
+			if (!ctx.mirrored.has(stage.program) || (stage.golden && !ctx.mirrored.has(stage.golden))) continue;
+			let program = await readFile(path.join(mirrorRoot, ...stage.program.split('/')), 'utf8');
 			const programCount = linesOf(program).length;
-			const goldenCount = linesOf(golden).length;
+			const goldenCount = stage.golden
+				? linesOf(await readFile(path.join(mirrorRoot, ...stage.golden.split('/')), 'utf8')).length
+				: stage.simulated.length;
 			for (const [i, step] of stage.steps.entries()) {
-				if (step.lines[1] > programCount) errors.push(`${where} step ${i + 1}: lines ${step.lines.join('-')}, program has ${programCount}`);
-				if (step.output[1] > goldenCount) errors.push(`${where} step ${i + 1}: output ${step.output.join('-')}, golden has ${goldenCount}`);
+				if (step.lines[1] > programCount)
+					errors.push(`${where} step ${i + 1}: lines ${step.lines.join('-')}, program has ${programCount}`);
+				if (step.output && step.output[1] > goldenCount) {
+					errors.push(
+						`${where} step ${i + 1}: output ${step.output.join('-')}, ${stage.golden ? 'golden' : 'simulated output'} has ${goldenCount}`
+					);
+				}
+			}
+			// An imported library's builtins are this program's builtins too.
+			for (const imported of importsOf(program)) {
+				const repoPathOf = path.posix.join(path.posix.dirname(stage.program), imported);
+				if (!ctx.mirrored.has(repoPathOf)) {
+					errors.push(`${stage.program} imports ${repoPathOf}, which is not mirrored`);
+					continue;
+				}
+				program += `\n${await readFile(path.join(mirrorRoot, ...repoPathOf.split('/')), 'utf8')}`;
 			}
 			const called = builtinsCalled(program, ctx.builtinNames);
-			for (const name of called.unknown) errors.push(`${stage.program}: calls ${name}(), not a builtin at ${ctx.lock.tag}`);
+			for (const name of called.unknown)
+				errors.push(`${stage.program}: calls ${name}(), not a builtin at ${ctx.lock.tag}`);
 			for (const name of called.builtins) builtins.add(name);
 		}
+	}
+
+	// V-B1 f: a builder block may only name builtins this module's programs really call.
+	for (const { where, name } of blockBuiltins) {
+		if (!ctx.builtinNames.has(name)) errors.push(`${where}: block names ${name}, not a builtin at ${ctx.lock.tag}`);
+		else if (!builtins.has(name)) errors.push(`${where}: block names ${name}, which no program in this module calls`);
 	}
 
 	let uncleared = [];
 	for (const name of builtins) {
 		const meta = ctx.builtins.get(name);
 		if (!meta.documented) errors.push(`builtin ${name} has no teaching doc at ${ctx.lock.tag}`);
-		if (meta.stability !== 'stable') errors.push(`builtin ${name} is ${meta.stability}${meta.replacedBy ? `, use ${meta.replacedBy}` : ''}`);
+		if (meta.stability !== 'stable')
+			errors.push(`builtin ${name} is ${meta.stability}${meta.replacedBy ? `, use ${meta.replacedBy}` : ''}`);
 		if (meta.platforms.length > 0) errors.push(`builtin ${name} runs only on ${meta.platforms.join(', ')}`);
 		if (!ctx.cleared.has(name)) uncleared.push(name);
 	}
 	if (uncleared.length > 0) {
 		const names = showNames ? `: ${uncleared.join(', ')}` : ' (--names lists them)';
-		blockers.push(`${uncleared.length} of ${builtins.size} builtins not cleared against the ledger at ${ctx.lock.tag}${names}`);
+		blockers.push(
+			`${uncleared.length} of ${builtins.size} builtins not cleared against the ledger at ${ctx.lock.tag}${names}`
+		);
 	}
 
 	if (entry?.status === 'available') errors.push(...blockers.map((b) => `published, but ${b}`));
-	return { id: module.id, errors, blockers, builtins: [...builtins], published: entry?.status === 'available' };
+	return {
+		id: module.id,
+		errors,
+		blockers,
+		builtins: [...builtins],
+		simulated,
+		published: entry?.status === 'available'
+	};
 }
 
 async function main() {
 	const lock = await readJson('mutant.lock.json');
 	const sync = await readJson('mutant.sync.json');
 	const meta = await readJson('src', 'lib', 'generated', 'mutant-meta.json');
-	if (meta.commit !== lock.commit) throw new Error('mutant-meta.json is not from the locked commit; run npm run meta:mutant');
+	if (meta.commit !== lock.commit)
+		throw new Error('mutant-meta.json is not from the locked commit; run npm run meta:mutant');
 
 	const clearance = await readOptionalJson('verification', 'ledger-clearance.json');
 	let cleared = new Set();
@@ -155,8 +204,17 @@ async function main() {
 	console.log(`${tag} ${clearanceNote}`);
 	for (const file of files) {
 		const result = await checkModule(path.join(contentDir, file), ctx);
-		const state = result.published ? 'published' : result.blockers.length ? 'preview, not publishable yet' : 'preview, publishable';
-		console.log(`${tag} ${result.id}: ${result.errors.length ? 'FAILED' : 'ok'} · ${result.builtins.length} builtins · ${state}`);
+		const state = result.published
+			? 'published'
+			: result.blockers.length
+				? 'preview, not publishable yet'
+				: 'preview, publishable';
+		const outputs = result.simulated
+			? ` · ${result.simulated} simulated output${result.simulated === 1 ? '' : 's'}`
+			: '';
+		console.log(
+			`${tag} ${result.id}: ${result.errors.length ? 'FAILED' : 'ok'} · ${result.builtins.length} builtins${outputs} · ${state}`
+		);
 		for (const line of result.errors) console.error(`${tag}   error    ${line}`);
 		for (const line of result.published ? [] : result.blockers) console.log(`${tag}   blocks   ${line}`);
 		if (result.errors.length) failed += 1;

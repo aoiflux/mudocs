@@ -55,10 +55,21 @@ const WORKSHOP_FILES = [
 	'examples/registry/registry_persistence_hunt.golden',
 	'examples/registry/registry_persistence_hunt.mut'
 ];
+/**
+ * The QUILLDROP workshop folder, mirrored by rule rather than by name: its
+ * programs, their recorded outputs, the shared library, the case brief and run
+ * sheet, and the Sigma rules. Not the evidence generator or the shell scripts.
+ */
+const WORKSHOP_PREFIX = 'examples/workshop/';
+const isWorkshopFile = (repoPath) =>
+	repoPath.startsWith(WORKSHOP_PREFIX) &&
+	!repoPath.startsWith(`${WORKSHOP_PREFIX}evidence/`) &&
+	/\.(?:mut|golden|md|yaml)$/.test(repoPath);
 const repoDir = path.join(siteRoot, 'content', 'repo');
 
 const PROJECT_FILES = [...REPO_FILES, ...WORKSHOP_FILES];
-const isMirrored = (repoPath) => repoPath.startsWith(DOCS_PREFIX) || PROJECT_FILES.includes(repoPath);
+const isMirrored = (repoPath) =>
+	repoPath.startsWith(DOCS_PREFIX) || PROJECT_FILES.includes(repoPath) || isWorkshopFile(repoPath);
 
 /** Where a file at `repoPath` in Mutant lives in this site. */
 function localPathFor(repoPath) {
@@ -117,7 +128,7 @@ function localSource(clone, commit) {
 	return {
 		label: `${clone} @ ${commit.slice(0, 7)}`,
 		async list() {
-			const out = git('ls-tree', '-r', '-z', commit, '--', DOCS_PREFIX, ...PROJECT_FILES).toString('utf8');
+			const out = git('ls-tree', '-r', '-z', commit, '--', DOCS_PREFIX, WORKSHOP_PREFIX, ...PROJECT_FILES).toString('utf8');
 			const files = new Map();
 			for (const line of out.split('\0').filter(Boolean)) {
 				const [meta, filePath] = line.split('\t');

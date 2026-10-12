@@ -2,7 +2,7 @@
 	/**
 	 * The workshop path map. Not yet linked from the navigation or the sitemap,
 	 * and not indexed: the modules publish one by one as each clears the
-	 * traceability rule (every output a recorded run at the pinned release).
+	 * checks (every program and builtin traced to the pinned release).
 	 */
 	import { onMount } from 'svelte';
 	import SeoHead from '$lib/components/SeoHead.svelte';
@@ -26,7 +26,6 @@
 	});
 
 	function statusOf(module: WorkshopModule): string {
-		if (module.status !== 'available') return 'In preparation';
 		if (module.id === 'language') {
 			const { solved, skipped } = progress.course;
 			if (courseRewardEarned(progress.course, COURSE_SECTIONS)) return 'Complete';
@@ -34,8 +33,14 @@
 			const skips = skipped.length > 0 ? ` · ${skipped.length} skipped` : '';
 			return `${solved.length} of ${COURSE_SECTIONS} solved${skips}`;
 		}
-		const stages = Object.keys(progress.modules[module.id]?.stages ?? {}).length;
-		return stages === 0 ? 'Not started' : `${stages} stage${stages === 1 ? '' : 's'} done`;
+		const entry = progress.modules[module.id];
+		const stages = Object.keys(entry?.stages ?? {}).length;
+		const preview = module.status === 'available' ? '' : 'Preview · ';
+		if (stages === 0) return `${preview}Not started`;
+		const tiers = Object.values(entry?.tiers ?? {});
+		const skips = Object.values(entry?.stages ?? {}).filter((s) => s === 'skipped').length;
+		const finished = tiers.length > 0 ? ` · ${tiers.length} tier${tiers.length === 1 ? '' : 's'} finished` : '';
+		return `${preview}${stages} stage${stages === 1 ? '' : 's'} settled${finished}${skips ? ` · ${skips} skipped` : ''}`;
 	}
 
 	function download(): void {
@@ -65,10 +70,10 @@
 	<p class="eyebrow">Workshop · preview</p>
 	<h1 class="big-title">Forensics with Mutant</h1>
 	<p class="lede">
-		A path from first program to a full case. Every program shown here, and every output beside it, is a
-		recorded run of
-		<a href={MUTANT_RELEASE_URL}>Mutant {MUTANT_TAG}</a>. A module opens once all of it can be traced that
-		way; until then it is listed as in preparation.
+		A path from first program to a full case. Every program shown here is a file from
+		<a href={MUTANT_RELEASE_URL}>Mutant {MUTANT_TAG}</a>. Output marked recorded is a real run of that file;
+		output marked simulated shows what the program prints on the case evidence, for teaching. Modules marked
+		preview are complete but not yet published.
 	</p>
 </section>
 
@@ -80,7 +85,7 @@
 				<span class="ws-mark" aria-hidden="true">{module.mark}</span>
 				<div class="ws-body">
 					<h3 class="card-title">
-						{#if module.href && module.status === 'available'}
+						{#if module.href}
 							<a href={module.href}>{module.title}</a>
 						{:else}
 							{module.title}

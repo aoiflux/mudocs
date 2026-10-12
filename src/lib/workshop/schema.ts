@@ -3,8 +3,10 @@
  *
  * A module never carries program text or output text. It names files mirrored
  * from Mutant at the pinned release (content/repo/, written by
- * scripts/mutant-sync.mjs) and points into them by line number, so what the
- * page shows is always the recorded run, never a copy that can drift from it.
+ * scripts/mutant-sync.mjs) and points into them by line number, so the code
+ * on the page is always the release's, never a copy that can drift from it.
+ * The one exception is output: a program with no golden carries a simulated
+ * output, which the page labels as such.
  *
  * Validated twice: by scripts/check-workshop.mjs (`npm run check`), which also
  * checks every referenced file and line range, and by the page loader at build
@@ -44,46 +46,108 @@ const hookStage = z.object({
 	paragraphs: z.array(text).min(1)
 });
 
-const conceptStage = z.object({
-	...stageBase,
-	kind: z.literal('concept'),
-	scene: z.enum(['RegistryTree']),
-	/** The mirrored file the scene draws, read at build time. */
-	data: repoPath,
-	intro: text,
-	steps: z
-		.array(
-			z.object({
-				label: text,
-				text,
-				/** Scene-specific: what to highlight at this step. */
-				focus: z.string()
-			})
-		)
-		.min(1),
-	sources: z.array(sceneSource).min(1),
-	/** Who checked the scene against its sources, and when. Unreviewed scenes do not publish. */
-	reviewedBy: text.optional(),
-	reviewedAt: z.iso.date().optional()
-});
+export const SCENES = [
+	'RegistryTree',
+	'MftRecord',
+	'RedirectChain',
+	'CookieJar',
+	'CaseBoard',
+	'RecordModel',
+	'CidrBlock'
+] as const;
 
-const walkthroughStage = z.object({
-	...stageBase,
-	kind: z.literal('walkthrough'),
-	program: repoPath.refine((value) => value.endsWith('.mut'), 'a .mut program'),
-	/** The program's recorded output, as Mutant's sweep wrote it. */
-	golden: repoPath.refine((value) => value.endsWith('.golden'), 'a .golden file'),
-	steps: z
-		.array(
-			z.object({
-				lines: lineRange,
-				/** The golden lines this step's code printed. */
-				output: lineRange,
-				note: text
-			})
-		)
-		.min(1)
-});
+const conceptStage = z
+	.object({
+		...stageBase,
+		kind: z.literal('concept'),
+		scene: z.enum(SCENES),
+		/** A mirrored file the scene draws, read at build time... */
+		data: repoPath.optional(),
+		/** ...or the scene's data written here, when it illustrates a concept rather than draws a file. */
+		values: z.unknown().optional(),
+		intro: text,
+		steps: z
+			.array(
+				z.object({
+					label: text,
+					text,
+					/** Scene-specific: what to highlight at this step. */
+					focus: z.string()
+				})
+			)
+			.min(1),
+		sources: z.array(sceneSource).min(1),
+		/** Who checked the scene against its sources, and when. Unreviewed scenes do not publish. */
+		reviewedBy: text.optional(),
+		reviewedAt: z.iso.date().optional()
+	})
+	.refine(
+		(value) => (value.data === undefined) !== (value.values === undefined),
+		'give the scene data or values, not both'
+	);
+
+const walkthroughStage = z
+	.object({
+		...stageBase,
+		kind: z.literal('walkthrough'),
+		program: repoPath.refine((value) => value.endsWith('.mut'), 'a .mut program'),
+		/** The program's recorded output, as Mutant's sweep wrote it. */
+		golden: repoPath.refine((value) => value.endsWith('.golden'), 'a .golden file').optional(),
+		/**
+		 * Without a golden: the output the program would print, written for
+		 * teaching and shown labelled as a simulation. It follows the program's
+		 * own print statements and the case data its input is generated from.
+		 */
+		simulated: z.array(z.string()).min(1).optional(),
+		steps: z
+			.array(
+				z.object({
+					lines: lineRange,
+					/** The output lines this step's code printed, if it printed any. */
+					output: lineRange.optional(),
+					note: text
+				})
+			)
+			.min(1)
+	})
+	.superRefine((value, ctx) => {
+		const issue = (message: string) => ctx.addIssue({ code: 'custom', message });
+		if (!value.golden === !value.simulated) issue('give the walkthrough a golden or a simulated output, not both');
+		if (!value.steps.some((step) => step.output)) issue('no step shows any of the output');
+	});
+
+const buildStage = z
+	.object({
+		...stageBase,
+		kind: z.literal('build'),
+		prompt: text,
+		blocks: z
+			.array(
+				z.object({
+					id: slug,
+					label: text,
+					/** The builtins this step stands for; each must appear in a program this module walks through. */
+					builtins: z.array(z.string()).default([])
+				})
+			)
+			.min(2),
+		/** Block ids in order. Blocks not listed are distractors. */
+		answer: z.array(slug).min(2),
+		explain: text
+	})
+	.superRefine((value, ctx) => {
+		const ids = value.blocks.map((b) => b.id);
+		for (const id of value.answer) {
+			if (!ids.includes(id))
+				ctx.addIssue({
+					code: 'custom',
+					message: `answer names ${id}, which is not a block`
+				});
+		}
+		if (new Set(value.answer).size !== value.answer.length)
+			ctx.addIssue({ code: 'custom', message: 'answer repeats a block' });
+		if (new Set(ids).size !== ids.length) ctx.addIssue({ code: 'custom', message: 'two blocks share an id' });
+	});
 
 const checkStage = z.object({
 	...stageBase,
@@ -120,13 +184,14 @@ export const stage = z.discriminatedUnion('kind', [
 	hookStage,
 	conceptStage,
 	walkthroughStage,
+	buildStage,
 	checkStage,
 	takeawaysStage,
 	resourcesStage
 ]);
 
-/** Every tier teaches through these; a tier without one is not a module (V-B3). */
-export const REQUIRED_STAGE_KINDS = ['concept', 'walkthrough', 'check', 'resources'] as const;
+/** Every module teaches through these, in some tier; a module without one is not a module (V-B3). */
+export const REQUIRED_STAGE_KINDS = ['concept', 'walkthrough', 'build', 'check', 'resources'] as const;
 
 const tier = z
 	.object({
@@ -136,13 +201,13 @@ const tier = z
 		stages: z.array(stage).min(1)
 	})
 	.superRefine((value, ctx) => {
-		const kinds = new Set(value.stages.map((s) => s.kind));
-		for (const kind of REQUIRED_STAGE_KINDS) {
-			if (!kinds.has(kind)) ctx.addIssue({ code: 'custom', message: `tier ${value.id} has no ${kind} stage` });
-		}
 		const ids = value.stages.map((s) => s.id);
 		const dup = ids.find((id, i) => ids.indexOf(id) !== i);
-		if (dup) ctx.addIssue({ code: 'custom', message: `tier ${value.id} repeats stage id ${dup}` });
+		if (dup)
+			ctx.addIssue({
+				code: 'custom',
+				message: `tier ${value.id} repeats stage id ${dup}`
+			});
 	});
 
 export const workshopModule = z
@@ -160,7 +225,18 @@ export const workshopModule = z
 		const order = ['beginner', 'intermediate', 'advanced'];
 		const ids = value.tiers.map((t) => t.id);
 		if (ids.some((id, i) => i > 0 && order.indexOf(id) <= order.indexOf(ids[i - 1]))) {
-			ctx.addIssue({ code: 'custom', message: 'tiers must be in order beginner, intermediate, advanced, each once' });
+			ctx.addIssue({
+				code: 'custom',
+				message: 'tiers must be in order beginner, intermediate, advanced, each once'
+			});
+		}
+		const kinds = new Set(value.tiers.flatMap((t) => t.stages.map((s) => s.kind)));
+		for (const kind of REQUIRED_STAGE_KINDS) {
+			if (!kinds.has(kind))
+				ctx.addIssue({
+					code: 'custom',
+					message: `module has no ${kind} stage`
+				});
 		}
 	});
 

@@ -3,10 +3,9 @@
  * (introduction, artefact modelling, timestomping, malware in ads, registry)
  * framed by the language course before it and the QUILLDROP case after it.
  *
- * A module is `available` only once every program, output and builtin it shows
- * traces to a recorded run at the pinned Mutant release. Until then it is listed
- * as in preparation, and its page, if it has one, is a noindex preview that
- * the path map does not link.
+ * A module is `available` only once every program and builtin it shows clears
+ * the checks at the pinned Mutant release. Until then it is listed as in
+ * preparation, and its page is a noindex preview.
  */
 
 export type ModuleStatus = 'available' | 'in-preparation';
@@ -30,7 +29,8 @@ export const WORKSHOP_MODULES: readonly WorkshopModule[] = [
 		title: 'Introduction',
 		summary: 'Why a forensics language, and what a Mutant program looks like end to end.',
 		minutes: 10,
-		status: 'in-preparation'
+		status: 'in-preparation',
+		href: '/workshop/intro'
 	},
 	{
 		id: 'language',
@@ -47,7 +47,8 @@ export const WORKSHOP_MODULES: readonly WorkshopModule[] = [
 		title: 'Artefact modelling',
 		summary: 'Turning raw evidence into typed records a pipeline can reason about.',
 		minutes: 20,
-		status: 'in-preparation'
+		status: 'in-preparation',
+		href: '/workshop/artefact-modelling'
 	},
 	{
 		id: 'timestomping',
@@ -55,7 +56,8 @@ export const WORKSHOP_MODULES: readonly WorkshopModule[] = [
 		title: 'Timestomping',
 		summary: 'Two clocks in every MFT record, and the test that catches a file whose times were rewritten.',
 		minutes: 20,
-		status: 'in-preparation'
+		status: 'in-preparation',
+		href: '/workshop/timestomping'
 	},
 	{
 		id: 'malvertising',
@@ -63,7 +65,8 @@ export const WORKSHOP_MODULES: readonly WorkshopModule[] = [
 		title: 'Malware in ads',
 		summary: 'Following a redirect chain through browser history, and the cookies each hop left behind.',
 		minutes: 20,
-		status: 'in-preparation'
+		status: 'in-preparation',
+		href: '/workshop/malvertising'
 	},
 	{
 		id: 'registry-persistence',
@@ -78,14 +81,16 @@ export const WORKSHOP_MODULES: readonly WorkshopModule[] = [
 		id: 'triage',
 		mark: 'T',
 		title: 'Triage toolkit',
-		summary: 'Small, input-free snippets for indicators, encodings and fuzzy matching, run live in the browser.',
-		status: 'in-preparation'
+		summary: 'Small, input-free snippets for indicators, encodings and fuzzy matching, each with its recorded output.',
+		status: 'in-preparation',
+		href: '/workshop/triage'
 	},
 	{
 		id: 'quilldrop',
 		mark: 'C',
 		title: 'Capstone: QUILLDROP',
 		summary: 'One case, start to finish, using every technique on the path.',
-		status: 'in-preparation'
+		status: 'in-preparation',
+		href: '/workshop/quilldrop'
 	}
 ];

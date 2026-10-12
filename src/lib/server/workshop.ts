@@ -47,18 +47,27 @@ async function resolveStage(stage: Stage, where: string): Promise<ResolvedStage>
 	switch (stage.kind) {
 		case 'walkthrough': {
 			const program = (await readMirrored(stage.program)).toString('utf8');
-			const goldenLines = linesOf(await readMirrored(stage.golden));
+			const outputLines = stage.golden ? linesOf(await readMirrored(stage.golden)) : (stage.simulated ?? []);
 			const programLines = await highlightLines(program, 'mutant');
 			for (const [i, step] of stage.steps.entries()) {
 				assertRange(step.lines, programLines.length, `${where} step ${i + 1} ${stage.program}`);
-				assertRange(step.output, goldenLines.length, `${where} step ${i + 1} ${stage.golden}`);
+				if (step.output) {
+					assertRange(step.output, outputLines.length, `${where} step ${i + 1} ${stage.golden ?? 'simulated output'}`);
+				}
 			}
-			return { ...stage, programLines, goldenLines, programUrl: blobUrl(stage.program) };
+			return {
+				...stage,
+				programLines,
+				outputLines,
+				programUrl: blobUrl(stage.program)
+			};
 		}
 		case 'concept': {
-			const raw = JSON.parse((await readMirrored(stage.data)).toString('utf8'));
+			const raw = stage.data ? JSON.parse((await readMirrored(stage.data)).toString('utf8')) : stage.values;
 			const scene = SCENE_DATA[stage.scene].safeParse(raw);
-			if (!scene.success) throw new Error(`${where}: ${stage.data} is not ${stage.scene} data: ${scene.error.message}`);
+			if (!scene.success) {
+				throw new Error(`${where}: ${stage.data ?? 'values'} is not ${stage.scene} data: ${scene.error.message}`);
+			}
 			return { ...stage, sceneData: scene.data };
 		}
 		case 'resources': {

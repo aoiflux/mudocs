@@ -15,6 +15,7 @@
 	import ConceptStage from '$lib/workshop/components/ConceptStage.svelte';
 	import WalkthroughPlayer from '$lib/workshop/components/WalkthroughPlayer.svelte';
 	import CheckStage from '$lib/workshop/components/CheckStage.svelte';
+	import PipelineBuilder from '$lib/workshop/components/PipelineBuilder.svelte';
 	import ResourcesBlock from '$lib/workshop/components/ResourcesBlock.svelte';
 
 	let { data } = $props();
@@ -33,11 +34,9 @@
 	const statuses = $derived(stageStatuses(module.tiers, recorded));
 
 	/** Stages that need work before Continue: the rest are read and passed. */
-	const INTERACTIVE = new Set<ResolvedStage['kind']>(['concept', 'walkthrough', 'check']);
+	const INTERACTIVE = new Set<ResolvedStage['kind']>(['concept', 'walkthrough', 'build', 'check']);
 
-	const program = $derived(
-		module.tiers.flatMap((t) => t.stages).find((s) => s.kind === 'walkthrough')?.program
-	);
+	const program = $derived(module.tiers.flatMap((t) => t.stages).find((s) => s.kind === 'walkthrough')?.program);
 	const folderUrl = $derived(program ? `${REPO.treeBase}/${program.slice(0, program.lastIndexOf('/'))}` : undefined);
 
 	async function settle(key: string, state: StepState): Promise<void> {
@@ -104,6 +103,8 @@
 							<ConceptStage {stage} onready={() => markReady(key)} />
 						{:else if stage.kind === 'walkthrough'}
 							<WalkthroughPlayer {stage} onready={() => markReady(key)} />
+						{:else if stage.kind === 'build'}
+							<PipelineBuilder {stage} onready={() => markReady(key)} />
 						{:else if stage.kind === 'check'}
 							<CheckStage {stage} onready={() => markReady(key)} />
 						{:else if stage.kind === 'takeaways'}
@@ -133,7 +134,11 @@
 							</div>
 							{#if needsWork}
 								<p class="text-muted wm-hint">
-									{stage.kind === 'check' ? 'Answer every question correctly to continue.' : 'Step through to the end to continue.'}
+									{stage.kind === 'check'
+										? 'Answer every question correctly to continue.'
+										: stage.kind === 'build'
+											? 'Put the steps in the right order to continue.'
+											: 'Step through to the end to continue.'}
 								</p>
 							{/if}
 						{/if}

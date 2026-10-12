@@ -1,11 +1,15 @@
 <script lang="ts">
 	/**
-	 * Steps through a Mutant program beside its recorded output. Each step marks
-	 * a range of program lines and reveals the golden lines they printed. Every
-	 * line on screen comes from the mirrored files: the module only says which
-	 * line numbers belong to which step.
+	 * Steps through a Mutant program beside its output. Each step marks a range
+	 * of program lines and reveals the output lines they printed. The output is
+	 * the program's golden when Mutant recorded one, and otherwise a simulation
+	 * written into the module, labelled as such. On the last step, Run replays
+	 * the whole output line by line: an animation, not an execution.
 	 */
+	import { onDestroy } from 'svelte';
 	import type { ResolvedWalkthrough } from '../resolved';
+	import { MUTANT_TAG } from '$lib/mutant-pin';
+	import { prefersReducedMotion } from '$lib/artist/motion';
 
 	let { stage, onready }: { stage: ResolvedWalkthrough; onready: () => void } = $props();
 
@@ -15,14 +19,47 @@
 	const step = $derived(stage.steps[index]);
 	const last = $derived(index === stage.steps.length - 1);
 
-	const inRange = (n: number, [from, to]: [number, number]) => n >= from && n <= to;
+	const inRange = (n: number, range: [number, number] | undefined) => !!range && n >= range[0] && n <= range[1];
 
-	/** Output lines revealed so far: every step up to this one. */
+	const recorded = $derived(!!stage.golden);
+
+	/** While a replay runs, how many output lines it has printed; null otherwise. */
+	let played = $state<number | null>(null);
+	let timer: ReturnType<typeof setInterval> | undefined;
+
+	function stop() {
+		clearInterval(timer);
+		timer = undefined;
+	}
+
+	function run() {
+		stop();
+		if (prefersReducedMotion()) {
+			played = stage.outputLines.length;
+			return;
+		}
+		played = 0;
+		timer = setInterval(() => {
+			played = (played ?? 0) + 1;
+			if (played >= stage.outputLines.length) stop();
+		}, 140);
+	}
+
+	function go(to: number) {
+		stop();
+		played = null;
+		index = to;
+	}
+
+	onDestroy(stop);
+
+	/** Output lines on screen: a replay's progress, or every step's lines up to this one. */
 	const revealed = $derived(
-		stage.goldenLines
+		stage.outputLines
 			.map((text, i) => ({ text, n: i + 1 }))
-			.filter(({ n }) => stage.steps.slice(0, index + 1).some((s) => inRange(n, s.output)))
+			.filter(({ n }) => (played === null ? stage.steps.slice(0, index + 1).some((s) => inRange(n, s.output)) : n <= played))
 	);
+	const running = $derived(played !== null && played < stage.outputLines.length);
 
 	$effect(() => {
 		if (last) onready();
@@ -54,12 +91,26 @@
 		</figure>
 
 		<figure class="wt-pane">
-			<figcaption class="wt-caption">Recorded output</figcaption>
+			<figcaption class="wt-caption">
+				{#if recorded}
+					Output · recorded at Mutant {MUTANT_TAG}
+				{:else}
+					Output <span class="wt-sim">simulated</span>
+				{/if}
+			</figcaption>
 			<pre class="wt-code wt-out" aria-live="polite"><code
-					>{#each revealed as line (line.n)}<span class="wt-line" data-on={inRange(line.n, step.output) ? '' : undefined}
+					>{#each revealed as line (line.n)}<span
+							class="wt-line"
+							data-on={(played === null ? inRange(line.n, step.output) : line.n === played) ? '' : undefined}
 							>{line.text || ' '}</span
 						>{/each}</code
 				></pre>
+			{#if !recorded}
+				<p class="wt-sim-note">
+					What this program prints on the case evidence, written out for teaching. Generate the evidence and run it
+					to see your own.
+				</p>
+			{/if}
 		</figure>
 	</div>
 
@@ -69,8 +120,13 @@
 	</p>
 
 	<div class="cta-cluster">
-		<button type="button" class="btn btn-ghost" onclick={() => (index -= 1)} disabled={index === 0}>Previous step</button>
-		<button type="button" class="btn btn-secondary" onclick={() => (index += 1)} disabled={last}>Next step</button>
+		<button type="button" class="btn btn-ghost" onclick={() => go(index - 1)} disabled={index === 0}>Previous step</button>
+		<button type="button" class="btn btn-secondary" onclick={() => go(index + 1)} disabled={last}>Next step</button>
+		{#if last}
+			<button type="button" class="btn btn-ghost" onclick={run} disabled={running}>
+				{played === null ? 'Run' : 'Run again'}
+			</button>
+		{/if}
 	</div>
 </div>
 
@@ -149,6 +205,21 @@
 	.wt-note {
 		margin: 0;
 		max-width: 70ch;
+	}
+
+	.wt-sim {
+		margin-left: var(--space-2);
+		padding: 0 var(--space-2);
+		border: 1px dashed currentColor;
+		font-size: 11px;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+	}
+
+	.wt-sim-note {
+		margin: 0;
+		font-size: 13px;
+		opacity: 0.8;
 	}
 
 	.wt-count {
