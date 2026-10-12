@@ -171,19 +171,22 @@
 
 		// --- focus trap ------------------------------------------------------
 		// `inert` implies `aria-hidden` and removal from the tab order in one
-		// attribute. The overlay is mounted as a sibling of the glyph inside the
-		// colophon, so that subtree is inerted element-by-element around us
-		// rather than wholesale.
+		// attribute. The overlay is mounted wherever its opener sits: beside the
+		// glyph in the footer colophon, or inside <main> on /workshop/language.
+		// So nothing above it is inerted wholesale, which would inert the overlay
+		// too; instead, at every level from the overlay up to <body>, everything
+		// beside the branch that holds it is.
 		const inerted: Element[] = [];
-		const inertize = (element: Element | null) => {
-			if (!element || element === root || element.hasAttribute('inert')) return;
+		const inertize = (element: Element) => {
+			if (element.hasAttribute('inert')) return;
 			element.setAttribute('inert', '');
 			inerted.push(element);
 		};
-		inertize(document.querySelector('header.site-header'));
-		inertize(document.querySelector('main#main'));
-		inertize(document.querySelector('.site-footer-inner'));
-		for (const sibling of Array.from(root?.parentElement?.children ?? [])) inertize(sibling);
+		for (let node: HTMLElement | null = root ?? null; node && node !== document.body; node = node.parentElement) {
+			for (const sibling of Array.from(node.parentElement?.children ?? [])) {
+				if (sibling !== node) inertize(sibling);
+			}
+		}
 
 		// --- services ---------------------------------------------------------
 		if (canvas && root) particles = initParticles(canvas, root);

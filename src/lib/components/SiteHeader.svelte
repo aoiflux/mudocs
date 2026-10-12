@@ -112,7 +112,12 @@
 						{/if}
 					</div>
 				{:else}
-					<a class="nav-link" class:is-current={isCurrent(item.href)} href={item.href}>
+					<a
+						class="nav-link"
+						class:nav-accent={item.accent}
+						class:is-current={isCurrent(item.href)}
+						href={item.href}
+					>
 						{item.label}
 					</a>
 				{/if}

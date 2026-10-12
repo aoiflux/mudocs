@@ -824,6 +824,25 @@ html.theme-shift .blueprint {
 	border-bottom-color: var(--color-accent);
 }
 
+.nav-link.nav-accent {
+	padding: 3px 10px;
+	border: 1px solid var(--color-accent);
+	color: var(--color-accent-700);
+	font-weight: 600;
+}
+
+.nav-link.nav-accent:hover,
+.nav-link.nav-accent.is-current {
+	background: var(--color-accent);
+	color: var(--color-bg);
+}
+
+/* The dark grounds soften every nav link; the pill keeps its accent there too. */
+:root[data-theme='dark'] .nav-link.nav-accent:not(:hover):not(.is-current),
+:root[data-theme='artist'] .nav-link.nav-accent:not(:hover):not(.is-current) {
+	color: var(--color-accent);
+}
+
 .nav-dropdown {
 	position: relative;
 }
@@ -2645,6 +2664,25 @@ html.js .showcase-plate:hover .plate-sweep {
 		margin-left: 0;
 		overflow-x: auto;
 		padding-bottom: var(--space-1);
+	}
+
+	/* Tighter so the workshop pill does not push the last link off a phone screen. */
+	.site-nav {
+		gap: var(--space-3);
+	}
+
+	.nav-link.nav-accent {
+		padding: 2px 6px;
+	}
+
+	@media (max-width: 480px) {
+		.site-nav {
+			gap: var(--space-2);
+		}
+
+		.nav-link {
+			font-size: 13px;
+		}
 	}
 
 	.header-right {

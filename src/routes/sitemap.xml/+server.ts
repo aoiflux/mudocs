@@ -16,6 +16,9 @@ export async function GET() {
 	const entries: Entry[] = [
 		{ path: '/', priority: 1.0 },
 		{ path: '/docs', priority: 0.9 },
+		// Module pages stay out until they publish; they carry noindex meanwhile.
+		{ path: '/workshop', priority: 0.9 },
+		{ path: '/workshop/language', priority: 0.8 },
 		{ path: '/extension', priority: 0.9 },
 		{ path: '/playground', priority: 0.8 },
 		{ path: '/showcase', priority: 0.7 },

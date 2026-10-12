@@ -63,8 +63,10 @@ export const EXTENSION = {
 
 /** Primary navigation, in the order the artboards draw it. */
 export const NAV = [
-	{ href: '/docs', label: 'Docs', hasMenu: true },
-	{ href: '/playground', label: 'Playground', hasMenu: false },
-	{ href: '/showcase', label: 'Showcase', hasMenu: false },
-	{ href: '/extension', label: 'Extension', hasMenu: false }
+	{ href: '/docs', label: 'Docs', hasMenu: true, accent: false },
+	/** Drawn as a pill so the workshop is easy to find from any page. */
+	{ href: '/workshop', label: 'Workshop', hasMenu: false, accent: true },
+	{ href: '/playground', label: 'Playground', hasMenu: false, accent: false },
+	{ href: '/showcase', label: 'Showcase', hasMenu: false, accent: false },
+	{ href: '/extension', label: 'Extension', hasMenu: false, accent: false }
 ] as const;

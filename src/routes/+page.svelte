@@ -11,6 +11,7 @@
 	import { loadRepoStats, type RepoStats } from '$lib/github';
 	import { rollCounter } from '$lib/artist/motion';
 	import { REPO } from '$lib/site';
+	import { WORKSHOP_MODULES } from '$lib/workshop/modules';
 
 	let { data } = $props();
 	const landing = $derived(data.landing);
@@ -48,6 +49,7 @@
 
 			<div class="cta-cluster">
 				<a class="btn btn-primary" href="https://github.com/aoiflux/mutant/releases">Get Mutant</a>
+				<a class="btn btn-secondary" href="/workshop">Workshop</a>
 				<a class="btn btn-secondary" href={REPO.url} target="_blank" rel="noopener noreferrer">Repo ↗</a>
 			</div>
 
@@ -62,6 +64,34 @@
 			<Mascot size={168} />
 		</div>
 	</div>
+</section>
+
+<!-- ── Workshop ─────────────────────────────────────────────────────────── -->
+<section class="band workshop-band" aria-labelledby="workshop-heading">
+	<div class="workshop-head">
+		<div>
+			<p class="eyebrow">Workshop · DFRWS APAC 2026</p>
+			<h2 id="workshop-heading" class="chapter-title">Learn Mutant on a real case</h2>
+			<p class="lede" style="font-size: 15px; margin-top: var(--space-3); max-width: 56ch;">
+				An interactive path from your first program to a full investigation: the language, then artefacts,
+				timestomping, malicious ads and registry persistence, ending on the QUILLDROP case.
+			</p>
+		</div>
+		<div class="cta-cluster">
+			<a class="btn btn-primary" href="/workshop">Start the workshop →</a>
+			<a class="btn btn-ghost" href="/workshop/language">Intro to the language</a>
+		</div>
+	</div>
+	<ol class="workshop-strip">
+		{#each WORKSHOP_MODULES as module (module.id)}
+			<li>
+				<a href={module.href ?? '/workshop'}>
+					<span class="workshop-mark" aria-hidden="true">{module.mark}</span>
+					<span>{module.title}</span>
+				</a>
+			</li>
+		{/each}
+	</ol>
 </section>
 
 <!-- ── What is Mutant · Pipeline ────────────────────────────────────────── -->
@@ -168,3 +198,51 @@
 		</div>
 	</div>
 </section>
+
+<style>
+	.workshop-head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: var(--space-4);
+	}
+
+	.workshop-strip {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+		gap: var(--space-3);
+		margin: var(--space-6) 0 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.workshop-strip a {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		height: 100%;
+		padding: var(--space-3);
+		border: 1px solid var(--color-divider);
+		font-size: 14px;
+		color: var(--color-text);
+		text-decoration: none;
+	}
+
+	.workshop-strip a:hover,
+	.workshop-strip a:focus-visible {
+		border-color: var(--color-accent);
+	}
+
+	.workshop-mark {
+		display: grid;
+		flex: none;
+		place-items: center;
+		width: 2rem;
+		height: 2rem;
+		border: 1px solid var(--color-accent);
+		font-family: var(--font-mono);
+		font-size: 13px;
+		color: var(--color-accent-700);
+	}
+</style>
