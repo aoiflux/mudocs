@@ -54,44 +54,11 @@ function resetRuntime() {
 	go = null;
 }
 
-function pickInvoker(addedGlobals) {
-	const candidates = [
-		'runMutant',
-		'mutantRun',
-		'executeMutant',
-		'evalMutant',
-		'mutantEval',
-		'replEval',
-		'replRun',
-		'runRepl'
-	];
-
-	for (const name of candidates) {
-		if (typeof self[name] === 'function') {
-			return self[name].bind(self);
-		}
-	}
-
-	for (const name of addedGlobals) {
-		const value = self[name];
-		if (typeof value === 'function' && /(mutant|repl|eval|run)/i.test(name)) {
-			return value.bind(self);
-		}
-	}
-
-	for (const name of addedGlobals) {
-		const value = self[name];
-		if (!value || typeof value !== 'object') continue;
-
-		for (const key of Object.keys(value)) {
-			if (typeof value[key] === 'function' && /(mutant|repl|eval|run)/i.test(key)) {
-				return value[key].bind(value);
-			}
-		}
-	}
-
-	return null;
-}
+// The exports cmd/replwasm/main_wasm.go sets on the global object. They are the
+// REPL's contract; anything else on `self` is not ours to call.
+const EVAL_EXPORT = 'mutantReplEval';
+const READY_EXPORT = 'mutantReplReady';
+const READY_TIMEOUT_MS = 5000;
 
 async function ensureRuntime() {
 	if (ready) return;
@@ -106,35 +73,32 @@ async function ensureRuntime() {
 			throw new Error('Go runtime bootstrap failed: Go class is unavailable after loading wasm_exec.js');
 		}
 
-		go = new self.Go();
-		const before = new Set(Object.getOwnPropertyNames(self));
+		// A previous instance that exited leaves its exports behind; clear them so
+		// the wait below only ever sees this instance's.
+		delete self[READY_EXPORT];
+		delete self[EVAL_EXPORT];
 
+		go = new self.Go();
 		const result = await WebAssembly.instantiateStreaming(fetch('/wasm-repl/mutant_repl.wasm'), go.importObject);
 
-		const runPromise = go.run(result.instance);
-
-		await Promise.race([
-			runPromise,
-			new Promise((resolve) => setTimeout(resolve, 30))
-		]);
+		// main() blocks forever once the exports are set, so run() settles only if
+		// the Go program exits; the next message then sees "already exited".
+		go.run(result.instance).finally(() => {
+			ready = false;
+		});
 
 		const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-		for (let i = 0; i < 40; i += 1) {
-			const after = Object.getOwnPropertyNames(self);
-			const added = after.filter((k) => !before.has(k));
-			invoke = pickInvoker(added.length ? added : after);
-			if (invoke) break;
+		const deadline = Date.now() + READY_TIMEOUT_MS;
+		while (self[READY_EXPORT] !== true || typeof self[EVAL_EXPORT] !== 'function') {
+			if (Date.now() > deadline) {
+				throw new Error(
+					`WASM started but did not set ${READY_EXPORT} within ${READY_TIMEOUT_MS} ms; is this a Mutant REPL build?`
+				);
+			}
 			await wait(25);
 		}
 
-		if (!invoke) {
-			const after = Object.getOwnPropertyNames(self);
-			const added = after.filter((k) => !before.has(k));
-			throw new Error(
-				`WASM loaded but no callable REPL function found. Added globals: ${added.join(', ') || '(none)'}`
-			);
-		}
-
+		invoke = (source) => self[EVAL_EXPORT](source);
 		ready = true;
 	} catch (error) {
 		initError = error;

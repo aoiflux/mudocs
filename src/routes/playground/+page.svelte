@@ -2,12 +2,20 @@
 	/**
 	 * Artboard 2c — toolbar / split editor+output / execution graph.
 	 *
-	 * The worker protocol in static/repl-worker.js is untouched: it already solves
-	 * Go WASM export discovery, console capture and "already exited" recovery.
+	 * The worker protocol in static/repl-worker.js is `{id, code}` → `{id, ok, output}`;
+	 * it calls the REPL's own `mutantReplEval` export, captures console output and
+	 * recovers from "already exited". The build it loads is pinned by mutant.lock.json.
 	 */
 	import { onDestroy, onMount } from 'svelte';
 	import SeoHead from '$lib/components/SeoHead.svelte';
 	import PipelineDiagram from '$lib/components/PipelineDiagram.svelte';
+	import {
+		MUTANT_RELEASE_URL,
+		MUTANT_SHORT_COMMIT,
+		MUTANT_TAG,
+		WASM_SHA256,
+		WASM_SIZE_LABEL
+	} from '$lib/mutant-pin';
 
 	type RuleHit = {
 		rule: string;
@@ -127,7 +135,7 @@ for (let i = 0; i < len(items); i = i+1) {
 			return 'This syntax is outside the current browser subset. Try one of the presets, then expand gradually.';
 		}
 		if (/init\/exec failed/i.test(raw)) {
-			return 'Runtime boot error: verify wasm artifacts are synced and refresh the page.';
+			return 'Runtime boot error: verify the wasm artifacts are installed (npm run fetch:wasm) and refresh the page.';
 		}
 		return '';
 	}
@@ -259,6 +267,11 @@ for (let i = 0; i < len(items); i = i+1) {
 	<p class="lede">
 		The browser-only WASM subset of the Mutant runtime, running in an isolated worker with a five-second
 		execution ceiling. Filesystem, network and process builtins are unavailable here by design.
+	</p>
+	<p class="pg-pin" data-testid="mutant-pin">
+		Runs <a href={MUTANT_RELEASE_URL}>Mutant {MUTANT_TAG}</a> · commit
+		<code>{MUTANT_SHORT_COMMIT}</code> · wasm {WASM_SIZE_LABEL} · sha256
+		<code title={WASM_SHA256}>{WASM_SHA256.slice(0, 12)}…</code>
 	</p>
 </section>
 

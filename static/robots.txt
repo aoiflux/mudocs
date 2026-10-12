@@ -4,7 +4,6 @@ Disallow:
 
 # query-dependent and internal pages
 Disallow: /search
-Disallow: /docs/quality
 Disallow: /theme-lab
 
 Sitemap: https://mudocs.aoiflux.xyz/sitemap.xml

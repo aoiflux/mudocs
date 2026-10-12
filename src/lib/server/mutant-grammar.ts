@@ -2,7 +2,7 @@
  * A minimal TextMate grammar for the Mutant language.
  *
  * Shiki ships no grammar for Mutant, and Mutant is the one language this site
- * exists to document — leaving its 23 fences as the only unhighlighted code on
+ * exists to document — leaving its fences as the only unhighlighted code on
  * the site would be a strange outcome. Everything encoded here is taken from
  * `docs/MUTANT_LANGUAGE_REFERENCE.md` rather than guessed:
  *

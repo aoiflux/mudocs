@@ -15,6 +15,23 @@ export type ManifestEntry = {
 	themes?: string[];
 };
 
+/**
+ * Defaults for every file under a directory of docs/, keyed by path prefix.
+ * A per-file entry in docsManifest overrides these field by field.
+ */
+export const docsManifestDirectories: Record<string, ManifestEntry> = {
+	'docs/advisories/': {
+		section: 'security',
+		audience: 'security-analyst',
+		order: 90,
+		tags: ['advisory', 'security', 'vulnerability']
+	}
+};
+
+/**
+ * One entry per file in Mutant's docs/. Every entry must name a file that
+ * exists there at the pinned release; mutant.sync.json lists them.
+ */
 export const docsManifest: Record<string, ManifestEntry> = {
 	'docs/WHAT_IS_MUTANT.md': {
 		section: 'overview',
@@ -29,24 +46,11 @@ export const docsManifest: Record<string, ManifestEntry> = {
 		order: 20,
 		tags: ['overview', 'deep-dive', 'security']
 	},
-	'docs/QUESTIONS_ANSWERED.md': {
-		section: 'overview',
-		audience: 'all',
-		order: 30,
-		tags: ['faq', 'orientation', 'guide']
-	},
 	'docs/MUTANT_LANGUAGE_REFERENCE.md': {
 		section: 'reference',
 		audience: 'language-user',
 		order: 12,
 		tags: ['language', 'syntax', 'control-flow', 'loops'],
-		themes: ['repl']
-	},
-	'docs/PLAYGROUND_EXAMPLES.md': {
-		section: 'reference',
-		audience: 'language-user',
-		order: 14,
-		tags: ['playground', 'examples', 'syntax', 'learning'],
 		themes: ['repl']
 	},
 	'docs/WASM_REPL_REFERENCE.md': {
@@ -62,12 +66,6 @@ export const docsManifest: Record<string, ManifestEntry> = {
 		order: 20,
 		tags: ['reference', 'cheatsheet', 'runtime'],
 		themes: ['bytecode']
-	},
-	'docs/VISUAL_COMPARISON.md': {
-		section: 'reference',
-		audience: 'all',
-		order: 30,
-		tags: ['comparison', 'visual', 'reference']
 	},
 	'docs/BYTECODE_IR.md': {
 		section: 'runtime',
@@ -89,12 +87,6 @@ export const docsManifest: Record<string, ManifestEntry> = {
 		order: 30,
 		tags: ['artifact', 'runtime', 'hardening'],
 		themes: ['bytecode', 'signing']
-	},
-	'docs/FINAL_SUMMARY.md': {
-		section: 'overview',
-		audience: 'all',
-		order: 40,
-		tags: ['summary', 'security', 'status']
 	},
 	'docs/SECURITY_LLD.md': {
 		section: 'security',
@@ -131,32 +123,11 @@ export const docsManifest: Record<string, ManifestEntry> = {
 		tags: ['security', 'enhancements', 'roadmap'],
 		themes: ['signing', 'sandboxing']
 	},
-	'docs/SECURITY_MIGRATION_COMPLETE.md': {
-		section: 'security',
-		audience: 'integrator',
-		order: 29,
-		tags: ['security', 'migration', 'status'],
-		themes: ['signing']
-	},
 	'docs/SANDBOX_DETECTION.md': {
 		section: 'security',
 		audience: 'security-analyst',
 		order: 30,
 		tags: ['sandbox', 'detection'],
-		themes: ['sandboxing']
-	},
-	'docs/SANDBOX_FEATURE_SUMMARY.md': {
-		section: 'security',
-		audience: 'security-analyst',
-		order: 32,
-		tags: ['sandbox', 'features', 'summary'],
-		themes: ['sandboxing']
-	},
-	'docs/SANDBOX_COMPLETE_SUMMARY.md': {
-		section: 'security',
-		audience: 'security-analyst',
-		order: 33,
-		tags: ['sandbox', 'summary', 'detection'],
 		themes: ['sandboxing']
 	},
 	'docs/ANTITAMPER_PROBE.md': {
@@ -243,5 +214,84 @@ export const docsManifest: Record<string, ManifestEntry> = {
 		order: 35,
 		tags: ['lsp', 'editor', 'architecture'],
 		themes: ['lsp']
+	},
+	'docs/COMPARISON.md': {
+		section: 'overview',
+		audience: 'all',
+		order: 15,
+		tags: ['comparison', 'orientation', 'overview']
+	},
+	'docs/TUTORIAL_30_MIN.md': {
+		section: 'overview',
+		audience: 'language-user',
+		order: 5,
+		tags: ['tutorial', 'getting-started', 'learning'],
+		themes: ['repl']
+	},
+	'docs/COOKBOOK.md': {
+		section: 'reference',
+		audience: 'language-user',
+		order: 14,
+		tags: ['cookbook', 'examples', 'forensics', 'recipes']
+	},
+	'docs/MODULES.md': {
+		section: 'reference',
+		audience: 'language-user',
+		order: 18,
+		tags: ['modules', 'imports', 'language']
+	},
+	'docs/EXECUTION_MODES.md': {
+		section: 'reference',
+		audience: 'language-user',
+		order: 22,
+		tags: ['execution', 'run', 'build', 'cli']
+	},
+	'docs/LIMITS_REFERENCE.md': {
+		section: 'reference',
+		audience: 'all',
+		order: 24,
+		tags: ['limits', 'reference', 'resources']
+	},
+	'docs/DETECTION_RULES.md': {
+		section: 'reference',
+		audience: 'security-analyst',
+		order: 48,
+		tags: ['sigma', 'detection', 'rules']
+	},
+	'docs/INTERCHANGE_SCHEMAS.md': {
+		section: 'reference',
+		audience: 'integrator',
+		order: 50,
+		tags: ['schemas', 'interchange', 'json']
+	},
+	'docs/DEBUGGING.md': {
+		section: 'tooling',
+		audience: 'language-user',
+		order: 20,
+		tags: ['debugging', 'dap', 'diagnostics']
+	},
+	'docs/TESTING.md': {
+		section: 'tooling',
+		audience: 'language-user',
+		order: 25,
+		tags: ['testing', 'goldens', 'quality']
+	},
+	'docs/CONFIGURATION_POLICY.md': {
+		section: 'security',
+		audience: 'all',
+		order: 5,
+		tags: ['configuration', 'policy', 'environment']
+	},
+	'docs/EVIDENCE_HANDLING_POLICY.md': {
+		section: 'security',
+		audience: 'security-analyst',
+		order: 6,
+		tags: ['evidence', 'custody', 'policy', 'forensics']
+	},
+	'docs/DISCLOSURE_POLICY.md': {
+		section: 'security',
+		audience: 'all',
+		order: 7,
+		tags: ['disclosure', 'policy', 'vulnerability']
 	}
 };

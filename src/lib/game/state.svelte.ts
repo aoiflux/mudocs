@@ -6,7 +6,7 @@
  * outline and the live regions can never disagree about what just happened.
  *
  * The local validator is authoritative for progression. `recompile()` asks the
- * real 57 MB Go compiler and reconciles its answer *alongside* the local one —
+ * real Go compiler (wasm, `WASM_SIZE_LABEL`) and reconciles its answer *alongside* the local one —
  * never instead of it. A disagreement is reported and the player still advances,
  * because a bug in this game must not be able to block someone.
  */
@@ -169,7 +169,7 @@ export class GameState {
 		// download happens while they are busy rather than while they wait.
 		//
 		// Only for a player who has already linked the host once. `warm()` fetches
-		// and compiles a 59.6 MB Go module; on a constrained machine that is enough
+		// and compiles a large Go module; on a constrained machine that is enough
 		// to take the renderer down, and here it would land inside the boot print,
 		// before the board has painted — the player would watch the game die
 		// without ever having asked for a compiler. Everyone else links on their

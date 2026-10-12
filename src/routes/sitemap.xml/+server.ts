@@ -26,8 +26,7 @@ export async function GET() {
 		...themes.map((theme) => ({ path: `/docs/themes/${theme.theme}`, priority: 0.4 }))
 	];
 
-	// /search returns query-dependent results and /docs/quality is an internal
-	// report — neither belongs in an index.
+	// /search returns query-dependent results, so it does not belong in an index.
 	const body = [
 		'<?xml version="1.0" encoding="UTF-8"?>',
 		'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',

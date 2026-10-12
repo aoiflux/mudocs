@@ -1,13 +1,13 @@
 /**
  * A lazy client for the real Mutant compiler.
  *
- * The site already ships `static/wasm-repl/mutant_repl.wasm` (a 57 MB Go build)
+ * The site already ships `static/wasm-repl/mutant_repl.wasm` (the pinned Go build, `WASM_SIZE_LABEL`)
  * behind `static/repl-worker.js`, protocol `postMessage({id, code})` →
  * `{id, ok, output}`. This module opens its own worker so the game can produce
  * genuine compiler diagnostics — and never touches `/playground`, which owns the
  * same runtime on its own page.
  *
- * Three independent guards make a second 57 MB Go heap impossible:
+ * Three independent guards make a second Go heap impossible:
  *   1. the bridge disables itself on any `/playground` path,
  *   2. the `worker` binding below is module-level and checked before construction,
  *   3. the worker is terminated on close and on a prolonged tab hide.
@@ -19,14 +19,15 @@
  */
 
 import { prefersReducedMotion } from '$lib/artist/motion';
+import { WASM_SIZE_LABEL } from '$lib/mutant-pin';
 
 export type WasmStatus = 'idle' | 'downloading' | 'ready' | 'failed' | 'disabled';
 
 export type ReplRequest = { id: string; code: string };
 export type ReplResponse = { id: string; ok: boolean; output: string };
 
-/** The size the chip reports. Real, from the shipped artifact. */
-export const WASM_SIZE_LABEL = '57.0 MB';
+/** The size the chip reports. Real: read from the lock the served artifact is verified against. */
+export { WASM_SIZE_LABEL };
 
 const WARM_TIMEOUT_MS = 45_000;
 const RUN_TIMEOUT_MS = 6_000;
@@ -86,7 +87,7 @@ type ConstrainedNavigator = Navigator & {
 
 /**
  * Why the bridge would refuse to boot. Returns null when it is free to try.
- * Deliberately conservative — a 57 MB download is not something to sneak onto
+ * Deliberately conservative — a download this size is not something to sneak onto
  * a metered connection.
  */
 export function disabledReason(pathname: string): string | null {
@@ -104,7 +105,7 @@ export function disabledReason(pathname: string): string | null {
 	return null;
 }
 
-/** True when we should ask before spending 57 MB rather than just spending it. */
+/** True when we should ask before spending the download rather than just spending it. */
 export function shouldAskConsent(): boolean {
 	if (typeof navigator === 'undefined') return true;
 	const nav = navigator as ConstrainedNavigator;
@@ -141,7 +142,7 @@ function handleMessage(event: MessageEvent<ReplResponse>): void {
 
 /**
  * Construct the worker. This downloads nothing on its own — `repl-worker.js`
- * initialises its runtime lazily on the *first* message, so the 57 MB fetch
+ * initialises its runtime lazily on the *first* message, so the wasm fetch
  * begins at `warm()`, not here.
  */
 function ensureWorker(pathname: string): Worker | null {

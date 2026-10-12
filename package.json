@@ -4,15 +4,19 @@
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
-		"sync:wasm": "node ./scripts/sync-wasm-repl.mjs",
+		"fetch:wasm": "node ./scripts/fetch-wasm.mjs",
+		"check:wasm": "node ./scripts/fetch-wasm.mjs --check",
+		"pin:mutant": "node ./scripts/pin-mutant.mjs",
+		"sync:mutant": "node ./scripts/mutant-sync.mjs",
+		"check:sync": "node ./scripts/mutant-sync.mjs --check",
 		"check:docs:wasm": "node ./scripts/lint-wasm-docs.mjs",
-		"predev": "npm run sync:wasm",
-		"prebuild": "npm run sync:wasm",
+		"predev": "npm run fetch:wasm",
+		"prebuild": "npm run fetch:wasm",
 		"dev": "vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
-		"check": "npm run check:docs:wasm && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check": "npm run check:sync && npm run check:docs:wasm && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
 	},
 	"devDependencies": {
@@ -35,5 +39,8 @@
 		"plantuml-encoder": "^1.4.0",
 		"shiki": "^4.4.3",
 		"zod": "^4.4.3"
+	},
+	"engines": {
+		"node": ">=22.12"
 	}
 }

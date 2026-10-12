@@ -14,9 +14,11 @@ import { z } from 'zod';
 import {
 	type Audience,
 	docsManifest,
+	docsManifestDirectories,
 	type ManifestEntry,
 	type SectionKey
 } from '$lib/server/docs-manifest';
+import { MUTANT_TAG } from '$lib/mutant-pin';
 import { REPO } from '$lib/site';
 
 function resolveDocsRoot(): string {
@@ -49,14 +51,14 @@ const sectionCatalog: Record<SectionKey, {
 		description: 'Big-picture explanations, quick reference material, and definitive orientation docs.',
 		intro: 'Start here if you need the shape of the language, why it exists, and which foundational documents to read first.',
 		featuredSlug: 'what_is_mutant',
-		readingPath: ['what_is_mutant', 'mutant_language_reference', 'playground_examples', 'wasm_repl_reference']
+		readingPath: ['what_is_mutant', 'tutorial_30_min', 'comparison', 'detailed_explanations']
 	},
 	reference: {
 		title: 'Reference',
 		description: 'Canonical policies, reference sheets, migration matrices, and source-of-truth documentation.',
 		intro: 'Use this section when you need exact policy, source-of-truth fields, or implementation mapping rather than narrative explanation.',
 		featuredSlug: 'mutant_language_reference',
-		readingPath: ['mutant_language_reference', 'wasm_repl_reference', 'playground_examples', 'quick_reference']
+		readingPath: ['mutant_language_reference', 'cookbook', 'capability_reference', 'quick_reference', 'wasm_repl_reference']
 	},
 	runtime: {
 		title: 'Runtime',
@@ -76,15 +78,16 @@ const sectionCatalog: Record<SectionKey, {
 			'security_runbook',
 			'antitamper_probe',
 			'sandbox_detection',
-			'process_injection_detection_lld'
+			'process_injection_detection_lld',
+			'advisories'
 		]
 	},
 	tooling: {
 		title: 'Tooling',
 		description: 'Editor integration, implementation workflow, and operational runbooks.',
 		intro: 'This section is for contributors and integrators building around Mutant, especially editor support and maintenance workflows.',
-		featuredSlug: 'implementation_guide',
-		readingPath: ['implementation_guide', 'lsp_extension_onboarding_60_min', 'lsp_extension_lld']
+		featuredSlug: 'lsp_extension_onboarding_60_min',
+		readingPath: ['lsp_extension_onboarding_60_min', 'debugging', 'testing', 'lsp_extension_lld']
 	}
 };
 
@@ -171,7 +174,7 @@ export type DocItem = {
  * A doc without its rendered HTML or its source markdown.
  *
  * List pages only need the card fields, but a DocItem carries the doc's full
- * `html` and `raw`. Sending those for all 27 documents made /docs a 1.6 MB
+ * `html` and `raw`. Sending those for every document made /docs a 1.6 MB
  * response. Loads that render lists must map through toDocSummary().
  */
 export type DocSummary = Omit<DocItem, 'html' | 'raw' | 'body' | 'toc'>;
@@ -203,49 +206,6 @@ export type ThemeSummary = {
 	title: string;
 	description: string;
 	count: number;
-};
-
-export type HomeReadingPath = {
-	id: 'learn-language' | 'understand-security' | 'integrate-tooling';
-	title: string;
-	description: string;
-	audience: Audience;
-	steps: Array<{ section: SectionKey; slug: string; title: string }>;
-};
-
-export type DocsQualityIssue = {
-	type:
-		| 'missing_source_meta'
-		| 'missing_review_meta'
-		| 'weak_description'
-		| 'missing_tags'
-		| 'missing_themes'
-		| 'missing_toc'
-		| 'not_in_manifest'
-		| 'diagram_transform_mismatch';
-	message: string;
-};
-
-export type DocsQualityDocRow = {
-	title: string;
-	section: SectionKey;
-	slug: string;
-	sourcePath: string;
-	audience: Audience;
-	issues: DocsQualityIssue[];
-};
-
-export type DocsQualityReport = {
-	generatedAt: string;
-	totalDocs: number;
-	docsWithIssues: number;
-	manifestEntries: number;
-	manifestMissingFiles: string[];
-	unmappedDocs: string[];
-	totalDiagramFences: number;
-	totalRenderedDiagrams: number;
-	issueCounts: Record<DocsQualityIssue['type'], number>;
-	rows: DocsQualityDocRow[];
 };
 
 export type DocsSearchParams = {
@@ -471,14 +431,15 @@ function normalizeForIndex(value: string): string {
 }
 
 async function resolveDocsFilesWithCacheKey(root: string): Promise<{ files: string[]; cacheKey: string }> {
-	const files = (await fg(path.join(root, '*.md').replace(/\\/g, '/'), { dot: false })).sort((a, b) =>
+	// Recursive: Mutant's docs/ has subdirectories (advisories/), mirrored as-is.
+	const files = (await fg(path.join(root, '**/*.md').replace(/\\/g, '/'), { dot: false })).sort((a, b) =>
 		a.localeCompare(b)
 	);
 
 	const statParts = await Promise.all(
 		files.map(async (file) => {
 			const stat = await fs.stat(file);
-			return `${path.basename(file)}:${stat.size}:${Math.floor(stat.mtimeMs)}`;
+			return `${docRelPath(root, file)}:${stat.size}:${Math.floor(stat.mtimeMs)}`;
 		})
 	);
 
@@ -486,6 +447,28 @@ async function resolveDocsFilesWithCacheKey(root: string): Promise<{ files: stri
 		files,
 		cacheKey: `${root}|${statParts.join('|')}`
 	};
+}
+
+/** A file's path inside docs/, with forward slashes: `advisories/MVF-2026-0001.md`. */
+function docRelPath(root: string, file: string): string {
+	return path.relative(root, file).split(path.sep).join('/');
+}
+
+/**
+ * One URL segment per document. A file is named by its base name; a README
+ * stands for its directory, so docs/advisories/README.md is `advisories`.
+ */
+function docSlug(relPath: string): string {
+	const parts = relPath.split('/');
+	const base = path.posix.basename(relPath, '.md');
+	const name = base.toLowerCase() === 'readme' && parts.length > 1 ? parts[parts.length - 2] : base;
+	return name.toLowerCase();
+}
+
+/** Manifest entry for a file, layered over the defaults of the directory it sits in. */
+function manifestFor(sourcePath: string): ManifestEntry {
+	const dir = Object.keys(docsManifestDirectories).find((prefix) => sourcePath.startsWith(prefix));
+	return { ...(dir ? docsManifestDirectories[dir] : {}), ...(docsManifest[sourcePath] ?? {}) };
 }
 
 function computeSearchIndexKey(docs: DocItem[]): string {
@@ -642,7 +625,7 @@ function inferredFrontmatter(fileName: string, section: SectionKey): DocFrontmat
 		description: sectionCatalog[section].description,
 		source_repo: 'aoiflux/mutant',
 		source_path: `docs/${fileName}`,
-		source_ref: 'main',
+		source_ref: MUTANT_TAG,
 		freshness_tier: section === 'security' || section === 'runtime' ? 'critical' : 'high',
 		review_owner: 'docs',
 		audience: section === 'security' ? 'security-analyst' : section === 'runtime' ? 'platform-engineer' : 'all'
@@ -652,15 +635,17 @@ function inferredFrontmatter(fileName: string, section: SectionKey): DocFrontmat
 /**
  * The docs corpus is authored inside the language repo, so its links assume the
  * files that sit beside docs/ over there. None of them exist here: rendered
- * as-is, `../examples/...`, `builtin/net.go` and even a sibling
+ * as-is, `../examples/...`, `../builtin/net.go` and even a sibling
  * `SECURITY_LLD.md` all resolve against /docs/<section>/<slug> and 404.
  *
- * A link to another document in the corpus becomes this site's page for it;
- * everything else becomes an absolute URL into the language repo. One base
- * serves files and directories alike because GitHub redirects a /tree/ path
- * that names a file to its /blob/ view, fragment intact.
+ * Every link is relative to the document that contains it, as on GitHub. A
+ * link to another document in the corpus becomes this site's page for it;
+ * everything else becomes an absolute URL into the language repo at the pinned
+ * release tag, never a branch, so a citation keeps meaning what it meant when
+ * the doc was written. GitHub redirects a /tree/ path that names a file to its
+ * /blob/ view, fragment intact, so one base serves files and directories.
  */
-function rewriteRepoLinks(body: string, docPages: Map<string, string>): string {
+function rewriteRepoLinks(body: string, docPages: Map<string, string>, docRel: string): string {
 	let inCodeFence = false;
 	return body
 		.split(/\r?\n/)
@@ -672,14 +657,14 @@ function rewriteRepoLinks(body: string, docPages: Map<string, string>): string {
 			if (inCodeFence) return line;
 
 			return line.replace(/\]\(([^)\s]+)\)/g, (match, target: string) => {
-				const resolved = resolveRepoLink(target, docPages);
+				const resolved = resolveRepoLink(target, docPages, docRel);
 				return resolved ? `](${resolved})` : match;
 			});
 		})
 		.join('\n');
 }
 
-function resolveRepoLink(target: string, docPages: Map<string, string>): string | null {
+function resolveRepoLink(target: string, docPages: Map<string, string>, docRel: string): string | null {
 	// Absolute URLs, protocol-relative links and in-page anchors already work.
 	if (/^([a-z][a-z0-9+.-]*:|\/\/|#|\/)/i.test(target)) return null;
 
@@ -688,10 +673,9 @@ function resolveRepoLink(target: string, docPages: Map<string, string>): string 
 	const filePath = (hashIndex === -1 ? target : target.slice(0, hashIndex)).replace(/^\.\//, '');
 	if (!filePath) return null;
 
-	// `../` steps out of docs/ to the repo root; every other path in this corpus
-	// is written from the repo root already, except a bare sibling document.
-	const isSibling = !filePath.includes('/') && filePath.toLowerCase().endsWith('.md');
-	const repoPath = isSibling ? `docs/${filePath}` : filePath.replace(/^(\.\.\/)+/, '');
+	// Resolve against the containing document's directory inside the repo.
+	const repoPath = path.posix.normalize(path.posix.join('docs', path.posix.dirname(docRel), filePath));
+	if (repoPath === '..' || repoPath.startsWith('../')) return null;
 
 	// A line anchor (#L42) only means something in GitHub's file view, so a doc
 	// carrying one keeps pointing at the repo rather than at the rendered page.
@@ -700,7 +684,7 @@ function resolveRepoLink(target: string, docPages: Map<string, string>): string 
 		if (page) return `${page}${fragment}`;
 	}
 
-	return `${REPO.url}/tree/main/${repoPath.replace(/\/+$/, '')}${fragment}`;
+	return `${REPO.treeBase}/${repoPath.replace(/\/+$/, '')}${fragment}`;
 }
 
 function normalizeHeading(value: string): string {
@@ -797,8 +781,9 @@ async function loadAllDocs(): Promise<DocItem[]> {
 			const source = await fs.readFile(file, 'utf8');
 			const parsed = matter(source);
 			const fileName = path.basename(file);
-			const sourcePath = `docs/${fileName}`;
-			const manifestEntry: ManifestEntry = docsManifest[sourcePath] ?? {};
+			const relPath = docRelPath(definitiveDocsRoot, file);
+			const sourcePath = `docs/${relPath}`;
+			const manifestEntry = manifestFor(sourcePath);
 			const inferredSection = inferSection(fileName, parsed.content);
 			const resolvedSection = resolveSection(manifestEntry.section ?? parsed.data.section, inferredSection);
 			const inferred = inferredFrontmatter(fileName, resolvedSection);
@@ -809,7 +794,7 @@ async function loadAllDocs(): Promise<DocItem[]> {
 				section: resolvedSection
 			});
 
-			const slug = path.basename(file, '.md').toLowerCase();
+			const slug = docSlug(relPath);
 			const raw = parsed.content.trim();
 			const title =
 				(typeof parsed.data.title === 'string' ? parsed.data.title : null) ??
@@ -820,6 +805,7 @@ async function loadAllDocs(): Promise<DocItem[]> {
 			return {
 				file,
 				fileName,
+				relPath,
 				sourcePath,
 				manifestEntry,
 				inferred,
@@ -833,10 +819,10 @@ async function loadAllDocs(): Promise<DocItem[]> {
 		})
 	);
 
-	/** Lower-cased file name (as the corpus links to it) → this site's page. */
+	/** Lower-cased path inside docs/ (as the corpus links to it) → this site's page. */
 	const docPages = new Map(
 		parsedFiles.map((entry) => [
-			entry.fileName.toLowerCase(),
+			entry.relPath.toLowerCase(),
 			`/docs/${entry.resolvedSection}/${entry.slug}`
 		])
 	);
@@ -845,6 +831,7 @@ async function loadAllDocs(): Promise<DocItem[]> {
 		parsedFiles.map(async (entry) => {
 			const {
 				file,
+				relPath,
 				sourcePath,
 				manifestEntry,
 				inferred,
@@ -855,7 +842,7 @@ async function loadAllDocs(): Promise<DocItem[]> {
 				title,
 				data
 			} = entry;
-			const processed = processMarkdown(rewriteRepoLinks(injectCharts(raw), docPages), title);
+			const processed = processMarkdown(rewriteRepoLinks(injectCharts(raw), docPages, relPath), title);
 			const body = processed.body;
 			// Fences become finished HTML before marked runs; see highlightFences().
 			const html = await marked.parse(await highlightFences(body));
@@ -1028,46 +1015,6 @@ export async function listDocsByTheme(theme: string): Promise<DocItem[]> {
 	return docs.filter((doc) => doc.themes.includes(key));
 }
 
-export async function getHomeReadingPaths(): Promise<HomeReadingPath[]> {
-	const docs = await loadAllDocs();
-
-	const resolveSteps = (slugs: string[]) =>
-		slugs
-			.map((slug) => docs.find((doc) => doc.slug === slug))
-			.filter((doc): doc is DocItem => Boolean(doc))
-			.map((doc) => ({ section: doc.section, slug: doc.slug, title: doc.title }));
-
-	return [
-		{
-			id: 'learn-language',
-			title: 'Learn The Language',
-			description: 'Start with orientation, pick up syntax and reference, then explore execution internals.',
-			audience: 'language-user',
-			steps: resolveSteps(['what_is_mutant', 'mutant_language_reference', 'playground_examples', 'wasm_repl_reference', 'bytecode_ir'])
-		},
-		{
-			id: 'understand-security',
-			title: 'Understand Security',
-			description: 'Move from architecture to policy and operational runbook detail.',
-			audience: 'security-analyst',
-			steps: resolveSteps([
-				'security_lld',
-				'security_diagrams',
-				'antitamper_probe',
-				'sandbox_detection',
-				'security_runbook'
-			])
-		},
-		{
-			id: 'integrate-tooling',
-			title: 'Integrate Tooling',
-			description: 'Follow implementation and LSP onboarding paths for production integration work.',
-			audience: 'integrator',
-			steps: resolveSteps(['implementation_guide', 'lsp_extension_onboarding_60_min', 'lsp_extension_lld'])
-		}
-	];
-}
-
 export async function searchDocs(params: DocsSearchParams): Promise<DocsSearchHit[]> {
 	const phrase = params.query.trim().toLowerCase();
 	const terms = tokenizeQuery(params.query);
@@ -1184,123 +1131,5 @@ export async function getAboutPage(): Promise<Pick<DocItem, 'title' | 'descripti
 			<p>It is built with SvelteKit, uses the repository-level docs corpus as its source of truth, and includes an in-browser WASM REPL under <a href="/playground">/playground</a>.</p>
 			<p>Use <a href="/docs">/docs</a> to browse canonical implementation, runtime, security, and tooling documentation.</p>
 		`.trim()
-	};
-}
-
-export async function getDocsQualityReport(): Promise<DocsQualityReport> {
-	const docs = await loadAllDocs();
-	const sourcePaths = new Set(docs.map((doc) => doc.sourcePath));
-	const manifestPaths = Object.keys(docsManifest);
-	const manifestMissingFiles = manifestPaths.filter((sourcePath) => !sourcePaths.has(sourcePath));
-	const unmappedDocs = docs
-		.map((doc) => doc.sourcePath)
-		.filter((sourcePath) => !(sourcePath in docsManifest));
-
-	const emptyCounts: Record<DocsQualityIssue['type'], number> = {
-		missing_source_meta: 0,
-		missing_review_meta: 0,
-		weak_description: 0,
-		missing_tags: 0,
-		missing_themes: 0,
-		missing_toc: 0,
-		not_in_manifest: 0,
-		diagram_transform_mismatch: 0
-	};
-
-	let totalDiagramFences = 0;
-	let totalRenderedDiagrams = 0;
-
-	const rows = docs
-		.map((doc) => {
-			const issues: DocsQualityIssue[] = [];
-			const diagramFences = (doc.body.match(/```(mermaid|plantuml|puml)\s*\n/gi) ?? []).length;
-			const renderedDiagrams = (doc.html.match(/class="diagram-shell"/g) ?? []).length;
-			totalDiagramFences += diagramFences;
-			totalRenderedDiagrams += renderedDiagrams;
-
-			if (!doc.frontmatter.source_repo || !doc.frontmatter.source_path || !doc.frontmatter.source_ref) {
-				issues.push({
-					type: 'missing_source_meta',
-					message: 'Missing one or more canonical source fields (source_repo/source_path/source_ref).'
-				});
-			}
-
-			if (!doc.frontmatter.last_reviewed || !doc.frontmatter.review_owner || !doc.frontmatter.freshness_tier) {
-				issues.push({
-					type: 'missing_review_meta',
-					message: 'Missing one or more review fields (last_reviewed/review_owner/freshness_tier).'
-				});
-			}
-
-			if (!doc.description || doc.description.length < 60) {
-				issues.push({
-					type: 'weak_description',
-					message: 'Description is missing or too short for high-quality discovery surfaces.'
-				});
-			}
-
-			if (doc.tags.length === 0) {
-				issues.push({
-					type: 'missing_tags',
-					message: 'No tags are assigned.'
-				});
-			}
-
-			if (doc.themes.length === 0) {
-				issues.push({
-					type: 'missing_themes',
-					message: 'No recognized themes are assigned.'
-				});
-			}
-
-			if (doc.toc.length === 0) {
-				issues.push({
-					type: 'missing_toc',
-					message: 'No section headings detected (H2-H4), reducing in-page navigability.'
-				});
-			}
-
-			if (!(doc.sourcePath in docsManifest)) {
-				issues.push({
-					type: 'not_in_manifest',
-					message: 'Document is not explicitly configured in docs manifest overrides.'
-				});
-			}
-
-			if (diagramFences !== renderedDiagrams) {
-				issues.push({
-					type: 'diagram_transform_mismatch',
-					message: `Diagram fence count (${diagramFences}) does not match rendered diagram count (${renderedDiagrams}).`
-				});
-			}
-
-			return {
-				title: doc.title,
-				section: doc.section,
-				slug: doc.slug,
-				sourcePath: doc.sourcePath,
-				audience: doc.audience,
-				issues
-			} satisfies DocsQualityDocRow;
-		})
-		.filter((row) => row.issues.length > 0);
-
-	for (const row of rows) {
-		for (const issue of row.issues) {
-			emptyCounts[issue.type] += 1;
-		}
-	}
-
-	return {
-		generatedAt: new Date().toISOString(),
-		totalDocs: docs.length,
-		docsWithIssues: rows.length,
-		manifestEntries: manifestPaths.length,
-		manifestMissingFiles,
-		unmappedDocs,
-		totalDiagramFences,
-		totalRenderedDiagrams,
-		issueCounts: emptyCounts,
-		rows
 	};
 }

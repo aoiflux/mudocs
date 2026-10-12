@@ -5,6 +5,8 @@
  * aoiflux/mudocs. Both links appear in the UI, so keep them distinct.
  */
 
+import { MUTANT_TAG } from './mutant-pin';
+
 export const SITE = {
 	name: 'mudocs',
 	/** Used for <title>, per the redesign brief's "Mudocs — %s" template. */
@@ -34,9 +36,13 @@ export const REPO = {
 	get apiUrl() {
 		return `https://api.github.com/repos/${this.owner}/${this.name}`;
 	},
-	/** Docs are authored in the language repo, so "Open in GitHub" resolves there. */
-	/** The repo's default branch is main; /blob/master only resolves via a redirect. */
-	docsBlobBase: 'https://github.com/aoiflux/mutant/blob/main'
+	/**
+	 * Docs are authored in the language repo, so "Open in GitHub" resolves there,
+	 * at the release this site teaches (mutant.lock.json), never a moving branch.
+	 */
+	docsBlobBase: `https://github.com/aoiflux/mutant/blob/${MUTANT_TAG}`,
+	/** Directories (and files, which GitHub redirects to /blob/) at the pinned release. */
+	treeBase: `https://github.com/aoiflux/mutant/tree/${MUTANT_TAG}`
 } as const;
 
 /**
@@ -49,8 +55,8 @@ export const REPO = {
  * Marketplace search URL. Neither resolves to anything that exists.
  */
 export const EXTENSION = {
-	cloneCommand: 'git clone https://github.com/aoiflux/mutant',
-	sourceUrl: 'https://github.com/aoiflux/mutant/tree/main/mutant-vscode-extension'
+	cloneCommand: `git clone --branch ${MUTANT_TAG} https://github.com/aoiflux/mutant`,
+	sourceUrl: `https://github.com/aoiflux/mutant/tree/${MUTANT_TAG}/mutant-vscode-extension`
 } as const;
 
 /** Primary navigation, in the order the artboards draw it. */
