@@ -15,6 +15,7 @@ import { WORKSHOP_SPECS } from '$lib/workshop/content';
 import { workshopModule, type Stage } from '$lib/workshop/schema';
 import type { ResolvedModule, ResolvedStage } from '$lib/workshop/resolved';
 import { SCENE_DATA } from '$lib/workshop/scenes/data';
+import { FILM_DATA } from '$lib/workshop/films/data';
 import { MUTANT_TAG } from '$lib/mutant-pin';
 import { REPO } from '$lib/site';
 import { highlightLines } from './highlight';
@@ -69,6 +70,11 @@ async function resolveStage(stage: Stage, where: string): Promise<ResolvedStage>
 				throw new Error(`${where}: ${stage.data ?? 'values'} is not ${stage.scene} data: ${scene.error.message}`);
 			}
 			return { ...stage, sceneData: scene.data };
+		}
+		case 'cinematic': {
+			const film = FILM_DATA[stage.film].safeParse(stage.values);
+			if (!film.success) throw new Error(`${where}: values are not ${stage.film} data: ${film.error.message}`);
+			return { ...stage, filmData: film.data };
 		}
 		case 'resources': {
 			const resolved = await Promise.all(

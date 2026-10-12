@@ -11,7 +11,7 @@
 //     every platform (V-B1 a-d)
 // Blockers only stop publication: a module is published when WORKSHOP_MODULES
 // marks it `available`, and then a blocker is an error too.
-//   - a concept scene nobody has checked against its sources (V-B6)
+//   - a concept scene or film nobody has checked against its sources (V-B6)
 //   - a builtin not cleared against the ledger at this pin (V-B1 e,
 //     verification/ledger-clearance.json, written by scripts/ledger-clear.mjs)
 // Blocked builtin names are printed only with --names: CI logs are public, and
@@ -47,6 +47,9 @@ function filesNamed(module) {
 	const files = [];
 	for (const tier of module.tiers) {
 		for (const stage of tier.stages) {
+			if (stage.kind === 'cinematic') {
+				files.push(...stage.sources.filter((s) => s.kind === 'mutant-file').map((s) => s.ref));
+			}
 			if (stage.kind === 'concept') {
 				if (stage.data) files.push(stage.data);
 				files.push(...stage.sources.filter((s) => s.kind === 'mutant-file').map((s) => s.ref));
@@ -97,6 +100,8 @@ async function checkModule(file, ctx) {
 			const where = `${tier.id}/${stage.id}`;
 			if (stage.kind === 'concept' && !stage.reviewedBy)
 				blockers.push(`${where}: scene not yet checked against its sources (reviewedBy)`);
+			if (stage.kind === 'cinematic' && !stage.reviewedBy)
+				blockers.push(`${where}: film not yet checked against its sources (reviewedBy)`);
 			if (stage.kind === 'build') {
 				for (const block of stage.blocks) for (const name of block.builtins) blockBuiltins.push({ where, name });
 			}

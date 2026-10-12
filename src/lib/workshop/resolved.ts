@@ -12,13 +12,15 @@ export type ResolvedWalkthrough = StageOf<'walkthrough'> & {
 	programUrl: string;
 };
 export type ResolvedConcept = StageOf<'concept'> & { sceneData: unknown };
+export type ResolvedCinematic = StageOf<'cinematic'> & { filmData: unknown };
 export type ResolvedResources = StageOf<'resources'> & {
 	resolved: { path: string; label: string; bytes: number; sha256: string; url: string }[];
 };
 export type ResolvedStage =
-	| Exclude<Stage, { kind: 'walkthrough' | 'concept' | 'resources' }>
+	| Exclude<Stage, { kind: 'walkthrough' | 'concept' | 'cinematic' | 'resources' }>
 	| ResolvedWalkthrough
 	| ResolvedConcept
+	| ResolvedCinematic
 	| ResolvedResources;
 
 export type ResolvedModule = Omit<WorkshopModuleData, 'tiers'> & {

@@ -19,6 +19,9 @@ const HOME = `/Users/${USER}`;
 const IMPLANT = 'MeridianSync';
 const LURE_FILE = 'Invoice_MRD-88412.pdf.exe';
 const LURE_HOST = 'corp-billing.example';
+
+/** The case names the films draw too, so a re-pin changes them in one place. */
+export const CASE = { USER, IMPLANT, LURE_FILE, LURE_HOST } as const;
 const CHROME = `${HOME}/AppData/Local/Google/Chrome`;
 const DOCS = `${HOME}/Documents`;
 

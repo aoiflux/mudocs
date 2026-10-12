@@ -11,6 +11,7 @@
  */
 import type { WorkshopModuleSpec } from '../schema';
 import { SIMULATED } from './shared/quilldrop-sim.ts';
+import { REGISTRY_FILM } from './shared/films.ts';
 
 export const spec: WorkshopModuleSpec = {
 	id: 'registry-persistence',
@@ -33,6 +34,7 @@ export const spec: WorkshopModuleSpec = {
 						'Persistence lives there too. Before you can tell a planted entry from a normal one, you need to be able to read a hive and say what is in it.'
 					]
 				},
+				REGISTRY_FILM,
 				{
 					kind: 'concept',
 					id: 'hive-model',

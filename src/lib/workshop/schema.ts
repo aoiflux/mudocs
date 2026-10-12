@@ -86,6 +86,41 @@ const conceptStage = z
 		'give the scene data or values, not both'
 	);
 
+export const FILMS = ['Timestomp', 'Malvertising', 'RegistryPersistence'] as const;
+
+/** The shots each film draws, in order. A cinematic stage narrates exactly these. */
+export const FILM_SHOTS: Record<(typeof FILMS)[number], readonly string[]> = {
+	Timestomp: ['system', 'volume', 'mft', 'path', 'attributes', 'reach', 'rewrite', 'split', 'sources', 'catch'],
+	Malvertising: ['browse', 'ad', 'click', 'chain', 'hops', 'cookies', 'profile', 'vault', 'ids', 'map'],
+	RegistryPersistence: ['boot', 'city', 'navigate', 'locations', 'execute', 'write', 'reboot', 'read', 'spawn', 'artifacts']
+};
+
+/**
+ * A narrated motion sequence: one film, shot by shot, from the user's action
+ * down to the structure it changes. Like a concept scene, it draws case values
+ * written here and does not publish until someone has checked it against its
+ * sources.
+ */
+const cinematicStage = z
+	.object({
+		...stageBase,
+		kind: z.literal('cinematic'),
+		film: z.enum(FILMS),
+		/** The case values the film draws; the loader checks them against the film's own schema. */
+		values: z.unknown(),
+		intro: text,
+		shots: z.array(z.object({ shot: z.string(), title: text, text })).min(1),
+		sources: z.array(sceneSource).min(1),
+		reviewedBy: text.optional(),
+		reviewedAt: z.iso.date().optional()
+	})
+	.superRefine((value, ctx) => {
+		const want = FILM_SHOTS[value.film];
+		if (value.shots.map((s) => s.shot).join() !== want.join()) {
+			ctx.addIssue({ code: 'custom', message: `${value.film} narrates the shots ${want.join(', ')}, in that order` });
+		}
+	});
+
 const walkthroughStage = z
 	.object({
 		...stageBase,
@@ -183,6 +218,7 @@ const resourcesStage = z.object({
 export const stage = z.discriminatedUnion('kind', [
 	hookStage,
 	conceptStage,
+	cinematicStage,
 	walkthroughStage,
 	buildStage,
 	checkStage,

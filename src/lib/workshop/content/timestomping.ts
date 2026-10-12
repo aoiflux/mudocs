@@ -7,6 +7,7 @@
  */
 import type { WorkshopModuleSpec } from '../schema';
 import { SIMULATED } from './shared/quilldrop-sim.ts';
+import { TIMESTOMP_FILM } from './shared/films.ts';
 
 export const spec: WorkshopModuleSpec = {
 	id: 'timestomping',
@@ -30,6 +31,7 @@ export const spec: WorkshopModuleSpec = {
 						'NTFS keeps a second set, written when the file’s name is made, that the usual tools leave alone. When the two disagree in a way that cannot happen naturally, the file was edited.'
 					]
 				},
+				TIMESTOMP_FILM,
 				{
 					kind: 'concept',
 					id: 'two-clocks',

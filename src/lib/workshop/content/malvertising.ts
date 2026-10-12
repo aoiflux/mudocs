@@ -7,6 +7,7 @@
  */
 import type { WorkshopModuleSpec } from '../schema';
 import { SIMULATED } from './shared/quilldrop-sim.ts';
+import { MALVERTISING_FILM } from './shared/films.ts';
 
 export const spec: WorkshopModuleSpec = {
 	id: 'malvertising',
@@ -30,6 +31,7 @@ export const spec: WorkshopModuleSpec = {
 						'Chrome records every one of those visits, and for each one, the visit that led to it.'
 					]
 				},
+				MALVERTISING_FILM,
 				{
 					kind: 'concept',
 					id: 'chain',

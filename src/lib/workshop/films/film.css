@@ -1,0 +1,181 @@
+/*
+ * Shared look of the cinematic films. A film draws on a fixed 960 x 540 stage
+ * that CinematicStage scales to the frame; objects sit on it by left/top and
+ * move only through transform and opacity, so every shot change is one CSS
+ * transition. The frame is always dark, in every site theme: it is a screen.
+ * Every rule is scoped under .film.
+ */
+.film {
+	--f-bg: #030812;
+	--f-deep: #0a1a33;
+	--f-panel: rgba(9, 24, 48, 0.9);
+	--f-line: rgba(63, 208, 255, 0.32);
+	--f-cyan: #3fd0ff;
+	--f-cyan-soft: rgba(63, 208, 255, 0.14);
+	--f-ink: #e8f3ff;
+	--f-mute: #8aa0c2;
+	--f-orange: #ff9b42;
+	--f-orange-soft: rgba(255, 155, 66, 0.16);
+	--f-move: 1.15s;
+	--f-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.film .f-camera {
+	position: absolute;
+	inset: 0;
+	transform-style: preserve-3d;
+	transition: transform var(--f-move) var(--f-ease);
+}
+
+.film .f-obj {
+	position: absolute;
+	transform-style: preserve-3d;
+	transition:
+		transform var(--f-move) var(--f-ease),
+		opacity 0.7s var(--f-ease);
+}
+
+.film .f-obj[data-hidden] {
+	pointer-events: none;
+}
+
+.film .f-panel {
+	background: var(--f-panel);
+	border: 1px solid var(--f-line);
+	box-shadow:
+		0 0 0 1px rgba(0, 0, 0, 0.4),
+		0 18px 50px rgba(0, 0, 0, 0.55);
+}
+
+.film .f-glow {
+	border-color: var(--f-cyan);
+	box-shadow:
+		0 0 18px rgba(63, 208, 255, 0.55),
+		0 0 60px rgba(63, 208, 255, 0.25);
+}
+
+.film .f-hot {
+	border-color: var(--f-orange);
+	box-shadow:
+		0 0 18px rgba(255, 155, 66, 0.6),
+		0 0 60px rgba(255, 155, 66, 0.25);
+}
+
+.film .f-label {
+	font-size: 12px;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--f-mute);
+}
+
+.film .f-cyan {
+	color: var(--f-cyan);
+}
+
+.film .f-orange {
+	color: var(--f-orange);
+}
+
+.film .f-mute {
+	color: var(--f-mute);
+}
+
+.film .f-strike {
+	text-decoration: line-through;
+	text-decoration-color: var(--f-orange);
+	opacity: 0.55;
+}
+
+/* The floor: a receding grid under everything. */
+.film .f-floor {
+	position: absolute;
+	left: -480px;
+	top: 330px;
+	width: 1920px;
+	height: 900px;
+	transform: rotateX(78deg);
+	transform-origin: 50% 0;
+	background-image:
+		linear-gradient(rgba(63, 208, 255, 0.16) 1px, transparent 1px),
+		linear-gradient(90deg, rgba(63, 208, 255, 0.16) 1px, transparent 1px);
+	background-size: 48px 48px;
+	mask-image: linear-gradient(to bottom, black, transparent 70%);
+	pointer-events: none;
+}
+
+/* Flow lines: drawn in on each shot; packets ride them. */
+.film .f-flow {
+	position: absolute;
+	inset: 0;
+	width: 960px;
+	height: 540px;
+	overflow: visible;
+	pointer-events: none;
+}
+
+.film .f-flow path {
+	fill: none;
+	stroke: var(--f-cyan);
+	stroke-width: 2;
+	stroke-dasharray: 1;
+	stroke-dashoffset: 1;
+	animation: f-draw 1.1s var(--f-ease) forwards;
+	filter: drop-shadow(0 0 4px rgba(63, 208, 255, 0.8));
+}
+
+.film .f-flow path.f-hot-line {
+	stroke: var(--f-orange);
+	filter: drop-shadow(0 0 4px rgba(255, 155, 66, 0.8));
+}
+
+.film .f-flow circle {
+	fill: var(--f-ink);
+	filter: drop-shadow(0 0 6px var(--f-cyan));
+}
+
+/* Items that arrive one after another within a shot: set --i on each. */
+.film .f-stagger {
+	opacity: 0;
+	animation: f-arrive 0.6s var(--f-ease) forwards;
+	animation-delay: calc(var(--i, 0) * 160ms + 250ms);
+}
+
+.film .f-pulse {
+	animation: f-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes f-draw {
+	to {
+		stroke-dashoffset: 0;
+	}
+}
+
+@keyframes f-arrive {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+@keyframes f-pulse {
+	50% {
+		opacity: 0.45;
+	}
+}
+
+.film[data-reduced] .f-camera,
+.film[data-reduced] .f-obj {
+	transition: none;
+}
+
+.film[data-reduced] .f-flow path,
+.film[data-reduced] .f-stagger,
+.film[data-reduced] .f-pulse {
+	animation: none;
+	opacity: 1;
+	stroke-dashoffset: 0;
+}

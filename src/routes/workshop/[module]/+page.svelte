@@ -13,6 +13,7 @@
 	import { WORKSHOP_MODULES } from '$lib/workshop/modules';
 	import type { ResolvedStage } from '$lib/workshop/resolved';
 	import ConceptStage from '$lib/workshop/components/ConceptStage.svelte';
+	import CinematicStage from '$lib/workshop/components/CinematicStage.svelte';
 	import WalkthroughPlayer from '$lib/workshop/components/WalkthroughPlayer.svelte';
 	import CheckStage from '$lib/workshop/components/CheckStage.svelte';
 	import PipelineBuilder from '$lib/workshop/components/PipelineBuilder.svelte';
@@ -34,7 +35,7 @@
 	const statuses = $derived(stageStatuses(module.tiers, recorded));
 
 	/** Stages that need work before Continue: the rest are read and passed. */
-	const INTERACTIVE = new Set<ResolvedStage['kind']>(['concept', 'walkthrough', 'build', 'check']);
+	const INTERACTIVE = new Set<ResolvedStage['kind']>(['concept', 'cinematic', 'walkthrough', 'build', 'check']);
 
 	const program = $derived(module.tiers.flatMap((t) => t.stages).find((s) => s.kind === 'walkthrough')?.program);
 	const folderUrl = $derived(program ? `${REPO.treeBase}/${program.slice(0, program.lastIndexOf('/'))}` : undefined);
@@ -101,6 +102,8 @@
 							{#each stage.paragraphs as paragraph, i (i)}<p class="wm-prose">{paragraph}</p>{/each}
 						{:else if stage.kind === 'concept'}
 							<ConceptStage {stage} onready={() => markReady(key)} />
+						{:else if stage.kind === 'cinematic'}
+							<CinematicStage {stage} onready={() => markReady(key)} />
 						{:else if stage.kind === 'walkthrough'}
 							<WalkthroughPlayer {stage} onready={() => markReady(key)} />
 						{:else if stage.kind === 'build'}
