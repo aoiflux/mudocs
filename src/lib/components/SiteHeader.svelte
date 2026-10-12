@@ -36,6 +36,7 @@
 	];
 
 	const docsMenuSecondary = [
+		{ href: '/docs/security/advisories', label: 'Security advisories' },
 		{ href: '/docs/themes', label: 'Browse by theme' },
 		{ href: '/search', label: 'Search' },
 		{ href: '/about', label: 'About' }

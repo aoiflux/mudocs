@@ -6,7 +6,7 @@ import type { WorkshopModuleSpec } from '../schema';
 
 export const spec: WorkshopModuleSpec = {
 	id: 'triage',
-	pin: 'v2.6.0',
+	pin: 'v2.6.1',
 	title: 'Triage toolkit',
 	lede: 'Small questions that come up in every case: what does this blob decode to, is this address ours, is that domain pretending to be us, what is in this token.',
 	relatedDocs: ['cookbook'],

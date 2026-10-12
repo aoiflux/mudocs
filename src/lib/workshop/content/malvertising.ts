@@ -1,7 +1,7 @@
 /**
  * Module 3 · Malware in ads. How the browser got to the download (the
- * redirect chain in Chrome's History, ad_redirects.mut) and which sites knew
- * it was there (the cookie jar, ad_cookies.mut). Both read the QUILLDROP
+ * redirect chain in Chrome's History, dfrws/2a_ad_redirects.mut) and which
+ * sites knew it was there (the cookie jar, dfrws/2b_ad_cookies.mut). Both read the QUILLDROP
  * corpus, so both outputs are simulated; the scenes' visits and cookies are
  * an illustration.
  */
@@ -11,7 +11,7 @@ import { MALVERTISING_FILM } from './shared/films.ts';
 
 export const spec: WorkshopModuleSpec = {
 	id: 'malvertising',
-	pin: 'v2.6.0',
+	pin: 'v2.6.1',
 	title: 'Malware in ads',
 	lede: 'The user clicked one ad. Everything after that click happened without them: the browser’s own records say how.',
 	relatedDocs: ['capability_reference'],
@@ -93,8 +93,8 @@ export const spec: WorkshopModuleSpec = {
 					sources: [
 						{
 							kind: 'mutant-file',
-							ref: 'examples/workshop/ad_redirects.mut',
-							note: 'The query, and the high bit, line 7.'
+							ref: 'examples/workshop/dfrws/2a_ad_redirects.mut',
+							note: 'The query, line 4; the redirect bits, lines 8 and 11.'
 						},
 						{
 							kind: 'mutant-file',
@@ -112,28 +112,36 @@ export const spec: WorkshopModuleSpec = {
 					kind: 'walkthrough',
 					id: 'redirects',
 					title: 'Walk it with Mutant',
-					program: 'examples/workshop/ad_redirects.mut',
-					simulated: SIMULATED['ad_redirects'],
+					program: 'examples/workshop/dfrws/2a_ad_redirects.mut',
+					simulated: SIMULATED['dfrws/2a_ad_redirects'],
 					steps: [
 						{
-							lines: [1, 7],
+							lines: [1, 4],
 							output: [1, 1],
-							note: 'The History database, one SQL query joining visits to their URLs, and the server-redirect bit. Mutant has no hex literals, so the bit is written in decimal.'
+							note: 'The History database (change line 3 to read another), and one SQL query joining every visit to its URL, in visit order.'
 						},
 						{
-							lines: [9, 14],
-							note: 'sqlite_query copies the database before reading it, so the original is never modified. The rows are indexed by visit id.'
+							lines: [6, 15],
+							note: 'how reads a visit’s transition. Its high bits say the visit was a server redirect (2147483648) or a client redirect (1073741824); Mutant has no hex literals, so they are written in decimal. & binds before >, as in Go, so each test reads (transition & bit) > 0.'
 						},
 						{
-							lines: [15, 16],
-							note: 'Start at the last visit and keep going while there is one. The first visit’s from_visit points at nothing, which ends the walk.'
+							lines: [17, 19],
+							note: 'A visit that carries the chain-end bit (536870912) and was reached by a redirect is the last hop of a redirect chain.'
 						},
 						{
-							lines: [17, 18],
-							output: [2, 6],
-							note: 'Chrome stores visit times as WebKit timestamps; timestamp_normalize turns them into ISO time. Mutant’s & binds before >, as in Go, so the test reads (transition & server_redirect) > 0.'
+							lines: [21, 29],
+							note: 'Without the database, one line and stop. sqlite_query reads a copy of the database, so the original is never modified. The rows are indexed by visit id.'
 						},
-						{ lines: [19, 21], note: 'Step back to the visit that led here.' }
+						{
+							lines: [30, 31],
+							output: [2, 2],
+							note: 'filter keeps the visits that end a chain. Each one starts a walk.'
+						},
+						{
+							lines: [32, 41],
+							output: [3, 5],
+							note: 'Walk back through from_visit. Chrome stores visit times as WebKit timestamps; timestamp_normalize turns them into ISO time. The walk stops at the first visit that was navigated to: the click that started the chain.'
+						}
 					]
 				},
 				{
@@ -148,7 +156,7 @@ export const spec: WorkshopModuleSpec = {
 							builtins: ['sqlite_query']
 						},
 						{ id: 'index', label: 'Index the visits by id' },
-						{ id: 'start', label: 'Start at the last visit' },
+						{ id: 'start', label: 'Keep the visits that end a redirect chain', builtins: ['filter'] },
 						{
 							id: 'time',
 							label: 'Convert the visit time to ISO',
@@ -185,10 +193,10 @@ export const spec: WorkshopModuleSpec = {
 						},
 						{
 							id: 'precedence',
-							prompt: 'How does Mutant read transition & server_redirect > 0?',
+							prompt: 'How does Mutant read transition & 2147483648 > 0?',
 							choices: [
-								'(transition & server_redirect) > 0',
-								'transition & (server_redirect > 0)',
+								'(transition & 2147483648) > 0',
+								'transition & (2147483648 > 0)',
 								'It is a syntax error'
 							],
 							answer: 0,
@@ -236,7 +244,7 @@ export const spec: WorkshopModuleSpec = {
 						}
 					],
 					sources: [
-						{ kind: 'mutant-file', ref: 'examples/workshop/ad_cookies.mut' },
+						{ kind: 'mutant-file', ref: 'examples/workshop/dfrws/2b_ad_cookies.mut' },
 						{
 							kind: 'mutant-file',
 							ref: 'examples/workshop/RUN_SHEET_2H.md',
@@ -253,24 +261,28 @@ export const spec: WorkshopModuleSpec = {
 					kind: 'walkthrough',
 					id: 'cookies',
 					title: 'Compare them with Mutant',
-					program: 'examples/workshop/ad_cookies.mut',
-					simulated: SIMULATED['ad_cookies'],
+					program: 'examples/workshop/dfrws/2b_ad_cookies.mut',
+					simulated: SIMULATED['dfrws/2b_ad_cookies'],
 					steps: [
 						{
-							lines: [1, 7],
+							lines: [1, 5],
 							output: [1, 1],
-							note: 'Chrome’s profile folder, and a check that its Cookies database is there.'
+							note: 'Chrome’s profile folder (change line 3 to read another), and the two databases in it: History, and Cookies under Network/.'
 						},
 						{
-							lines: [8, 9],
-							note: 'browser_history and browser_cookies each parse a database into entries. Cookie values are encrypted by the OS; the host and name are not, and they are all this question needs.'
+							lines: [7, 13],
+							note: 'site reduces a host to its registrable domain with tld_extract, so www.x.example and x.example count as one site. A host with no registrable domain keeps its whole domain.'
 						},
 						{
-							lines: [10, 13],
-							note: 'Build a set of visited sites. domain_extract takes the host from a URL; tld_extract’s etld1 is its registrable domain, so www.x.example and x.example count as one site.'
+							lines: [15, 20],
+							note: 'Without the cookie jar, one line and stop. browser_history and browser_cookies each parse a database into entries. Cookie values are encrypted; the host and name are not, and they are all this question needs.'
 						},
 						{
-							lines: [14, 18],
+							lines: [21, 24],
+							note: 'Build the set of visited sites: domain_extract takes the host from each visited URL, and site reduces it.'
+						},
+						{
+							lines: [25, 27],
 							output: [2, 7],
 							note: 'For every cookie: its site, its name, and whether the history ever visited that site.'
 						}
@@ -338,20 +350,16 @@ export const spec: WorkshopModuleSpec = {
 					title: 'Run them yourself',
 					files: [
 						{
-							path: 'examples/workshop/ad_redirects.mut',
-							label: 'The redirect chain'
+							path: 'examples/workshop/dfrws/2a_ad_redirects.mut',
+							label: 'The redirect chain: point line 3 at any Chrome History'
 						},
 						{
-							path: 'examples/workshop/ad_cookies.mut',
-							label: 'The cookie jar'
+							path: 'examples/workshop/dfrws/2b_ad_cookies.mut',
+							label: 'The cookie jar: point line 3 at any Chrome profile'
 						},
 						{
-							path: 'examples/workshop/lib/quilldrop.mut',
-							label: 'The library they import'
-						},
-						{
-							path: 'examples/workshop/README.md',
-							label: 'How to build the evidence they read'
+							path: 'examples/workshop/dfrws/README.md',
+							label: 'The DFRWS topic programs, and how to build their evidence'
 						}
 					]
 				}

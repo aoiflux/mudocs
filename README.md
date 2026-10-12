@@ -5,7 +5,7 @@ served at <https://mudocs.aoiflux.xyz>. SvelteKit 2 + Svelte 5, deployed to
 Netlify (`@sveltejs/adapter-netlify`).
 
 The site teaches **one Mutant release at a time**, named in
-[`mutant.lock.json`](mutant.lock.json) (currently `v2.6.0`). Everything that
+[`mutant.lock.json`](mutant.lock.json) (currently `v2.6.1`). Everything that
 describes Mutant (the docs, the playground's REPL, every GitHub link) comes
 from that release, and the build fails if any of it drifts.
 

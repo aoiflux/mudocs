@@ -28,6 +28,7 @@
 			<a href="/docs/reference">Reference</a>
 			<a href="/docs/runtime">Runtime</a>
 			<a href="/docs/security">Security</a>
+			<a href="/docs/security/advisories">Security advisories</a>
 			<a href="/docs/tooling">Tooling</a>
 		</div>
 

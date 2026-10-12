@@ -231,7 +231,7 @@
 		<div class="f-panel f-hot rg-card f-stagger" style:--i={0}>
 			<p class="f-label">Run value</p>
 			<p>{planted.name} → {planted.data}</p>
-			<p class="f-orange">odd: {planted.odd} · run_keys.mut, line 7</p>
+			<p class="f-orange">odd: {planted.odd} · 3_run_keys.mut, line 5</p>
 		</div>
 		<div class="f-panel rg-card f-stagger" style:--i={1}>
 			<p class="f-label">key last write</p>

@@ -58,7 +58,7 @@ async function main() {
 	const zip = await getBytes(assetUrl(assetName));
 	const zipSha256 = sha256(zip);
 
-	// Releases up to v2.6.0 list only the binaries in SHA256SUMS. When the zip is
+	// Releases up to v2.6.1 list only the binaries in SHA256SUMS. When the zip is
 	// listed, it must match; when it is not, the files inside are still checked
 	// against the zip's own SHA256SUMS below, and the lock freezes this download.
 	const releaseSums = parseSums((await getBytes(assetUrl('SHA256SUMS'))).toString('utf8'));

@@ -47,7 +47,7 @@ export const TIMESTOMP_FILM: Stage = {
 			{ time: '2026-03-11T09:20:00Z', what: '$SI entry changed' },
 			{ time: '2026-03-11T09:22:00Z', what: 'persistence.reg written' }
 		],
-		verdict: SIMULATED['stomp_two_clocks'][1].trim()
+		verdict: SIMULATED['dfrws/1_timestomp'][2].trim()
 	},
 	intro:
 		'Ten shots, from a file in Explorer down to the bytes that hold its times, then the rewrite, and how it is caught. Press Play, or step through.',
@@ -100,11 +100,11 @@ export const TIMESTOMP_FILM: Stage = {
 		{
 			shot: 'catch',
 			title: 'The test',
-			text: 'stomp_two_clocks.mut asks every record one question: was it created before its name was made? No file can be, unless its $STANDARD_INFORMATION was rewritten.'
+			text: '1_timestomp.mut asks every record one question: was it created before its name was made? No file can be, unless its $STANDARD_INFORMATION was rewritten.'
 		}
 	],
 	sources: [
-		{ kind: 'mutant-file', ref: 'examples/workshop/stomp_two_clocks.mut', note: 'The test, line 18.' },
+		{ kind: 'mutant-file', ref: 'examples/workshop/dfrws/1_timestomp.mut', note: 'The test, line 16.' },
 		{ kind: 'mutant-file', ref: 'examples/workshop/CASE_QUILLDROP.md', note: 'The case: the implant, the lure, the morning.' },
 		{ kind: 'builtin-metadata', ref: 'mft_parse', note: 'si_* and fn_* times per record.' },
 		{
@@ -143,10 +143,10 @@ export const MALVERTISING_FILM: Stage = {
 	title: 'From one click to the browser’s records',
 	film: 'Malvertising',
 	values: {
-		page: { url: 'https://search.example/?q=invoice+MRD-88412', query: 'invoice MRD-88412' },
+		page: { url: 'https://search.example/?q=invoice+INV-88412', query: 'invoice INV-88412' },
 		hops: [
-			hop('09:15:31', 'https://search.example/?q=invoice+MRD-88412', false),
-			hop('09:16:05', 'https://clk.ads.test/c?ad=50513&q=MRD-88412', false),
+			hop('09:15:31', 'https://search.example/?q=invoice+INV-88412', false),
+			hop('09:16:05', 'https://clk.ads.test/c?ad=50513&q=INV-88412', false),
 			hop('09:16:06', 'https://rtb.ads.test/r?ad=50513', true),
 			hop('09:16:07', `https://${LURE_HOST}/inv/88412`, true),
 			hop('09:16:40', `https://${LURE_HOST}/inv/88412/download`, false)
@@ -159,7 +159,7 @@ export const MALVERTISING_FILM: Stage = {
 			{ site: 'ads.test', name: 'seg', visited: true },
 			{ site: LURE_HOST, name: 'inv_sess', visited: true }
 		],
-		profile: `Users/${USER}/AppData/Local/Google/Chrome`,
+		profile: `Users/${USER}/AppData/Local/Google/Chrome/User Data/Default`,
 		download: LURE_FILE
 	},
 	intro:
@@ -198,7 +198,7 @@ export const MALVERTISING_FILM: Stage = {
 		{
 			shot: 'profile',
 			title: 'Into the profile',
-			text: 'Both records live in the user’s Chrome profile on disk, as SQLite databases: History and Cookies. This is the path the case evidence holds them at.'
+			text: 'Both records live in the user’s Chrome profile on disk, as SQLite databases: History, and Cookies inside Network. This is the path the case evidence holds them at.'
 		},
 		{
 			shot: 'vault',
@@ -217,8 +217,8 @@ export const MALVERTISING_FILM: Stage = {
 		}
 	],
 	sources: [
-		{ kind: 'mutant-file', ref: 'examples/workshop/ad_redirects.mut', note: 'The walk back from the download.' },
-		{ kind: 'mutant-file', ref: 'examples/workshop/ad_cookies.mut', note: 'Cookies against visited sites.' },
+		{ kind: 'mutant-file', ref: 'examples/workshop/dfrws/2a_ad_redirects.mut', note: 'Each redirect chain, walked back to the click.' },
+		{ kind: 'mutant-file', ref: 'examples/workshop/dfrws/2b_ad_cookies.mut', note: 'Cookies against visited sites.' },
 		{ kind: 'mutant-file', ref: 'examples/workshop/03_download.mut', note: 'The Zone.Identifier HostUrl.' },
 		{ kind: 'mutant-file', ref: 'examples/workshop/CASE_QUILLDROP.md', note: 'The case: the lure and the hops.' },
 		{ kind: 'builtin-metadata', ref: 'sqlite_query', note: 'Reads the visits table.' },
@@ -333,7 +333,7 @@ export const REGISTRY_FILM: Stage = {
 		}
 	],
 	sources: [
-		{ kind: 'mutant-file', ref: 'examples/workshop/run_keys.mut', note: 'Run and RunOnce, odd paths flagged, line 7.' },
+		{ kind: 'mutant-file', ref: 'examples/workshop/dfrws/3_run_keys.mut', note: 'Run and RunOnce, odd paths flagged, line 5.' },
 		{ kind: 'mutant-file', ref: 'examples/workshop/CASE_QUILLDROP.md', note: 'The case: the implant and its Run value.' },
 		{ kind: 'builtin-metadata', ref: 'hive_key_info', note: 'A key’s last-write time.' },
 		{

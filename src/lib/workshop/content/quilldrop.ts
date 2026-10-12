@@ -10,7 +10,7 @@ import { CASE_QUESTIONS } from './shared/case-questions.ts';
 
 export const spec: WorkshopModuleSpec = {
 	id: 'quilldrop',
-	pin: 'v2.6.0',
+	pin: 'v2.6.1',
 	title: 'Capstone: QUILLDROP',
 	lede: 'One workstation, one folder, one list of times. Ten programs, none longer than eighteen lines, take it to a signed handover.',
 	relatedDocs: ['evidence_handling_policy'],
@@ -116,17 +116,17 @@ export const spec: WorkshopModuleSpec = {
 					simulated: SIMULATED['02_lure'],
 					steps: [
 						{
-							lines: [1, 7],
+							lines: [1, 9],
 							output: [1, 1],
 							note: 'Ask: who wrote to this person, and what did they want them to do? email_parse splits a raw message into headers, body and attachments.'
 						},
 						{
-							lines: [8, 10],
+							lines: [10, 12],
 							output: [2, 4],
 							note: 'Sender, subject, and every URL in the body from one extract_iocs call.'
 						},
 						{
-							lines: [11, 14],
+							lines: [13, 16],
 							output: [5, 5],
 							note: 'The attachments, by name. A name with two extensions is the first line of the next beat.'
 						}
@@ -257,17 +257,17 @@ export const spec: WorkshopModuleSpec = {
 					simulated: SIMULATED['07_inventory'],
 					steps: [
 						{
-							lines: [1, 7],
+							lines: [1, 9],
 							output: [1, 1],
 							note: 'Ask: what left, and can you answer without opening the archive? zip_open reads only the central directory; zip_entries lists every member without decompressing any.'
 						},
 						{
-							lines: [8, 12],
+							lines: [10, 14],
 							output: [2, 14],
 							note: 'Each member’s date, CRC-32 and name, then the totals. Nothing was decompressed, and the program says so.'
 						},
 						{
-							lines: [13, 15],
+							lines: [15, 17],
 							output: [15, 15],
 							note: 'Release the archive handle.'
 						}

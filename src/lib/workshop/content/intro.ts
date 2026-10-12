@@ -8,7 +8,7 @@ import { CASE_QUESTIONS } from './shared/case-questions.ts';
 
 export const spec: WorkshopModuleSpec = {
 	id: 'intro',
-	pin: 'v2.6.0',
+	pin: 'v2.6.1',
 	title: 'Introduction',
 	lede: 'The questions every examination asks, and a first Mutant program from top to bottom.',
 	relatedDocs: ['tutorial_30_min'],

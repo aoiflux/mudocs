@@ -254,8 +254,8 @@
 
 	<!-- The test. -->
 	<div class="f-obj f-panel ts-term" style={pose(TERM, shot)}>
-		<p class="f-label">stomp_two_clocks.mut · line 18</p>
-		<pre class="ts-code">if (!is_null(e["fn_created"]) && e["si_created"] &lt; e["fn_created"]) &#123;</pre>
+		<p class="f-label">dfrws/1_timestomp.mut · line 16</p>
+		<pre class="ts-code">if (!is_null(e["si_created"]) && !is_null(e["fn_created"]) && e["si_created"] &lt; e["fn_created"]) &#123;</pre>
 		<div class="ts-compare">
 			<span class="f-orange">$SI created {clock(data.stomped.created)}</span>
 			<span>&lt;</span>
@@ -636,9 +636,15 @@
 	.ts-code,
 	.ts-out {
 		margin: 0;
-		font-size: 14px;
+		font-size: 13px;
 		white-space: pre-wrap;
 		overflow-wrap: anywhere;
+	}
+
+	/* Line 16 of the program, whole: about a hundred characters on one line. */
+	.ts-code {
+		font-size: 12px;
+		white-space: pre;
 	}
 
 	.ts-out {

@@ -4,9 +4,9 @@
  * Beginner: reading a hive with the reg_* builtins, on the JSON hive model in
  * Mutant's examples/data/, with a recorded output.
  *
- * Intermediate: the Run-key deep dive (examples/workshop/run_keys.mut). Its
- * input is the QUILLDROP corpus, so its output is simulated. Not
- * registry_persistence_hunt.mut: at v2.6.0 it reads a fixture with no Run
+ * Intermediate: the Run-key topic program (examples/workshop/dfrws/3_run_keys.mut).
+ * Its input is the QUILLDROP corpus, so its output is simulated. Not
+ * registry_persistence_hunt.mut: at v2.6.1 it reads a fixture with no Run
  * key, so its recorded output is "key not found".
  */
 import type { WorkshopModuleSpec } from '../schema';
@@ -15,7 +15,7 @@ import { REGISTRY_FILM } from './shared/films.ts';
 
 export const spec: WorkshopModuleSpec = {
 	id: 'registry-persistence',
-	pin: 'v2.6.0',
+	pin: 'v2.6.1',
 	title: 'Registry persistence',
 	lede: 'Before you can spot the entry that does not belong, you need to read a hive: its keys, their values, what was deleted and when things changed.',
 	relatedDocs: ['capability_reference'],
@@ -280,38 +280,38 @@ export const spec: WorkshopModuleSpec = {
 					kind: 'walkthrough',
 					id: 'run-keys',
 					title: 'Hunt them with Mutant',
-					program: 'examples/workshop/run_keys.mut',
-					simulated: SIMULATED['run_keys'],
+					program: 'examples/workshop/dfrws/3_run_keys.mut',
+					simulated: SIMULATED['dfrws/3_run_keys'],
 					steps: [
 						{
-							lines: [1, 3],
+							lines: [1, 5],
 							output: [1, 1],
-							note: 'Every QUILLDROP program imports the same eighteen-line library, which knows where the evidence is and says so when it is missing.'
+							note: 'The hive to read (change line 3 for another), the three places CurrentVersion can sit (NTUSER.DAT, the SOFTWARE hive, and SOFTWARE’s 32-bit view under Wow6432Node), and one regular expression for command lines that start from odd places. The rule is ours, not a vendor’s: change it and run again.'
 						},
 						{
-							lines: [5, 7],
-							note: 'Three inputs: the user’s NTUSER.DAT, the key path to look under, and one regular expression for command lines that start from odd places. The rule is ours, not a vendor’s: change it and run again.'
+							lines: [7, 11],
+							note: 'Without the hive, one line and stop. hive_open reads a real registry hive file, not a JSON model.'
 						},
 						{
-							lines: [9, 11],
-							note: 'hive_open reads a real registry hive file, not a JSON model; hive_list_keys lists the subkeys of CurrentVersion.'
+							lines: [12, 16],
+							note: 'List the subkeys of CurrentVersion under each base. A base this hive does not have returns an error, and is skipped.'
 						},
 						{
-							lines: [12, 15],
-							note: 'Skip every subkey whose name does not start with Run, so both Run and RunOnce are kept.'
+							lines: [17, 21],
+							note: 'Keep every subkey whose name starts with Run, in any case, so both Run and RunOnce are read.'
 						},
 						{
-							lines: [16, 19],
+							lines: [22, 25],
 							output: [2, 2],
 							note: 'For each Run key: hive_key_info gives its last-write time, hive_list_values its values.'
 						},
 						{
-							lines: [20, 22],
+							lines: [26, 30],
 							output: [3, 8],
-							note: 'Print each value’s name and command, and whether the odd-place rule matches it.'
+							note: 'Print each value’s name and command, and whether the odd-place rule matches it. to_string makes the data text first, so the rule can read any value type.'
 						},
 						{
-							lines: [24, 25],
+							lines: [33, 33],
 							note: 'Close the hive.'
 						}
 					]
@@ -329,13 +329,13 @@ export const spec: WorkshopModuleSpec = {
 						},
 						{
 							id: 'list',
-							label: 'List the subkeys of CurrentVersion',
+							label: 'List the subkeys of CurrentVersion, wherever it sits',
 							builtins: ['hive_list_keys']
 						},
 						{
 							id: 'filter',
 							label: 'Keep the keys whose name starts with Run',
-							builtins: ['str_starts_with']
+							builtins: ['regex_match']
 						},
 						{
 							id: 'info',
@@ -364,7 +364,7 @@ export const spec: WorkshopModuleSpec = {
 								'Why does the program keep every key whose name starts with Run, instead of looking up Run alone?',
 							choices: ['So that RunOnce is read too', 'Because Run has no values', 'To skip the deleted keys'],
 							answer: 0,
-							explain: 'str_starts_with(key, "Run") keeps both Run and RunOnce.'
+							explain: 'regex_match("(?i)^run", key) keeps both Run and RunOnce.'
 						},
 						{
 							id: 'since',
@@ -387,18 +387,17 @@ export const spec: WorkshopModuleSpec = {
 					id: 'resources-run-keys',
 					title: 'Run it yourself',
 					files: [
-						{ path: 'examples/workshop/run_keys.mut', label: 'The program' },
 						{
-							path: 'examples/workshop/lib/quilldrop.mut',
-							label: 'The library it imports'
+							path: 'examples/workshop/dfrws/3_run_keys.mut',
+							label: 'The program: point line 3 at any NTUSER.DAT or SOFTWARE hive'
 						},
 						{
 							path: 'examples/data/autoruns_hive.json',
 							label: 'The autoruns hive model (cookbook recipe 7)'
 						},
 						{
-							path: 'examples/workshop/README.md',
-							label: 'How to build the evidence it reads'
+							path: 'examples/workshop/dfrws/README.md',
+							label: 'The DFRWS topic programs, and how to build their evidence'
 						}
 					]
 				}

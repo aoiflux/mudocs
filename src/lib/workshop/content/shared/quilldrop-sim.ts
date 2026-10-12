@@ -14,15 +14,23 @@
  * USER, IMPLANT and LURE_FILE below. Re-pin: match them to the new programs.
  */
 
-const USER = 'r.mehta';
+const USER = 'clerk';
 const HOME = `/Users/${USER}`;
-const IMPLANT = 'MeridianSync';
-const LURE_FILE = 'Invoice_MRD-88412.pdf.exe';
+const IMPLANT = 'SyncAgent';
+const LURE_FILE = 'Invoice_88412.pdf.exe';
 const LURE_HOST = 'corp-billing.example';
 
 /** The case names the films draw too, so a re-pin changes them in one place. */
 export const CASE = { USER, IMPLANT, LURE_FILE, LURE_HOST } as const;
-const CHROME = `${HOME}/AppData/Local/Google/Chrome`;
+
+/**
+ * The one record the timestomp test flags: $STANDARD_INFORMATION's backdated
+ * creation time, then $FILE_NAME's. The playbook gives scheduled times a seeded
+ * fraction of a second (subsecond_jitter) and leaves the stomped time whole, so
+ * the fraction here is a placeholder of the right shape.
+ */
+const BORN_BEFORE = `Users/${USER}/AppData/Roaming/${IMPLANT}/updater.exe 2025-11-04T10:12:00Z 2026-03-11T09:20:00.4172931Z`;
+const CHROME = `${HOME}/AppData/Local/Google/Chrome/User Data/Default`;
 const DOCS = `${HOME}/Documents`;
 
 const business = (n: number, time: string) => [
@@ -58,7 +66,7 @@ export const SIMULATED: Record<string, string[]> = {
 	'02_lure': [
 		'QUILLDROP 2/10  the lure',
 		`  from accounts@${LURE_HOST}`,
-		'  subject OVERDUE: Invoice MRD-88412 - final notice before referral',
+		'  subject OVERDUE: Invoice INV-88412 - final notice before referral',
 		`  links [https://${LURE_HOST}/inv/88412]`,
 		`  attached ${LURE_FILE}`
 	],
@@ -66,8 +74,8 @@ export const SIMULATED: Record<string, string[]> = {
 		'QUILLDROP 3/10  the download',
 		'  magic pe application/vnd.microsoft.portable-executable',
 		'  visited https://corp.example/ap/queue',
-		'  visited https://search.example/?q=invoice+MRD-88412',
-		'  visited https://clk.ads.test/c?ad=50513&q=MRD-88412',
+		'  visited https://search.example/?q=invoice+INV-88412',
+		'  visited https://clk.ads.test/c?ad=50513&q=INV-88412',
 		'  visited https://rtb.ads.test/r?ad=50513',
 		`  visited https://${LURE_HOST}/inv/88412`,
 		`  visited https://${LURE_HOST}/inv/88412/download`,
@@ -89,8 +97,8 @@ export const SIMULATED: Record<string, string[]> = {
 		`  2026-03-11T09:03:00Z macb ${HOME}/Finance/q2_close.xlsx.enc`,
 		`  2026-03-11T09:04:00Z macb ${HOME}/Finance/q3_close.xlsx.enc`,
 		`  2026-03-11T09:14:00Z macb ${HOME}/Inbox/invoice.eml`,
-		`  2026-03-11T09:16:00Z macb ${CHROME}/Cookies`,
 		`  2026-03-11T09:16:00Z macb ${CHROME}/History`,
+		`  2026-03-11T09:16:00Z macb ${CHROME}/Network/Cookies`,
 		`  2026-03-11T09:17:00Z macb ${HOME}/Downloads/${LURE_FILE}`,
 		`  2026-03-11T09:17:00Z macb ${HOME}/Downloads/${LURE_FILE}:Zone.Identifier`,
 		`  2026-03-11T09:20:00Z ..c. ${HOME}/AppData/Roaming/${IMPLANT}/updater.exe`,
@@ -138,20 +146,28 @@ export const SIMULATED: Record<string, string[]> = {
 		'  report.md 574e12b0ba29d55abe1df1a29cc238382d2a1ae9f68f48a47cc08288721d105c',
 		'  report.html b29533d1ce62d7c97b33975bbfb488c23bde23905e7fc4e684b841c65b1e53a9'
 	],
-	stomp_two_clocks: [
-		'QUILLDROP  the two clocks',
-		`  born before its name: Users/${USER}/AppData/Roaming/${IMPLANT}/updater.exe 2025-11-04T10:12:00Z 2026-03-11T09:20:00.4172931Z`,
-		'187 records'
+	// The DFRWS topic programs (examples/workshop/dfrws/), each on its topic's
+	// evidence (evidence/topics/*.playbook.yaml). The timestomp disk is laid out
+	// as Windows Setup does: only the basic data and recovery partitions are
+	// NTFS, and the recovery one is empty. Record counts are placeholders.
+	'dfrws/1_timestomp': [
+		'QUILLDROP  timestomping',
+		'  partition 2 Windows Basic Data',
+		`  born before its name: ${BORN_BEFORE}`,
+		'  checked 187 records',
+		'  partition 3 Windows Recovery',
+		'  checked 27 records'
 	],
-	ad_redirects: [
+	// fsagen marks a visit that nothing redirects onward from as a chain's end,
+	// so the only redirect chain ends at visit 5, the lure page.
+	'dfrws/2a_ad_redirects': [
 		'QUILLDROP  the redirect chain',
-		`  2026-03-11T09:16:40Z https://${LURE_HOST}/inv/88412/download redirect: false`,
-		`  2026-03-11T09:16:07Z https://${LURE_HOST}/inv/88412 redirect: true`,
-		'  2026-03-11T09:16:06Z https://rtb.ads.test/r?ad=50513 redirect: true',
-		'  2026-03-11T09:16:05Z https://clk.ads.test/c?ad=50513&q=MRD-88412 redirect: false',
-		'  2026-03-11T09:15:31Z https://search.example/?q=invoice+MRD-88412 redirect: false'
+		'  chain ending at visit 5',
+		`    2026-03-11T09:16:07Z server redirect https://${LURE_HOST}/inv/88412`,
+		'    2026-03-11T09:16:06Z server redirect https://rtb.ads.test/r?ad=50513',
+		'    2026-03-11T09:16:05Z navigated https://clk.ads.test/c?ad=50513&q=INV-88412'
 	],
-	ad_cookies: [
+	'dfrws/2b_ad_cookies': [
 		'QUILLDROP  the cookie jar',
 		'  corp.example ap_session visited: true',
 		'  search.example prefs visited: true',
@@ -160,14 +176,14 @@ export const SIMULATED: Record<string, string[]> = {
 		'  ads.test seg visited: true',
 		`  ${LURE_HOST} inv_sess visited: true`
 	],
-	run_keys: [
+	'dfrws/3_run_keys': [
 		'QUILLDROP  the run keys',
-		'  Run written 2026-03-11T09:22:00Z',
+		'  Software\\Microsoft\\Windows\\CurrentVersion\\Run written 2026-03-11T09:22:00Z',
 		'    VendorAChat "C:\\Program Files\\Vendor A\\Chat\\chat.exe" --minimized odd: false',
 		'    VendorBSync "C:\\Program Files (x86)\\Vendor B\\Sync\\fsync.exe" /background odd: false',
 		`    VendorCNotes C:\\Users\\${USER}\\AppData\\Local\\Programs\\Vendor C Notes\\notes.exe odd: true`,
 		`    ${IMPLANT} C:\\Users\\${USER}\\AppData\\Roaming\\${IMPLANT}\\updater.exe odd: true`,
-		'  RunOnce written 2026-03-10T17:02:11Z',
+		'  Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce written 2026-03-10T17:02:11Z',
 		'    VendorDCleanup "C:\\Program Files\\Vendor D\\cleanup.exe" /once odd: false'
 	]
 };

@@ -1,8 +1,8 @@
 {
 	"$comment": "The one Mutant release this site teaches. scripts/fetch-wasm.mjs refuses any artifact that does not match these digests. Bump all fields together when re-pinning.",
 	"repo": "aoiflux/mutant",
-	"tag": "v2.6.0",
-	"commit": "59689e05d9815e224efe108a6998d78ca518683a",
+	"tag": "v2.6.1",
+	"commit": "7a5fd74bcce3a27f41e8f32d6caf1f909b43293a",
 	"released": "2026-10-12",
 	"wasm": {
 		"asset": "wasm-repl.zip",

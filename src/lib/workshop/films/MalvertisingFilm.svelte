@@ -175,13 +175,8 @@
 		</div>
 		<div class="mv-files">
 			<span class="f-panel f-glow f-stagger" style:--i={profileParts.length + 1}>History <small class="f-mute">SQLite</small></span>
-			<span class="f-panel f-glow f-stagger" style:--i={profileParts.length + 2}>Cookies <small class="f-mute">SQLite</small></span>
+			<span class="f-panel f-glow f-stagger" style:--i={profileParts.length + 2}>Network\Cookies <small class="f-mute">SQLite</small></span>
 		</div>
-		{#if shot === 'profile'}
-			<p class="mv-aside f-mute f-stagger" style:--i={profileParts.length + 3}>
-				On a live machine they sit under User Data\Default\; Cookies under Default\Network\ since Chrome 96.
-			</p>
-		{/if}
 	</div>
 
 	<!-- The two databases, opened. -->
@@ -508,18 +503,13 @@
 		margin-top: 60px;
 	}
 
+	/* Equal widths keep the gap between them, where the flow line runs, centred. */
 	.mv-files span {
 		display: grid;
+		width: 250px;
 		gap: 4px;
 		padding: 18px 26px;
 		font-size: 18px;
-	}
-
-	.mv-aside {
-		max-width: 60ch;
-		margin: 0;
-		font-size: 13px;
-		text-align: center;
 	}
 
 	.mv-vault {

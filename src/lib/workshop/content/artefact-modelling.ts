@@ -1,6 +1,6 @@
 /**
  * Module 1 · Artefact modelling: turning raw evidence into records a program
- * can reason about. Mutant v2.6.0 has no dedicated modelling example (plan
+ * can reason about. Mutant v2.6.1 has no dedicated modelling example (plan
  * item M-5), so the module teaches the idea through three programs that do it:
  * log lines into fields (log_parse), records into counts (top_talkers), both
  * with recorded outputs, and a bodyfile into a timeline (05_timeline), whose
@@ -11,7 +11,7 @@ import { SIMULATED } from './shared/quilldrop-sim.ts';
 
 export const spec: WorkshopModuleSpec = {
 	id: 'artefact-modelling',
-	pin: 'v2.6.0',
+	pin: 'v2.6.1',
 	title: 'Artefact modelling',
 	lede: 'Raw evidence is text and bytes. A program can only reason about it once it is records with named fields: this module is about making them.',
 	relatedDocs: ['structured_data'],

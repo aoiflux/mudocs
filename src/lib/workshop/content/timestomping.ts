@@ -1,6 +1,6 @@
 /**
  * Module 2 · Timestomping. The two clocks of an NTFS record and the test
- * that catches a rewritten one (examples/workshop/stomp_two_clocks.mut), then
+ * that catches a rewritten one (examples/workshop/dfrws/1_timestomp.mut), then
  * the timeline contradictions of beat 6 (06_lies.mut). Both read the QUILLDROP
  * corpus, so both outputs are simulated; the MFT scene's times are an
  * illustration.
@@ -11,7 +11,7 @@ import { TIMESTOMP_FILM } from './shared/films.ts';
 
 export const spec: WorkshopModuleSpec = {
 	id: 'timestomping',
-	pin: 'v2.6.0',
+	pin: 'v2.6.1',
 	title: 'Timestomping',
 	lede: 'Every file on NTFS carries its times twice. The copy that is easy to change is the one every tool shows; the other one is how you catch the change.',
 	relatedDocs: ['capability_reference'],
@@ -90,8 +90,8 @@ export const spec: WorkshopModuleSpec = {
 						},
 						{
 							kind: 'mutant-file',
-							ref: 'examples/workshop/stomp_two_clocks.mut',
-							note: 'The test, line 18.'
+							ref: 'examples/workshop/dfrws/1_timestomp.mut',
+							note: 'The test, line 16.'
 						},
 						{
 							kind: 'builtin-metadata',
@@ -109,35 +109,39 @@ export const spec: WorkshopModuleSpec = {
 					kind: 'walkthrough',
 					id: 'stomp-two-clocks',
 					title: 'Catch it with Mutant',
-					program: 'examples/workshop/stomp_two_clocks.mut',
-					simulated: SIMULATED['stomp_two_clocks'],
+					program: 'examples/workshop/dfrws/1_timestomp.mut',
+					simulated: SIMULATED['dfrws/1_timestomp'],
 					steps: [
 						{
-							lines: [1, 5],
+							lines: [1, 4],
 							output: [1, 1],
-							note: 'Import the QUILLDROP library and check the disk image is there.'
+							note: 'The disk image to read, and where to copy its $MFT. To run it on your own evidence, change line 3: nothing else.'
 						},
 						{
-							lines: [6, 8],
-							note: 'table_open reads the image’s partition table; table_list_partitions lists the partitions. The table handle is closed as soon as the list is out.'
+							lines: [23, 26],
+							note: 'Without the image, say so in one line and stop.'
 						},
 						{
-							lines: [9, 12],
-							note: 'Keep the allocated partitions and open the first as NTFS. ntfs_open takes the partition itself, so the volume is read where it lies inside the image.'
+							lines: [27, 34],
+							note: 'table_open reads the image’s partition table. If there is none, the file may be a bare NTFS volume, so try ntfs_open on the whole file. An E01 is neither, and is refused: convert it to raw first.'
 						},
 						{
-							lines: [13, 15],
-							note: 'Copy $MFT out of the volume to a file (removing any copy from an earlier run first), then close the volume.'
+							lines: [35, 41],
+							note: 'List the partitions, close the table as soon as the list is out, and pass over the unallocated ones.'
 						},
 						{
-							lines: [16, 21],
+							lines: [42, 46],
 							output: [2, 2],
-							note: 'mft_parse gives every record’s si_* and fn_* times. A record with no $FILE_NAME time is skipped first with is_null, because null does not compare; the rest are tested: si_created earlier than fn_created.'
+							note: 'Try each partition as NTFS; ntfs_open takes the partition itself, so the volume is read where it lies inside the image. This disk is laid out as Windows Setup does: the EFI system partition is FAT32 and the Microsoft reserved one holds no file system, so neither opens.'
 						},
 						{
-							lines: [22, 23],
-							output: [3, 3],
-							note: 'Print how many records were read. If no file is printed above it, say so: a tool that rewrites both clocks leaves nothing here to find.'
+							lines: [6, 14],
+							note: 'For each volume: remove any $MFT copy from an earlier run, copy $MFT out, close the volume, and parse the copy. If it does not parse, say why and move on.'
+						},
+						{
+							lines: [15, 20],
+							output: [3, 6],
+							note: 'mft_parse gives every record’s si_* and fn_* times. is_null skips a record missing either, because null does not compare; the rest are tested: si_created earlier than fn_created. The recovery partition is NTFS too, and empty: it is checked and nothing is found. A tool that rewrites both clocks would leave nothing here to find either.'
 						}
 					]
 				},
@@ -266,8 +270,8 @@ export const spec: WorkshopModuleSpec = {
 					title: 'Run them yourself',
 					files: [
 						{
-							path: 'examples/workshop/stomp_two_clocks.mut',
-							label: 'The two clocks'
+							path: 'examples/workshop/dfrws/1_timestomp.mut',
+							label: 'The two clocks: point line 3 at your own disk image'
 						},
 						{
 							path: 'examples/workshop/06_lies.mut',
@@ -275,11 +279,11 @@ export const spec: WorkshopModuleSpec = {
 						},
 						{
 							path: 'examples/workshop/lib/quilldrop.mut',
-							label: 'The library they import'
+							label: 'The library 06_lies imports'
 						},
 						{
-							path: 'examples/workshop/README.md',
-							label: 'How to build the evidence they read'
+							path: 'examples/workshop/dfrws/README.md',
+							label: 'The DFRWS topic programs, and how to build their evidence'
 						}
 					]
 				}
