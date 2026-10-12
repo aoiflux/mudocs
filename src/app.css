@@ -1893,6 +1893,28 @@ html.theme-shift .blueprint {
 	font-size: 13px;
 }
 
+/* The runtime is still loading, or failed to: ring and words side by side. */
+.pg-loading {
+	display: flex;
+	align-items: center;
+	gap: var(--space-4);
+	padding: var(--space-3) 0;
+	font-size: 13px;
+}
+
+.pg-loading > div {
+	display: grid;
+	gap: 2px;
+}
+
+.pg-loading p {
+	margin: 0;
+}
+
+.pg-loading span {
+	font-variant-numeric: tabular-nums;
+}
+
 /* ==========================================================================
    2d — Showcase
    ========================================================================== */

@@ -2,13 +2,15 @@
 	/**
 	 * Artboard 2c — toolbar / split editor+output / execution graph.
 	 *
-	 * The worker protocol in static/repl-worker.js is `{id, code}` → `{id, ok, output}`;
-	 * it calls the REPL's own `mutantReplEval` export, captures console output and
-	 * recovers from "already exited". The build it loads is pinned by mutant.lock.json.
+	 * Programs run in the site's one shared REPL runtime ($lib/repl/host), which
+	 * the root layout starts loading in the background. Until it is ready this page
+	 * shows how far the load has got. The build it loads is pinned by mutant.lock.json.
 	 */
 	import { onDestroy, onMount } from 'svelte';
 	import SeoHead from '$lib/components/SeoHead.svelte';
 	import PipelineDiagram from '$lib/components/PipelineDiagram.svelte';
+	import ProgressRing from '$lib/components/ProgressRing.svelte';
+	import { boot, replSnapshot, run as runInRepl, subscribe, type ReplSnapshot } from '$lib/repl/host';
 	import {
 		MUTANT_RELEASE_URL,
 		MUTANT_SHORT_COMMIT,
@@ -89,15 +91,17 @@ for (let i = 0; i < len(items); i = i+1) {
 	// anywhere in that document, and the language has no lowering step.
 	const EXEC_STAGES = ['lex', 'parse', 'compile', 'bytecode', 'vm'];
 
+	/** The execution ceiling the lede promises. It starts when the program does, not the load. */
+	const RUN_LIMIT_MS = 5000;
+
 	let selectedPreset = $state(presets[0].id);
 	let code = $state(presets[0].code);
-	let output = $state('Ready.');
+	let output = $state('');
 	let showRawOutput = $state(false);
 	let running = $state(false);
 	let lastRunOk = $state<boolean | null>(null);
 	let friendlyDiagnostic = $state('');
-	let timeoutHandle = $state<ReturnType<typeof setTimeout> | null>(null);
-	let worker = $state<Worker | null>(null);
+	let repl = $state<ReplSnapshot>(replSnapshot());
 	let elapsedMs = $state<number | null>(null);
 	let stageIndex = $state(0);
 
@@ -166,7 +170,22 @@ for (let i = 0; i < len(items); i = i+1) {
 
 	const preflightHints = $derived(getPreflightHints(code));
 	const panicView = $derived(formatOutputView(output));
-	const formattedOutput = $derived(showRawOutput ? output : panicView.display);
+	const formattedOutput = $derived(
+		output ? (showRawOutput ? output : panicView.display) : repl.phase === 'ready' ? 'Ready.' : ''
+	);
+
+	const megabytes = (bytes: number) => `${(bytes / 1_000_000).toFixed(1)} MB`;
+	const loadFraction = $derived(
+		repl.phase === 'starting' ? null : repl.total > 0 ? repl.loaded / repl.total : null
+	);
+	const loadTitle = $derived(
+		repl.phase === 'starting' ? 'Starting the Mutant runtime' : 'Downloading the Mutant runtime'
+	);
+	const loadDetail = $derived(
+		repl.phase === 'starting'
+			? 'Compiling and booting it. It then stays loaded while this tab is open.'
+			: `${Math.round((loadFraction ?? 0) * 100)}% · ${megabytes(repl.loaded)} of ${WASM_SIZE_LABEL}`
+	);
 	const activePreset = $derived(presets.find((item) => item.id === selectedPreset));
 
 	function clearStageTimers() {
@@ -178,7 +197,7 @@ for (let i = 0; i < len(items); i = i+1) {
 		clearStageTimers();
 		stageIndex = 0;
 		elapsedMs = null;
-		output = 'Ready.';
+		output = '';
 		lastRunOk = null;
 		friendlyDiagnostic = '';
 		showRawOutput = false;
@@ -199,25 +218,14 @@ for (let i = 0; i < len(items); i = i+1) {
 	}
 
 	onMount(() => {
-		worker = new Worker('/repl-worker.js');
-		worker.onmessage = (event: MessageEvent<{ id: string; ok: boolean; output: string }>) => {
-			elapsedMs = performance.now() - startedAt;
-			clearStageTimers();
-			stageIndex = EXEC_STAGES.length;
-			output = event.data.output;
-			showRawOutput = false;
-			lastRunOk = event.data.ok;
-			friendlyDiagnostic = mapFriendlyDiagnostic(event.data.output);
-			running = false;
-			if (timeoutHandle) {
-				clearTimeout(timeoutHandle);
-				timeoutHandle = null;
-			}
-		};
+		const stop = subscribe((snapshot) => (repl = snapshot));
+		// Join the background load, or start it if the layout did not.
+		void boot();
+		return stop;
 	});
 
-	function run() {
-		if (running || !worker) return;
+	async function run() {
+		if (running || repl.phase !== 'ready') return;
 
 		running = true;
 		friendlyDiagnostic = '';
@@ -225,9 +233,8 @@ for (let i = 0; i < len(items); i = i+1) {
 		showRawOutput = false;
 		elapsedMs = null;
 		startedAt = performance.now();
-		const id = crypto.randomUUID();
 
-		// The worker returns one result, not per-stage callbacks, so the graph
+		// The runtime returns one result, not per-stage callbacks, so the graph
 		// advances on a timer while the run is in flight and snaps to complete when
 		// the result lands. It traces the documented compile path; it is not
 		// instrumentation of the running VM.
@@ -237,23 +244,26 @@ for (let i = 0; i < len(items); i = i+1) {
 			stageTimers.push(window.setTimeout(() => (stageIndex = i), (i - 1) * 140));
 		}
 
-		timeoutHandle = setTimeout(() => {
-			if (running) {
-				output = 'Execution timed out after 5 seconds.';
-				running = false;
-				clearStageTimers();
-				stageIndex = 0;
-				elapsedMs = performance.now() - startedAt;
-			}
-		}, 5000);
+		const result = await runInRepl(code, RUN_LIMIT_MS);
 
-		worker.postMessage({ id, code });
+		elapsedMs = performance.now() - startedAt;
+		clearStageTimers();
+		running = false;
+		if (result.timedOut) {
+			stageIndex = 0;
+			output = `Execution timed out after ${RUN_LIMIT_MS / 1000} seconds. The runtime restarts, so the next run waits for it.`;
+			lastRunOk = false;
+			return;
+		}
+
+		stageIndex = EXEC_STAGES.length;
+		output = result.output;
+		lastRunOk = result.ok;
+		friendlyDiagnostic = mapFriendlyDiagnostic(result.output);
 	}
 
-	onDestroy(() => {
-		clearStageTimers();
-		worker?.terminate();
-	});
+	// The runtime outlives this page on purpose: coming back must not reload it.
+	onDestroy(clearStageTimers);
 </script>
 
 <SeoHead
@@ -277,8 +287,8 @@ for (let i = 0; i < len(items); i = i+1) {
 
 <!-- ── Toolbar ──────────────────────────────────────────────────────────── -->
 <div class="pg-toolbar">
-	<button class="btn btn-primary" onclick={run} disabled={running}>
-		{running ? 'Running…' : 'Run ▸'}
+	<button class="btn btn-primary" onclick={run} disabled={running || repl.phase !== 'ready'}>
+		{running ? 'Running…' : repl.phase === 'ready' ? 'Run ▸' : 'Loading runtime…'}
 	</button>
 	<button class="btn btn-secondary" onclick={resetToPreset} disabled={running}>Reset</button>
 
@@ -316,11 +326,28 @@ for (let i = 0; i < len(items); i = i+1) {
 				{/if}
 			</div>
 
+			{#if repl.phase === 'failed'}
+				<div class="pg-loading" role="alert">
+					<p>The Mutant runtime did not load: {repl.reason}.</p>
+					<button class="btn btn-secondary btn-sm" onclick={() => void boot()}>Try again</button>
+				</div>
+			{:else if repl.phase !== 'ready'}
+				<div class="pg-loading">
+					<ProgressRing value={loadFraction} label={loadTitle} />
+					<div>
+						<strong aria-live="polite">{loadTitle}</strong>
+						<span class="text-muted">{loadDetail}</span>
+					</div>
+				</div>
+			{/if}
+
 			{#if friendlyDiagnostic}
 				<p class="pg-hint">{friendlyDiagnostic}</p>
 			{/if}
 
-			<pre>{formattedOutput}</pre>
+			{#if formattedOutput}
+				<pre>{formattedOutput}</pre>
+			{/if}
 
 			{#if panicView.isPanic}
 				<button class="btn btn-ghost btn-sm" onclick={() => (showRawOutput = !showRawOutput)}>

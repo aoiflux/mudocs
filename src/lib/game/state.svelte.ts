@@ -369,7 +369,7 @@ export class GameState {
 			this.consentPending = true;
 			return;
 		}
-		await wasm.warm(this.pathname);
+		await wasm.warm();
 	}
 
 	grantWasmConsent(granted: boolean): void {
@@ -381,7 +381,7 @@ export class GameState {
 		}
 		this.save = { ...this.save, wasmConsent: true };
 		this.persist();
-		void wasm.warm(this.pathname);
+		void wasm.warm();
 	}
 
 	/**
@@ -409,7 +409,7 @@ export class GameState {
 		this.log('wasm', '> handing source to the wasm host …');
 
 		const solvedNow = validate(this.puzzle, this.fills as Fills).solved;
-		const response = await wasm.run(this.pathname, this.source);
+		const response = await wasm.run(this.source);
 		const output = wasm.summarizePanic(response.output.trim());
 
 		this.wasmBusy = false;
@@ -464,7 +464,7 @@ export class GameState {
 	}
 
 	teardown(): void {
-		wasm.terminate('overlay closed');
+		wasm.terminate();
 		audio.closeAudio();
 		this.persist();
 	}

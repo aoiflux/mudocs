@@ -8,6 +8,7 @@
 	import SiteHeader from '$lib/components/SiteHeader.svelte';
 	import SiteFooter from '$lib/components/SiteFooter.svelte';
 	import { initScrollReveals } from '$lib/artist/motion';
+	import { preload as preloadRepl } from '$lib/repl/host';
 
 	let { children } = $props();
 	type ThemeMode = 'light' | 'dark' | 'artist' | 'auto';
@@ -183,7 +184,19 @@
 		// Any view that reveals diagram nodes after mount asks for a render.
 		window.addEventListener('mudocs:render-diagrams', onRenderDiagramsRequest);
 
+		// The REPL runtime is large. Fetch it once the page has settled, so the
+		// playground finds it ready; $lib/repl/host decides whether to fetch at all.
+		const preloadWhenIdle = () => {
+			if (typeof window.requestIdleCallback === 'function') {
+				window.requestIdleCallback(() => preloadRepl(), { timeout: 5000 });
+			}
+			else window.setTimeout(preloadRepl, 2000);
+		};
+		if (document.readyState === 'complete') preloadWhenIdle();
+		else window.addEventListener('load', preloadWhenIdle, { once: true });
+
 		return () => {
+			window.removeEventListener('load', preloadWhenIdle);
 			media.removeEventListener('change', onSchemeChange);
 			window.removeEventListener('keydown', onGlobalKeydown);
 			window.removeEventListener('mudocs:set-theme', onThemeRequest as EventListener);
