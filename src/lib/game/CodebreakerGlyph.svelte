@@ -9,13 +9,14 @@
 -->
 <script lang="ts">
 	import { onMount, type Component } from 'svelte';
-	import { loadSave, type SaveV1 } from './persistence';
+	import { courseRewardEarned } from '$lib/interactive/progress';
+	import { loadSave, type CourseSave } from './persistence';
 
 	// Deliberately a literal, not `PUZZLE_COUNT` from `puzzles.ts` — importing
 	// that module here would pull the whole puzzle set into the entry chunk.
 	const TOTAL = 8;
 
-	let save = $state<SaveV1 | null>(null);
+	let save = $state<CourseSave | null>(null);
 	let Overlay = $state<Component<{ onClose: () => void }> | null>(null);
 	let loading = $state(false);
 	let trigger = $state<HTMLButtonElement | undefined>(undefined);
@@ -27,7 +28,8 @@
 	});
 
 	const solved = $derived(save?.solved.length ?? 0);
-	const complete = $derived(solved >= TOTAL);
+	// Repaired only for the full reward: a course finished with skips stays broken.
+	const complete = $derived(save != null && courseRewardEarned(save, TOTAL));
 	const started = $derived(solved > 0 && !complete);
 	const refused = $derived(save?.refused === true && solved === 0);
 
@@ -81,7 +83,7 @@
 		     segments: a corrupted `+`, not an icon. -->
 		<path d="M6 0 V12" />
 		<path d="M0 6 H5" />
-		<!-- Repaired once all eight are solved: the arm rejoins the mark. -->
+		<!-- Repaired once all eight are solved with no skips: the arm rejoins the mark. -->
 		<path d={complete ? 'M7 6 H12' : 'M7.5 5 H12'} />
 	</svg>
 	<span class="cb-glyph-echo" aria-hidden="true">{loading ? '▍' : echo}</span>

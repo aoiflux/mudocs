@@ -12,13 +12,17 @@
 <script lang="ts">
 	import { attachTilt, rollCounter } from '$lib/artist/motion';
 	import { PUZZLES, PUZZLE_COUNT } from './puzzles';
-	import type { SaveV1 } from './persistence';
+	import type { CourseSave } from './persistence';
 
 	let {
 		save,
+		earned,
 		onReplay,
 		onClose
-	}: { save: SaveV1; onReplay: () => void; onClose: () => void } = $props();
+	}: { save: CourseSave; earned: boolean; onReplay: () => void; onClose: () => void } = $props();
+
+	/** Skipped and never solved since: what stands between the learner and the reward. */
+	const unsolved = $derived(PUZZLES.filter((puzzle) => !save.solved.includes(puzzle.id)));
 
 	type Attempt = { ms: number; hints: number; errors: number };
 
@@ -69,11 +73,22 @@
 
 <div class="cb-reward">
 	<div bind:this={card} class="cb-reward-card fx-tilt">
-		<h2 class="cb-reward-title">signature resolved</h2>
-		<p class="cb-reward-sub">
-			Eight snippets reconstructed from the Mutant corpus. The registration mark in the footer is
-			repaired — it will stay that way.
-		</p>
+		{#if earned}
+			<h2 class="cb-reward-title">signature resolved</h2>
+			<p class="cb-reward-sub">
+				Eight snippets reconstructed from the Mutant corpus. The registration mark in the footer is
+				repaired — it will stay that way.
+			</p>
+		{:else}
+			<h2 class="cb-reward-title">course finished · reward forfeit</h2>
+			<p class="cb-reward-sub">
+				{save.skipped.length} section{save.skipped.length === 1 ? '' : 's'} skipped, so the registration
+				mark stays broken. Reset your progress on the workshop page to try for it again.
+				{#if unsolved.length > 0}
+					Still unsolved: {unsolved.map((puzzle) => puzzle.title).join(', ')}.
+				{/if}
+			</p>
+		{/if}
 
 		<dl class="cb-reward-stats">
 			<div class="cb-stat">
@@ -106,7 +121,7 @@
 		</div>
 
 		<div class="cb-actions" style="margin-top: 1.1rem;">
-			<button type="button" class="cb-btn cb-btn-primary" onclick={onReplay}>replay</button>
+			<button type="button" class="cb-btn cb-btn-primary" onclick={onReplay}>{earned ? 'replay' : 'back to section 1'}</button>
 			<button bind:this={dismiss} type="button" class="cb-btn" onclick={onClose}>close</button>
 		</div>
 	</div>

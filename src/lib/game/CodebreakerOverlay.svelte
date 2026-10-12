@@ -30,8 +30,8 @@
 	import RewardCard from './RewardCard.svelte';
 	import TokenTray from './TokenTray.svelte';
 
-	import { accentSlot, createDragController, shakeSlot, type DragController } from './dnd';
-	import { initParticles, type ParticleField } from './particles';
+	import { accentSlot, createDragController, shakeSlot, type DragController } from '$lib/interactive/dnd';
+	import { initParticles, type ParticleField } from '$lib/interactive/particles';
 	import { PUZZLE_COUNT } from './puzzles';
 	import { GameState } from './state.svelte';
 	import { chipAnimates, chipLabel } from './wasm';
@@ -48,13 +48,21 @@
 	let recompileButton = $state<HTMLButtonElement | undefined>(undefined);
 	let hintButton = $state<HTMLButtonElement | undefined>(undefined);
 
-	let controller: DragController | null = null;
+	let controller: DragController<Tile> | null = null;
 	let particles: ParticleField | null = null;
 
 	/** Which region owns the roving focus. */
 	let region = $state<'tray' | 'slots'>('tray');
 	/** Phone only: which pane the tab bar has selected. The tray is never hidden. */
 	let pane = $state<'source' | 'stream'>('source');
+	/** A skip costs the final reward, so it takes a second, explicit press. */
+	let confirmingSkip = $state(false);
+
+	$effect(() => {
+		// Any change of section withdraws a pending skip.
+		void game.puzzle.id;
+		confirmingSkip = false;
+	});
 
 	const chip = $derived(chipLabel(game.wasmView));
 	const failed = $derived(game.diagnostics.some((entry) => entry.severity === 'error'));
@@ -180,7 +188,7 @@
 		// --- services ---------------------------------------------------------
 		if (canvas && root) particles = initParticles(canvas, root);
 		if (dragLayer) {
-			controller = createDragController(dragLayer, {
+			controller = createDragController<Tile>(dragLayer, {
 				targets: () =>
 					Array.from(shell?.querySelectorAll<HTMLElement>(".cb-slot[data-empty='true']") ?? []).map(
 						(element) => ({ index: Number(element.dataset.slot), element })
@@ -580,10 +588,36 @@
 					</div>
 				{/if}
 
+				{#if game.canSkip}
+					<div class="cb-actions">
+						{#if confirmingSkip}
+							<button type="button" class="cb-btn cb-btn-primary" onclick={() => game.skip()}>
+								skip · forfeit reward
+							</button>
+							<button type="button" class="cb-btn" onclick={() => (confirmingSkip = false)}>keep going</button>
+						{:else}
+							<button
+								type="button"
+								class="cb-btn"
+								onclick={() => (confirmingSkip = true)}
+								title="Skip this section. Skipping any section forfeits the final reward."
+							>
+								skip section
+							</button>
+						{/if}
+					</div>
+					{#if confirmingSkip}
+						<p class="cb-skip-note" role="note">
+							Skipping is recorded for good: you can come back and solve this section, but the final
+							reward needs every section solved with none skipped.
+						</p>
+					{/if}
+				{/if}
+
 				{#if game.phase === 'solved'}
 					<div class="cb-actions">
 						<button type="button" class="cb-btn cb-btn-primary" onclick={() => game.nextPuzzle()}>
-							{game.puzzle.ordinal >= PUZZLE_COUNT ? 'collect reward' : 'next objective →'}
+							{game.puzzle.ordinal >= PUZZLE_COUNT ? (game.rewardEarned ? 'collect reward' : 'finish course') : 'next objective →'}
 						</button>
 					</div>
 				{/if}
@@ -628,6 +662,7 @@
 	{#if game.phase === 'complete'}
 		<RewardCard
 			save={game.save}
+			earned={game.rewardEarned}
 			onReplay={() => {
 				game.loadPuzzle(0);
 				game.phase = 'playing';

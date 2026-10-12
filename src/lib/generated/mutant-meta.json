@@ -1,0 +1,4879 @@
+{
+	"$comment": "Written by scripts/mutant-meta.mjs from builtin.Builtins at the pinned commit; do not edit.",
+	"repo": "aoiflux/mutant",
+	"tag": "v2.6.0",
+	"commit": "59689e05d9815e224efe108a6998d78ca518683a",
+	"count": 694,
+	"builtins": [
+		{
+			"name": "abs",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "aes_decrypt",
+			"category": "cryptography",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "aes_decrypt_bytes",
+			"category": "cryptography",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "aes_encrypt",
+			"category": "cryptography",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "after_each",
+			"category": "testing",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "amcache_parse",
+			"category": "registry forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "assert",
+			"category": "testing",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "assert_contains",
+			"category": "testing",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "assert_eq",
+			"category": "testing",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "assert_err",
+			"category": "testing",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "assert_ne",
+			"category": "testing",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "assert_ok",
+			"category": "testing",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "audit_head",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "audit_verify",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "audit_write",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "avg",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "base32_decode",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "base32_encode",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "base64_decode",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "base64_decode_bytes",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "base64_encode",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "base64url_decode",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "base64url_encode",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "before_each",
+			"category": "testing",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bin_dwarf_parse",
+			"category": "binary analysis",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bin_elf_parse",
+			"category": "binary analysis",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bin_entropy",
+			"category": "binary analysis",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bin_imports",
+			"category": "binary analysis",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bin_is_go",
+			"category": "binary analysis",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bin_macho_parse",
+			"category": "binary analysis",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bin_pe_parse",
+			"category": "binary analysis",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bin_sections",
+			"category": "binary analysis",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bin_strings",
+			"category": "binary analysis",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bin_yara_scan",
+			"category": "binary analysis",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bodyfile_parse",
+			"category": "forensic timeline",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "browser_cookies",
+			"category": "browser artifacts",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "browser_downloads",
+			"category": "browser artifacts",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "browser_history",
+			"category": "browser artifacts",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_char_from_int",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_cstr_at",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_cursor_eof",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_cursor_new",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_cursor_read_u16_be",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_cursor_read_u16_le",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_cursor_read_u32_be",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_cursor_read_u32_le",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_cursor_read_u64_be",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_cursor_read_u64_le",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_cursor_read_u8",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_cursor_seek",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_cursor_tell",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_get",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_hex",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_int_from_char",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_len",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_read_u16_be",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_read_u16_le",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_read_u32_be",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_read_u32_le",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_read_u64_be",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_read_u64_le",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_slice",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_to_string",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_write_u16_be",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_write_u16_le",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_write_u32_be",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_write_u32_le",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_write_u64_be",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "bytes_write_u64_le",
+			"category": "bytes",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "cache_clear",
+			"category": "cache",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "cache_close",
+			"category": "cache",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "cache_delete",
+			"category": "cache",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "cache_get",
+			"category": "cache",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "cache_keys",
+			"category": "cache",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "cache_open",
+			"category": "cache",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "cache_put",
+			"category": "cache",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "cache_stats",
+			"category": "cache",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "case_assign",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "case_attach",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "case_bundle",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "case_close",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "case_evidence",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "case_key_create",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "case_key_erase",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "case_key_fingerprint",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "case_key_open",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "case_key_rotate",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "case_manifest",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "case_manifest_verify",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "case_note",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "case_open",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "case_report",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "case_transition",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "case_verify",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "case_write",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "cbor_encode",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "cbor_parse",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ceil",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "chan_close",
+			"category": "concurrency",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "chan_new",
+			"category": "concurrency",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "chan_recv",
+			"category": "concurrency",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "chan_send",
+			"category": "concurrency",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "chan_try_recv",
+			"category": "concurrency",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "cidr_hosts",
+			"category": "network intelligence",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "clamp",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "class_define",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "class_list",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "cmd_add",
+			"category": "command execution",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "cmd_builder",
+			"category": "command execution",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "cmd_run",
+			"category": "command execution",
+			"stability": "stable",
+			"platforms": [],
+			"platformNote": "Under cmd and batch a line cannot read a variable an earlier line set: cmd expands %VAR% when it parses the command line, before any of it has run, so the later line gets the unexpanded name. A run that needs state across steps belongs in a script the caller controls, started with exec_argv.",
+			"documented": true
+		},
+		{
+			"name": "concat",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "contains",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "csv_parse",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "csv_stringify",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "db_add_artifact",
+			"category": "graph database",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "db_add_edge",
+			"category": "graph database",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "db_add_node",
+			"category": "graph database",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "db_add_relation",
+			"category": "graph database",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "db_bfs",
+			"category": "graph database",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "db_close",
+			"category": "graph database",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "db_compact",
+			"category": "graph database",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "db_find",
+			"category": "graph database",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "db_index_prop",
+			"category": "graph database",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "db_node",
+			"category": "graph database",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "db_open",
+			"category": "graph database",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "db_open_disk",
+			"category": "graph database",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "db_query",
+			"category": "graph database",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "db_query_nodes",
+			"category": "graph database",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "db_relations",
+			"category": "graph database",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "db_schema",
+			"category": "graph database",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "db_shortest_path",
+			"category": "graph database",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "db_stats",
+			"category": "graph database",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "db_timeline",
+			"category": "graph database",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "db_verify",
+			"category": "graph database",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "debug_status",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "defang",
+			"category": "network intelligence",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "delete",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "der_parse",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "detect_injection",
+			"category": "detection",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "detect_network_beacon",
+			"category": "detection",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "detect_persistence",
+			"category": "detection",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "detect_priv_esc",
+			"category": "detection",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "detect_suspicious_files",
+			"category": "detection",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "disclose_bundle",
+			"category": "disclosure",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "disclose_for_segment",
+			"category": "disclosure",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "disclose_history",
+			"category": "disclosure",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "disclose_reclassified",
+			"category": "disclosure",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "disclose_to_passphrase",
+			"category": "disclosure",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "disclose_verify",
+			"category": "disclosure",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "disclose_withdraw",
+			"category": "disclosure",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "domain_extract",
+			"category": "network intelligence",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "each",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ecs_event",
+			"category": "schema interchange",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "email_attachments",
+			"category": "email forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "email_headers",
+			"category": "email forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "email_parse",
+			"category": "email forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "email_spf_dkim",
+			"category": "email forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "email_urls",
+			"category": "email forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "entries",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "erasure_list",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "error",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "event_kinds",
+			"category": "schema interchange",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "events_from",
+			"category": "schema interchange",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "evidence_accept",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "evidence_dispose",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "evidence_history",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "evidence_intake",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "evidence_release",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "evidence_return",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "evtx_parse",
+			"category": "windows artifacts",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "evtx_parse_bytes",
+			"category": "windows artifacts",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ewf_close",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ewf_metadata",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ewf_open",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ewf_open_partial",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ewf_read_at",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ewf_read_at_bytes",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ewf_segments",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ewf_verify",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "exec_argv",
+			"category": "command execution",
+			"stability": "stable",
+			"platforms": [],
+			"platformNote": "This is where a shell exec_string does not know the flags for is reached, by writing the invocation out: exec_argv([\"zsh\", \"-lc\", cmd]) or exec_argv([\"fish\", \"-c\", cmd]). It also runs a program with no shell at all, which is the safer choice wherever a value has to reach a command line. A program that is not installed is reported in the error field, not raised.",
+			"documented": true
+		},
+		{
+			"name": "exec_string",
+			"category": "command execution",
+			"stability": "stable",
+			"platforms": [],
+			"platformNote": "The shell names powershell, cmd and batch run Windows executables; off Windows they resolve only where interop provides them, such as WSL. sh and bash are the portable choices, and pwsh runs PowerShell 7 wherever it is installed. Any other name -- zsh, dash, ksh, fish -- is given the command with -c, which every POSIX shell and fish, csh, tcsh, nu and xonsh all accept; a shell whose flag differs is reached through exec_argv instead. A shell that is not installed is reported in the error field, not raised.",
+			"documented": true
+		},
+		{
+			"name": "ext_capabilities",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ext_close",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ext_deleted",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ext_dir_slack",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ext_extract_file",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ext_hash_file",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ext_journal",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ext_journal_block_copies",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ext_journal_inode_versions",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ext_list_files",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ext_metadata",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ext_open",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ext_read_file",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ext_read_file_at",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ext_read_file_bytes",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ext_recover_file",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ext_recover_journalled_file",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ext_report",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ext_slack",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ext_verify",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ext_xattrs",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "extract_iocs",
+			"category": "network intelligence",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fail",
+			"category": "testing",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fat_capabilities",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fat_close",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fat_deleted",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fat_extract_file",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fat_hash_file",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fat_list_files",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fat_metadata",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fat_open",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fat_read_file",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fat_read_file_at",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fat_read_file_bytes",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fat_recover_file",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fat_recover_file_assuming_contiguous",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fat_report",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fat_slack",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fat_verify",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "filter",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "first",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "flatten",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "floor",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "from_base",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fs_append",
+			"category": "filesystem",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fs_carve",
+			"category": "filesystem",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fs_copy",
+			"category": "filesystem",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fs_delete",
+			"category": "filesystem",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fs_deleted",
+			"category": "filesystem",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fs_diff",
+			"category": "filesystem",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fs_entropy",
+			"category": "filesystem",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fs_exists",
+			"category": "filesystem",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fs_extract_strings",
+			"category": "filesystem",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fs_hash",
+			"category": "filesystem",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fs_list",
+			"category": "filesystem",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fs_magic",
+			"category": "filesystem",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fs_metadata",
+			"category": "filesystem",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fs_mkdir",
+			"category": "filesystem",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fs_move",
+			"category": "filesystem",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fs_read",
+			"category": "filesystem",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fs_read_bytes",
+			"category": "filesystem",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fs_stat",
+			"category": "filesystem",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fs_walk",
+			"category": "filesystem",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "fs_write",
+			"category": "filesystem",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "get",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "gets",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "go_build_id",
+			"category": "binary analysis",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "go_buildinfo",
+			"category": "binary analysis",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "go_symbols",
+			"category": "binary analysis",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "go_types",
+			"category": "binary analysis",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "gunzip",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "gunzip_bytes",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "gzip",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "has_key",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hash_blake2",
+			"category": "hashing",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hash_crc32",
+			"category": "hashing",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hash_md5",
+			"category": "hashing",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hash_sha1",
+			"category": "hashing",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hash_sha256",
+			"category": "hashing",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hash_sha512",
+			"category": "hashing",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hashset_close",
+			"category": "hash-set forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hashset_contains",
+			"category": "hash-set forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hashset_load",
+			"category": "hash-set forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "help",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hex_decode",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hex_decode_bytes",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hex_encode",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hfs_capabilities",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hfs_close",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hfs_deleted",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hfs_extract_file",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hfs_hash_file",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hfs_list_files",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hfs_metadata",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hfs_open",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hfs_read_file",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hfs_read_file_at",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hfs_read_file_bytes",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hfs_recover_file",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hfs_report",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hfs_resource_fork",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hfs_slack",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hfs_unallocated",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hfs_verify",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hfs_xattrs",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hive_close",
+			"category": "registry forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hive_get_value",
+			"category": "registry forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hive_key_info",
+			"category": "registry forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hive_list_keys",
+			"category": "registry forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hive_list_values",
+			"category": "registry forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hive_open",
+			"category": "registry forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "hmac",
+			"category": "hashing",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "http_build_request",
+			"category": "http",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "http_build_response",
+			"category": "http",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "http_conn_read_request",
+			"category": "http",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "http_conn_read_request_head",
+			"category": "http",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "http_conn_read_response",
+			"category": "http",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "http_conn_read_response_head",
+			"category": "http",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "http_get",
+			"category": "http",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "http_parse_request",
+			"category": "http",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "http_parse_response",
+			"category": "http",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "http_post",
+			"category": "http",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "http_request",
+			"category": "http",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "imphash",
+			"category": "fingerprinting",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "index_of",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "int_to_ip",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ip_in_cidr",
+			"category": "network intelligence",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ip_is_private",
+			"category": "network intelligence",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ip_to_int",
+			"category": "network intelligence",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ip_version",
+			"category": "network intelligence",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "is_null",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "is_valid_domain",
+			"category": "network intelligence",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ja3",
+			"category": "fingerprinting",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "json_parse",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "json_stringify",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "jumplist_parse",
+			"category": "windows artifacts",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "jwt_decode",
+			"category": "cryptography",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "keys",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "last",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_add_edge",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_add_node",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_checkpoint",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_checkpoint_history",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_classifications",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_classify",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_close",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_compact",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_custody",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_custody_anchored",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_declare_composite",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_declare_ordered",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_declare_unique",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_declare_unique_edge",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_edge",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_explain_query",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_indexes",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_node",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_open",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_path",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_patterns",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_proof_describe",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_prove_edge_redaction",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_prove_node",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_prove_property_redaction",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_prove_redaction",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_provenance",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_query_nodes",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_redact_edge",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_redact_edge_properties",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_redact_node",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_redact_node_properties",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_redaction_impact",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_redactions",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_redactions_review",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_root_export",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_stats",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_subgraph",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_under_view",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_verify_anchor",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_verify_chain",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_verify_proof",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ledger_verify_store",
+			"category": "forensic ledger",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "len",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "lm_hash",
+			"category": "fingerprinting",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "lnk_parse",
+			"category": "windows artifacts",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "lua_run_file",
+			"category": "runtime integration",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "lua_run_http",
+			"category": "runtime integration",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "lua_run_string",
+			"category": "runtime integration",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "mactime",
+			"category": "forensic timeline",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "map",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "math_e",
+			"category": "math",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "math_pi",
+			"category": "math",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "max",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "mem_find_pe",
+			"category": "memory forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "mem_find_shellcode",
+			"category": "memory forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "mem_map",
+			"category": "memory forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "mem_read",
+			"category": "memory forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "mem_read_bytes",
+			"category": "memory forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "mem_scan",
+			"category": "memory forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "mem_strings",
+			"category": "memory forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "merge",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "mft_parse",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "min",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "mod",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "msgpack_encode",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "msgpack_parse",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "nanoid",
+			"category": "hashing",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ndjson_parse",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ndjson_stringify",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "net_accept",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "net_banner",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "net_capture_raw",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "net_conn_close",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "net_conn_info",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "net_conn_read",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "net_conn_read_bytes",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "net_conn_write",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "net_connect",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "net_connect_scan",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "net_dial",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "net_dns_query",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "net_flow_reconstruct",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "net_listen",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "net_listen_close",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "net_os_fingerprint",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "net_pcap_analyze",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "net_resolve",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "net_serve",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "net_spawn",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "net_syn_scan",
+			"category": "network",
+			"stability": "deprecated",
+			"replacedBy": "net_connect_scan",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "net_tls_connect",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "net_tls_fingerprint",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "net_tls_listen",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "net_tls_upgrade_client",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "net_tls_upgrade_server",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "net_udp_scan",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "nt_hash",
+			"category": "fingerprinting",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ntfs_capabilities",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ntfs_close",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ntfs_deleted",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ntfs_extract_file",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ntfs_extract_stream",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ntfs_hash_file",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ntfs_list_files",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ntfs_log_records",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ntfs_log_transactions",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ntfs_metadata",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ntfs_open",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ntfs_read_file",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ntfs_read_file_at",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ntfs_read_file_bytes",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ntfs_read_stream",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ntfs_recover_file",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ntfs_reparse",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ntfs_report",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ntfs_security",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ntfs_security_descriptors",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ntfs_slack",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ntfs_streams",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ntfs_usn_journal",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ntfs_verify",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ocsf_event",
+			"category": "schema interchange",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "parse_float",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "parse_int",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "peach",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "pem_decode",
+			"category": "cryptography",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "plist_parse",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "pmap",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "policy_allow",
+			"category": "policy",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "policy_eval",
+			"category": "policy",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "policy_load",
+			"category": "policy",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "policy_rules",
+			"category": "policy",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "policy_trace",
+			"category": "policy",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "pop",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "pow",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "prefetch_parse",
+			"category": "windows artifacts",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "process_env",
+			"category": "process forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "process_hash",
+			"category": "process forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "process_kill",
+			"category": "process forensics",
+			"stability": "stable",
+			"platforms": [],
+			"platformNote": "On Windows only SIGKILL semantics are honored; any other signal number is refused with an error, not ignored.",
+			"documented": true
+		},
+		{
+			"name": "process_list",
+			"category": "process forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "process_memory_scan",
+			"category": "process forensics",
+			"stability": "stable",
+			"platforms": [
+				"windows",
+				"linux"
+			],
+			"documented": true
+		},
+		{
+			"name": "process_modules",
+			"category": "process forensics",
+			"stability": "stable",
+			"platforms": [
+				"windows",
+				"linux"
+			],
+			"documented": true
+		},
+		{
+			"name": "process_open_files",
+			"category": "process forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "process_threads",
+			"category": "process forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "process_tree",
+			"category": "process forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "protobuf_parse",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "push",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "putf",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "putln",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "rand",
+			"category": "math",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "rand_bytes",
+			"category": "math",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "rand_int",
+			"category": "math",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "random_hex",
+			"category": "hashing",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "range",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "raw_close",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "raw_metadata",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "raw_open",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "raw_read_at",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "raw_read_at_bytes",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "record_classify_range",
+			"category": "classified records",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "record_close",
+			"category": "classified records",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "record_erase",
+			"category": "classified records",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "record_layout",
+			"category": "classified records",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "record_open",
+			"category": "classified records",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "record_prove_segment",
+			"category": "classified records",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "record_read",
+			"category": "classified records",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "record_read_partial",
+			"category": "classified records",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "record_release",
+			"category": "classified records",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "record_seal",
+			"category": "classified records",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "record_seal_quantised",
+			"category": "classified records",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "record_search",
+			"category": "classified records",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "record_verify",
+			"category": "classified records",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "redaction_commit",
+			"category": "disclosure",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "redaction_versions",
+			"category": "disclosure",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "reduce",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "refang",
+			"category": "network intelligence",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "reg_close",
+			"category": "registry forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "reg_deleted_keys",
+			"category": "registry forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "reg_enum_keys",
+			"category": "registry forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "reg_enum_values",
+			"category": "registry forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "reg_get_value",
+			"category": "registry forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "reg_open",
+			"category": "registry forensics",
+			"stability": "stable",
+			"platforms": [],
+			"platformNote": "The live-registry path (HKLM\\..., HKCU\\..., etc.) is Windows-only; captured hive files and hive-JSON inputs are parsed on all platforms.",
+			"documented": true
+		},
+		{
+			"name": "reg_timeline",
+			"category": "registry forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "regex_capture_groups",
+			"category": "text analysis",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "regex_find",
+			"category": "text analysis",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "regex_find_all",
+			"category": "text analysis",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "regex_match",
+			"category": "text analysis",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "regex_replace",
+			"category": "text analysis",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "report_list",
+			"category": "reporting",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "report_new",
+			"category": "reporting",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "report_render",
+			"category": "reporting",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "report_section",
+			"category": "reporting",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "report_table",
+			"category": "reporting",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "report_text",
+			"category": "reporting",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "report_write",
+			"category": "reporting",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "rest",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "retention_hold",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "retention_list",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "retention_release",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "retention_set",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "reverse",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "review_decide",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "review_list",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "review_request",
+			"category": "chain of custody",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "role_assign",
+			"category": "disclosure",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "role_define",
+			"category": "disclosure",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "role_list",
+			"category": "disclosure",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "round",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "sandbox_status",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "security_diagnostics",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "serve_arg",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "serve_conn",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "set",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "shimcache_parse",
+			"category": "registry forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "sigma_match",
+			"category": "detection",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "sigma_parse",
+			"category": "detection",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "sigma_parse_all",
+			"category": "detection",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "sigma_scan",
+			"category": "detection",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "sleep_ms",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "slice",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "sort",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "sort_by",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "spawn",
+			"category": "concurrency",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "sqlite_query",
+			"category": "browser artifacts",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "sqlite_query_bytes",
+			"category": "browser artifacts",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "sqrt",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "stix_bundle",
+			"category": "schema interchange",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "stix_pattern",
+			"category": "schema interchange",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "str_char_at",
+			"category": "strings",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "str_ends_with",
+			"category": "strings",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "str_format",
+			"category": "strings",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "str_join",
+			"category": "strings",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "str_lower",
+			"category": "strings",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "str_pad_left",
+			"category": "strings",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "str_pad_right",
+			"category": "strings",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "str_repeat",
+			"category": "strings",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "str_reverse",
+			"category": "strings",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "str_starts_with",
+			"category": "strings",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "str_substr",
+			"category": "strings",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "str_title",
+			"category": "strings",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "str_trim",
+			"category": "strings",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "str_trim_left",
+			"category": "strings",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "str_trim_prefix",
+			"category": "strings",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "str_trim_right",
+			"category": "strings",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "str_trim_suffix",
+			"category": "strings",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "str_upper",
+			"category": "strings",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "string_to_bytes",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "sum",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "syslog_parse",
+			"category": "unix artifacts",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "table_close",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "table_detect",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "table_list_partitions",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "table_nested",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "table_open",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "table_open_all",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "table_open_as",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "table_open_strict",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "table_partition_info",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "tar_close",
+			"category": "archives",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "tar_entries",
+			"category": "archives",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "tar_open",
+			"category": "archives",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "tar_read",
+			"category": "archives",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "tar_read_bytes",
+			"category": "archives",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "task_done",
+			"category": "concurrency",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "task_wait",
+			"category": "concurrency",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "test",
+			"category": "testing",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "text_contains",
+			"category": "text analysis",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "text_count",
+			"category": "text analysis",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "text_fuzzy_find",
+			"category": "text analysis",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "text_index",
+			"category": "text analysis",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "text_jaro_winkler",
+			"category": "text analysis",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "text_levenshtein",
+			"category": "text analysis",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "text_replace",
+			"category": "text analysis",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "text_similarity",
+			"category": "text analysis",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "text_split",
+			"category": "text analysis",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "time_add",
+			"category": "time",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "time_diff",
+			"category": "time",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "time_format",
+			"category": "time",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "time_ms",
+			"category": "time",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "time_now",
+			"category": "time",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "time_parse",
+			"category": "time",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "time_unix",
+			"category": "time",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "timeline_merge",
+			"category": "forensic timeline",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "timeline_sort",
+			"category": "forensic timeline",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "timesketch_event",
+			"category": "schema interchange",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "timestamp_normalize",
+			"category": "forensic timeline",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "tld_extract",
+			"category": "network intelligence",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "tls_generate_ca",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "tls_generate_cert",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "tls_sign_cert",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "to_base",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "to_bool",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "to_float",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "to_int",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "to_string",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "toml_parse",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "toml_stringify",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "type_of",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "unique",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "url_decode",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "url_encode",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "uuid_v4",
+			"category": "hashing",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "uuid_v7",
+			"category": "hashing",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "values",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "vhdi_chain",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "vhdi_changed_extents",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "vhdi_changed_since",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "vhdi_close",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "vhdi_discover",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "vhdi_extents",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "vhdi_map_offset",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "vhdi_metadata",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "vhdi_open",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "vhdi_probe",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "vhdi_read_at",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "vhdi_read_at_bytes",
+			"category": "disk image forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "view_define",
+			"category": "disclosure",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "view_list",
+			"category": "disclosure",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "view_preview",
+			"category": "disclosure",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "with_resource",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ws_accept_key",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ws_read_frame",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "ws_write_frame",
+			"category": "network",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "x509_parse",
+			"category": "cryptography",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfat_capabilities",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfat_close",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfat_deleted",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfat_extract_file",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfat_hash_file",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfat_list_files",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfat_metadata",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfat_open",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfat_read_file",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfat_read_file_at",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfat_read_file_bytes",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfat_recover_file",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfat_recover_file_assuming_contiguous",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfat_report",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfat_slack",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfat_verify",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfs_capabilities",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfs_close",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfs_deleted",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfs_extract_file",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfs_hash_file",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfs_list_files",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfs_log_records",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfs_log_transactions",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfs_metadata",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfs_open",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfs_read_file",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfs_read_file_at",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfs_read_file_bytes",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfs_recover_file",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfs_report",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfs_slack",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfs_unlinked",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfs_verify",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xfs_xattrs",
+			"category": "filesystem forensics",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xml_find",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "xml_parse",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "yaml_parse",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "yaml_parse_all",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "yaml_stringify",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "zip",
+			"category": "standard library",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "zip_close",
+			"category": "archives",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "zip_entries",
+			"category": "archives",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "zip_open",
+			"category": "archives",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "zip_read",
+			"category": "archives",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "zip_read_bytes",
+			"category": "archives",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "zlib_compress",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "zlib_decompress",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		},
+		{
+			"name": "zlib_decompress_bytes",
+			"category": "structured data",
+			"stability": "stable",
+			"platforms": [],
+			"documented": true
+		}
+	]
+}

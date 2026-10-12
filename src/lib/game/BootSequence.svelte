@@ -1,16 +1,17 @@
 <!--
 	The entrance: the Y/N dialogue, the refusal, and the power-on print.
 
-	Every number the boot prints is read from the modules that own it — 13
-	keywords from `lexer.ts`, 409 builtins from its catalogue, 39 opcodes from
-	`bytecode.ts`. Nothing here is a decorative string.
+	Every number the boot prints is read from the modules that own it: the
+	keyword and builtin counts from `lexer.ts`. Nothing here is a decorative
+	string. The toy opcode table in `bytecode.ts` is not Mutant's, so neither
+	its size nor a listing from it is printed.
 
 	`Y` is also the gesture that creates the `AudioContext`, which is why the
 	choice is a real `<button>` and not a keyboard-only prompt.
 -->
 <script lang="ts">
 	import { createTypewriter, prefersReducedMotion } from '$lib/artist/motion';
-	import { OPCODES } from './bytecode';
+	import { MUTANT_TAG } from '$lib/mutant-pin';
 	import { BUILTIN_CATALOG_SIZE, KEYWORD_COUNT } from './lexer';
 
 	let {
@@ -39,9 +40,6 @@
 
 	const REFUSAL = [
 		'ERROR: type mismatch: BOOLEAN != COURAGE',
-		'0000 OpConstant 0',
-		'0001 OpBang',
-		'0002 OpJumpFalse 0009',
 		'exit status 1'
 	].join('\n');
 
@@ -49,8 +47,7 @@
 		'> mutant_codebreaker v0.1.0',
 		'> linking local validator ......... OK',
 		`> keywords loaded: ${KEYWORD_COUNT}`,
-		`> builtins indexed: ${BUILTIN_CATALOG_SIZE}`,
-		`> opcodes: ${OPCODES.length}`,
+		`> builtins in mutant ${MUTANT_TAG}: ${BUILTIN_CATALOG_SIZE}`,
 		'> wasm host: DEFERRED',
 		'> ready.'
 	].join('\n');

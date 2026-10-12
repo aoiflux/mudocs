@@ -19,6 +19,9 @@ const tag = '[check-links]';
 /** Citations must name the pinned tag; a branch moves under the text that cites it. */
 const UNPINNED = /https:\/\/github\.com\/aoiflux\/mutant\/(?:tree|blob)\/(?:main|master|dev)\b[^"'\s<)]*/g;
 
+/** Built routes not yet linked from the site or the sitemap, crawled as well. */
+const UNLINKED_ROUTES = ['/workshop'];
+
 /** Large or generated static files: checked for existence, never downloaded. */
 const HEAD_ONLY = /\.(wasm|js|css|png|jpe?g|svg|webp|ico|mp4|woff2?|zip|json|txt)$/i;
 
@@ -75,7 +78,7 @@ async function main() {
 	const pages = new Map(); // path -> { status, ids }
 	const anchorRefs = []; // { from, path, fragment }
 	const assets = new Map(); // path -> first page that linked it
-	const queue = ['/'];
+	const queue = ['/', ...UNLINKED_ROUTES];
 	const queued = new Set(queue);
 
 	const enqueue = (p, from) => {

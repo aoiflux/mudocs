@@ -12,7 +12,7 @@
  *   - strings are "simple quoted strings" with limited escapes, per its Notes
  *
  * Builtins are matched structurally (any identifier in call position) instead of
- * by name. There are 409 of them and the catalog is generated from
+ * by name. There are hundreds of them (src/lib/generated/mutant-meta.json) and the catalog is generated from
  * `builtin/metadata.go`, so a hardcoded list here would go stale the moment one
  * is added — the structural rule never does.
  */

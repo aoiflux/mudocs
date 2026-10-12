@@ -9,6 +9,7 @@
  * DOM-free and side-effect-free. Safe under SSR.
  */
 
+import { MUTANT_BUILTIN_COUNT } from '$lib/mutant-pin';
 import type { TokenCategory, TokenType } from './types';
 
 export type LexToken = {
@@ -127,8 +128,8 @@ const CONTROL: ReadonlySet<TokenType> = new Set<TokenType>([
 ]);
 
 /**
- * The builtins this game needs to resolve. Mutant ships 409 of them, generated
- * from `builtin/metadata.go`; a full copy here would go stale, so this is the
+ * The builtins this game needs to resolve. Mutant ships `BUILTIN_CATALOG_SIZE`
+ * of them, generated from `builtin/metadata.go`; a full copy here would go stale, so this is the
  * pure-computation subset the puzzles touch plus the host-bound names a puzzle
  * deliberately reaches for (`fs_read` — see puzzle P2 and §5 of the design).
  */
@@ -176,8 +177,8 @@ export const BUILTINS: ReadonlySet<string> = new Set([
 	'hex_decode'
 ]);
 
-/** The catalog size the boot sequence reports. Real number, from the docs. */
-export const BUILTIN_CATALOG_SIZE = 409;
+/** The catalog size the boot sequence reports: the pinned release's own count. */
+export const BUILTIN_CATALOG_SIZE = MUTANT_BUILTIN_COUNT;
 
 export const NULL_LITERAL = 'null';
 

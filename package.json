@@ -9,6 +9,8 @@
 		"pin:mutant": "node ./scripts/pin-mutant.mjs",
 		"sync:mutant": "node ./scripts/mutant-sync.mjs",
 		"check:sync": "node ./scripts/mutant-sync.mjs --check",
+		"meta:mutant": "node ./scripts/mutant-meta.mjs --mutant",
+		"check:meta": "node ./scripts/mutant-meta.mjs --check",
 		"check:links": "node ./scripts/check-links.mjs",
 		"check:docs:wasm": "node ./scripts/lint-wasm-docs.mjs",
 		"predev": "npm run fetch:wasm",
@@ -17,7 +19,7 @@
 		"build": "vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
-		"check": "npm run check:sync && npm run check:docs:wasm && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check": "npm run check:sync && npm run check:meta && npm run check:docs:wasm && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
 	},
 	"devDependencies": {

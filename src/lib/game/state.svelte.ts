@@ -11,9 +11,10 @@
  * because a bug in this game must not be able to block someone.
  */
 
-import * as audio from './audio';
+import * as audio from '$lib/interactive/audio';
+import { courseRewardEarned } from '$lib/interactive/progress';
 import { assembledSource, validate, type Fills } from './engine';
-import { loadSave, writeSave, type SaveV1 } from './persistence';
+import { loadSave, writeSave, type CourseSave } from './persistence';
 import { PUZZLE_COUNT, PUZZLES, puzzleById } from './puzzles';
 import type { Diagnostic, Puzzle, Stage, Tile } from './types';
 import * as wasm from './wasm';
@@ -73,7 +74,7 @@ export class GameState {
 	consentPending = $state(false);
 
 	// --- persistence ---------------------------------------------------------
-	save = $state<SaveV1>(loadSave());
+	save = $state<CourseSave>(loadSave());
 
 	puzzle = $derived<Puzzle>(PUZZLES[this.puzzleIndex]);
 
@@ -87,6 +88,12 @@ export class GameState {
 	source = $derived(assembledSource(this.puzzle, this.fills as Fills));
 
 	solvedCount = $derived(this.save.solved.length);
+
+	/** Every section solved and none skipped (owner decision D-8). */
+	rewardEarned = $derived(courseRewardEarned(this.save, PUZZLE_COUNT));
+
+	/** This section is unsolved, so skipping it would cost the reward. */
+	canSkip = $derived(this.phase === 'playing' && !this.save.solved.includes(this.puzzle.id));
 
 	progressLabel = $derived(
 		`PUZZLE ${String(this.puzzle.ordinal).padStart(2, '0')}/${String(PUZZLE_COUNT).padStart(2, '0')} · ${this.puzzle.concept}`
@@ -124,8 +131,10 @@ export class GameState {
 		audio.bootHum();
 
 		const resume = this.save.lastPuzzle ? puzzleById(this.save.lastPuzzle) : null;
-		const nextUnsolved = PUZZLES.find((puzzle) => !this.save.solved.includes(puzzle.id));
-		const target = resume && !this.save.solved.includes(resume.id) ? resume : (nextUnsolved ?? PUZZLES[0]);
+		const open = (id: string) => !this.save.solved.includes(id) && !this.save.skipped.includes(id);
+		const nextOpen =
+			PUZZLES.find((puzzle) => open(puzzle.id)) ?? PUZZLES.find((puzzle) => !this.save.solved.includes(puzzle.id));
+		const target = resume && open(resume.id) ? resume : (nextOpen ?? PUZZLES[0]);
 		this.loadPuzzle(target.ordinal - 1, false);
 	}
 
@@ -180,12 +189,31 @@ export class GameState {
 	nextPuzzle(): void {
 		if (this.puzzle.ordinal >= PUZZLE_COUNT) {
 			this.phase = 'complete';
-			this.save = { ...this.save, seenReward: true };
-			this.persist();
+			if (this.rewardEarned) {
+				this.save = { ...this.save, seenReward: true };
+				this.persist();
+			}
 			return;
 		}
 		this.phase = 'playing';
 		this.loadPuzzle(this.puzzleIndex + 1);
+	}
+
+	/**
+	 * Move on without solving this section. The skip is recorded for good:
+	 * solving the section later still counts, but the final reward is forfeit
+	 * until progress is reset.
+	 */
+	skip(): void {
+		if (!this.canSkip) return;
+		const id = this.puzzle.id;
+		if (!this.save.skipped.includes(id)) {
+			this.save = { ...this.save, skipped: [...this.save.skipped, id] };
+			this.persist();
+		}
+		this.log('warning', `> skipped ${id} · final reward forfeit`);
+		this.say(`Skipped puzzle ${this.puzzle.ordinal}. The final reward is now forfeit.`);
+		this.nextPuzzle();
 	}
 
 	// -------------------------------------------------------------------------

@@ -7,6 +7,8 @@
  */
 
 import lock from '../../mutant.lock.json';
+// A named import, so only the number reaches the client bundle, not the list.
+import { count as builtinCount } from './generated/mutant-meta.json';
 
 export const MUTANT_REPO = lock.repo;
 export const MUTANT_TAG = lock.tag;
@@ -21,3 +23,6 @@ export const WASM_BYTES = wasmFile.bytes;
 
 /** Decimal megabytes, one place: what a browser's network panel reports. */
 export const WASM_SIZE_LABEL = `${(wasmFile.bytes / 1_000_000).toFixed(1)} MB`;
+
+/** Builtins registered at the pinned release (scripts/mutant-meta.mjs). */
+export const MUTANT_BUILTIN_COUNT = builtinCount;

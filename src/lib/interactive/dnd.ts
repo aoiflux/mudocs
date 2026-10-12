@@ -13,10 +13,12 @@
  * `pointerup` is a *select-tap*, which is exactly the keyboard path — so the
  * mobile experience and the accessible experience are the same code, and both
  * get exercised continuously.
+ *
+ * Shared by the Codebreaker course and the workshop's pipeline builder, so it
+ * is generic over the item being carried (`T`) and knows nothing about either.
  */
 
 import { prefersReducedMotion, type Cleanup } from '$lib/artist/motion';
-import type { Tile } from './types';
 
 /** Below this, the gesture is a tap, not a drag. */
 const DRAG_THRESHOLD_PX = 6;
@@ -46,31 +48,38 @@ const PHASE = {
 
 export type SlotTarget = { index: number; element: HTMLElement };
 
-export type DragHandlers = {
-	/** Empty slots that could accept the tile currently in hand. */
+/** Classes the controller puts on the source element and on its floating copy. */
+export type DragClasses = { ghost: string; proxy: string };
+
+const DEFAULT_CLASSES: DragClasses = { ghost: 'cb-tile-ghost', proxy: 'cb-tile-proxy' };
+
+export type DragHandlers<T> = {
+	/** Empty slots that could accept the item currently in hand. */
 	targets: () => SlotTarget[];
 	/** The armed slot changed. Null means nothing is in range. */
 	onArm: (index: number | null) => void;
 	/** A drag finished over a slot, or over nothing. */
-	onDrop: (tile: Tile, slotIndex: number | null) => void;
+	onDrop: (item: T, slotIndex: number | null) => void;
 	/** A press that never crossed the threshold — same semantics as Enter. */
-	onSelect: (tile: Tile) => void;
+	onSelect: (item: T) => void;
 	/** Viewport coordinates, for the particle trail. */
 	onMove?: (x: number, y: number) => void;
 	/** The drag actually started (past the threshold). */
-	onLift?: (tile: Tile) => void;
+	onLift?: (item: T) => void;
+	/** Defaults to the Codebreaker's `cb-tile-ghost` / `cb-tile-proxy`. */
+	classes?: DragClasses;
 };
 
-export type DragController = {
-	begin: (event: PointerEvent, tile: Tile, source: HTMLElement) => void;
-	/** Escape while a tile is held. */
+export type DragController<T> = {
+	begin: (event: PointerEvent, item: T, source: HTMLElement) => void;
+	/** Escape while an item is held. */
 	cancel: () => void;
 	dragging: () => boolean;
 	destroy: Cleanup;
 };
 
-type Session = {
-	tile: Tile;
+type Session<T> = {
+	tile: T;
 	source: HTMLElement;
 	pointerId: number;
 	startX: number;
@@ -90,16 +99,17 @@ function centreOf(element: HTMLElement): { x: number; y: number } {
 	return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
 }
 
-export function createDragController(layer: HTMLElement, handlers: DragHandlers): DragController {
+export function createDragController<T>(layer: HTMLElement, handlers: DragHandlers<T>): DragController<T> {
 	const reduced = prefersReducedMotion();
-	let session: Session | null = null;
+	const classes = handlers.classes ?? DEFAULT_CLASSES;
+	let session: Session<T> | null = null;
 	let pointerX = 0;
 	let pointerY = 0;
 
-	const teardown = (active: Session) => {
+	const teardown = (active: Session<T>) => {
 		cancelAnimationFrame(active.raf);
 		active.proxy?.remove();
-		active.source.classList.remove('cb-tile-ghost');
+		active.source.classList.remove(classes.ghost);
 		try {
 			active.source.releasePointerCapture(active.pointerId);
 		} catch {
@@ -111,14 +121,14 @@ export function createDragController(layer: HTMLElement, handlers: DragHandlers)
 		session = null;
 	};
 
-	const lift = (active: Session) => {
+	const lift = (active: Session<T>) => {
 		active.lifted = true;
-		active.source.classList.add('cb-tile-ghost');
+		active.source.classList.add(classes.ghost);
 
 		const rect = active.source.getBoundingClientRect();
 		const proxy = active.source.cloneNode(true) as HTMLElement;
-		proxy.classList.remove('cb-tile-ghost');
-		proxy.classList.add('cb-tile-proxy');
+		proxy.classList.remove(classes.ghost);
+		proxy.classList.add(classes.proxy);
 		proxy.setAttribute('aria-hidden', 'true');
 		proxy.removeAttribute('id');
 		proxy.style.width = `${rect.width}px`;
@@ -133,7 +143,7 @@ export function createDragController(layer: HTMLElement, handlers: DragHandlers)
 		else paint(active);
 	};
 
-	const paint = (active: Session) => {
+	const paint = (active: Session<T>) => {
 		if (!active.proxy) return;
 		const rotation = reduced ? 0 : Math.max(-11, Math.min(11, active.spring.vx * 0.9));
 		active.proxy.style.transform = `translate3d(${active.spring.x}px, ${active.spring.y}px, 0) rotate(${rotation}deg)`;

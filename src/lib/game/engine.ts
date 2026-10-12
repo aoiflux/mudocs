@@ -701,8 +701,11 @@ export function validate(puzzle: Puzzle, fills: Fills): ValidationResult {
 		return { solved: false, filled, total, diagnostics: [], reached: 'lex' };
 	}
 
-	// Rung 7 — well-formed. Either it is the answer, or the compiler answers in
-	// bytecode, because there is no error text that would be true here.
+	// Rung 7 — well-formed. Either it is the answer, or it is a different program.
+	// The toy emitter in `bytecode.ts` decides equivalence, but its listing is
+	// never shown: it is not Mutant's compiler output, and nothing printed here
+	// may claim to be (the site's traceability rule). Re-enable a listing only
+	// once Mutant can disassemble its own chunks.
 	const literals = puzzle.slots.map((spec) => fills[spec.index]?.literal ?? '');
 	const exact = puzzle.slots.every((spec) => isAccepted(puzzle, spec.index, literals[spec.index]));
 
@@ -734,9 +737,8 @@ export function validate(puzzle: Puzzle, fills: Fills): ValidationResult {
 		decoy: false
 	}))));
 	const got = emitBytecode(tokens);
-	const text = diffBytecode(want, got);
 
-	if (!text) {
+	if (!diffBytecode(want, got)) {
 		// The two chunks are identical: an equivalent program. Accept it.
 		return {
 			solved: true,
@@ -748,7 +750,7 @@ export function validate(puzzle: Puzzle, fills: Fills): ValidationResult {
 					'vm',
 					'ok',
 					'vm',
-					'program compiled — chunk equivalent to the reference',
+					'program compiled — equivalent to the reference',
 					{ line: puzzle.lines.length, col: 1 },
 					null
 				)
@@ -766,7 +768,15 @@ export function validate(puzzle: Puzzle, fills: Fills): ValidationResult {
 		filled,
 		total,
 		diagnostics: [
-			diagnostic('order', 'bytecode', 'error', 'compiler', text, at, wrong?.index ?? null)
+			diagnostic(
+				'order',
+				'bytecode',
+				'error',
+				'compiler',
+				'well-formed, but not the program this objective asks for: check the order of the tokens',
+				at,
+				wrong?.index ?? null
+			)
 		],
 		reached: 'bytecode'
 	};

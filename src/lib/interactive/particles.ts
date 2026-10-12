@@ -62,15 +62,20 @@ function withAlpha(color: string, alpha: number): string {
  *
  * `palette` is read from `overlay`, which carries the `--cb-*` tokens, so the
  * field is correct in every site theme without knowing which one is active.
+ * Another host names its own two custom properties in `tokens`.
  */
-export function initParticles(canvas: HTMLCanvasElement, overlay: HTMLElement): ParticleField {
+export function initParticles(
+	canvas: HTMLCanvasElement,
+	overlay: HTMLElement,
+	tokens: { primary: string; secondary: string } = { primary: '--cb-neon', secondary: '--cb-magenta' }
+): ParticleField {
 	if (typeof window === 'undefined' || prefersReducedMotion()) return NOOP_FIELD;
 
 	const context = canvas.getContext('2d');
 	if (!context) return NOOP_FIELD;
 
-	const neon = readColor(overlay, '--cb-neon', '#46f1ff');
-	const magenta = readColor(overlay, '--cb-magenta', '#ff2eb8');
+	const neon = readColor(overlay, tokens.primary, '#46f1ff');
+	const magenta = readColor(overlay, tokens.secondary, '#ff2eb8');
 
 	const dpr = Math.max(window.devicePixelRatio || 1, 1);
 	const particles: Particle[] = [];
