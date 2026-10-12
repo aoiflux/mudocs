@@ -24,11 +24,72 @@ Source of truth:
 | Struct/enum features    | Supported     | declarations, literals, field access/assignment                                |
 | Return/break/continue   | Supported     | control-flow propagation implemented                                           |
 | Macro system            | Supported     | macros expand before compilation here too, so quote/unquote behave as in the CLI |
-| Builtins (browser-safe) | Supported     | 213 of 409, derived from `builtin/metadata.go` rather than hand-listed (section 5) |
+| Builtins (browser-safe) | Supported     | 238 of 459, derived from `builtin/metadata.go` rather than hand-listed (section 5) |
 | Host-bound builtins     | Not supported | fs/process/exec/network/registry/memory/binary/disk-image families             |
 | Completion modes        | Supported     | supported (callable-now) and all (discoverability)                             |
 | Output model            | Supported     | buffered putf/putln + optional final expression append                         |
 | Error model             | Supported     | parser/runtime errors returned as ok=false                                     |
+
+## Building and serving
+
+Build the wasm bundle with the build scripts. By default it lands in
+`dist/wasm-repl/`:
+
+```bash
+./scripts/build.sh --host-only --wasm-repl
+```
+
+```powershell
+./scripts/build.ps1 -HostOnly -WasmRepl
+```
+
+`examples/wasm-repl/index.html` is a ready-made page. To build next to it, so the
+page, `mutant_repl.wasm` and `wasm_exec.js` sit side by side:
+
+```bash
+./scripts/build.sh --host-only --wasm-repl --wasm-out-dir examples/wasm-repl
+```
+
+```powershell
+./scripts/build.ps1 -HostOnly -WasmRepl -WasmOutDir examples/wasm-repl
+```
+
+Then serve that folder with any static server, or with the one in this
+repository:
+
+```bash
+go run ./cmd/wasmreplserve          # -addr 127.0.0.1:8123  -dir examples/wasm-repl
+```
+
+It maps `/` to `index.html` and serves `.wasm` as `application/wasm`. It also
+refreshes `wasm_exec.js` from your Go toolchain, and rebuilds
+`mutant_repl.wasm` if the file is missing or is not a real wasm binary.
+
+Loading it from your own page:
+
+```html
+<script src="./wasm_exec.js"></script>
+<script>
+  const go = new Go();
+
+  async function start() {
+    const response = await fetch("./mutant_repl.wasm");
+    const { instance } = await WebAssembly.instantiateStreaming(
+      response,
+      go.importObject,
+    );
+    go.run(instance);
+
+    const result = window.mutantReplEval("len([1, 2, 3])");
+    console.log(result.output);
+
+    const completions = window.mutantReplCompleteLine("text_", "supported");
+    console.log(completions.candidates);
+  }
+
+  start();
+</script>
+```
 
 ## CLI to WASM Migration Cheat Sheet
 
@@ -174,14 +235,21 @@ Response shape is the same as mutantReplComplete.
 
 ### 3.3 Truthiness
 
-Falsey values:
+Falsy values:
 
-- null
-- false
-- integer 0
-- empty or whitespace-only string
+- `null`, including a call that produced no value
+- `false`
+- integer `0`
+- float `0.0`
+- the empty string
+- an empty buffer
 
-All other values are truthy.
+All other values are truthy, including `[]`, `{}`, a function and an error value.
+A whitespace-only string is truthy: it is not empty.
+
+This is `object.IsTruthy`, which is the only implementation of the rule -- the REPL,
+the VM and the tree-walking evaluator all read it -- and `!x` is its negation and
+nothing else. See the truthiness section of the language reference.
 
 ### 3.4 Numeric behavior
 
@@ -204,7 +272,10 @@ Supported:
 - let bindings (single and destructuring)
 - assignment expressions
 - if/else expressions
+- match expressions (literal, negated-number, enum-variant and `|` patterns, `_`)
 - for loops with init/condition/post
+- while loops
+- for-in loops over arrays, hashes, strings and bytes, binding one name or two
 - break and continue
 - function literals and user-defined function calls
 - struct declarations and struct literals
@@ -224,7 +295,7 @@ Intentionally unsupported:
 
 ## 5) Builtin Support (Current)
 
-The full standard library is **409 builtins across 33 categories** — see the
+The full standard library is **694 builtins across 41 categories** — see the
 [Capability Reference](CAPABILITY_REFERENCE.md) for the complete catalog. In the
 browser WASM REPL, the **pure-compute** families run unchanged; the **host-facing**
 families (section 6) are unavailable because the WASM sandbox has no filesystem,
@@ -460,6 +531,20 @@ Reason:
   something the script has to arrange, so they always finish. Under WASM they
   resolve to a single worker and return identical results.
 
+### 6.8 Resource wrapping
+
+- with_resource
+
+Reason:
+
+- It is the only builtin that resolves another builtin by *name*, from a string
+  argument, at run time. Every other exclusion here works because a host-bound
+  name is never defined in the browser's symbol table, so the call fails while
+  compiling. A name looked up at run time never passes through that table, so
+  `with_resource(0, "gets", f)` would reach straight past it. Nothing it could
+  usefully close is available in the browser anyway -- every handle family is
+  host-bound or in section 6.7.
+
 ## 7) CLI REPL vs WASM REPL Notes
 
 WASM aims for language parity where feasible, but there are runtime model
@@ -473,7 +558,10 @@ differences:
   fails while compiling with `undefined variable`.
 - Which builtins are available is derived from `builtin/metadata.go` rather than
   hand-listed: a builtin is excluded when its capability category needs the host
-  or when it declares a filesystem-path parameter.
+  or when it declares a filesystem-path parameter. A short explicit list covers
+  what neither signal catches, and one entry on it -- `with_resource` -- is
+  there because it resolves a builtin by name at run time, which is the one way
+  around the symbol table this model relies on (section 6.8).
 
 ## 8) Completion and Help Behavior
 
@@ -503,7 +591,7 @@ Supported:
 let items = ["bytecode", "sandbox", "signing", "lsp"];
 for (let i = 0; i < len(items); i = i + 1) {
   putln(items[i]);
-};
+}
 ```
 
 ### 9.2 Functions, structs, and enums

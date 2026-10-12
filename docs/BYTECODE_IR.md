@@ -28,7 +28,7 @@
 10. [Closures & Free Variables](#10-closures--free-variables)
 11. [Structs at the Bytecode Level](#11-structs-at-the-bytecode-level)
 12. [Enums at the Bytecode Level](#12-enums-at-the-bytecode-level)
-13. [Loop Control Flow](#13-loop-control-flow)
+13. [Control Flow](#13-control-flow)
 14. [Operand Encryption](#14-operand-encryption)
 15. [Runtime Security Features](#15-runtime-security-features)
 16. [Polymorphic Mutation Engine](#16-polymorphic-mutation-engine)
@@ -196,7 +196,7 @@ fixed** by the declaration order below, so do not reorder them.
 | 8  | `OpFalse`          | —                               | `→ false`                | Push the singleton `False` object                                |
 | 9  | `OpEqual`          | —                               | `b, a → bool`            | `a == b`                                                         |
 | 10 | `OpUnEqual`        | —                               | `b, a → bool`            | `a != b`                                                         |
-| 11 | `OpGreater`        | —                               | `b, a → bool`            | `a > b` (also used for `<` by swapping operands at compile time) |
+| 11 | `OpGreater`        | —                               | `b, a → bool`            | `a > b`                                                          |
 | 12 | `OpMinus`          | —                               | `a → -a`                 | Unary negation                                                   |
 | 13 | `OpBang`           | —                               | `a → !a`                 | Unary logical NOT                                                |
 | 14 | `OpJumpFalse`      | `target` (2)                    | `cond →`                 | Pop condition; if falsy jump to `target`                         |
@@ -212,18 +212,40 @@ fixed** by the declaration order below, so do not reorder them.
 | 24 | `OpCall`           | `argc` (1)                      | `argN…arg0, fn →` result | Call function with `argc` arguments                              |
 | 25 | `OpReturnValue`    | —                               | `val → (caller frame)`   | Pop return value, restore frame, push value                      |
 | 26 | `OpReturn`         | —                               | `(caller frame)`         | Void return; restores frame, pushes `Null`                       |
-| 27 | `OpGetBuiltin`     | `idx` (1)                       | `→ fn`                   | Push built-in function at `Builtins[idx]`                        |
-| 28 | `OpClosure`        | `fnIdx` (2), `numFree` (1)      | `fN…f0 → closure`        | Pop `numFree` free vars; wrap `constants[fnIdx]` in a `Closure`  |
-| 29 | `OpGetFree`        | `idx` (1)                       | `→ val`                  | Push `currentClosure.Free[idx]` (decrypted)                      |
-| 30 | `OpCurrentClosure` | —                               | `→ closure`              | Push the currently executing closure (for named recursion)       |
-| 31 | `OpChkDbg`         | —                               | —                        | Halt (or warn) if a debugger is detected                         |
-| 32 | `OpChkSnd`         | —                               | —                        | Halt (or warn) if a sandbox environment is detected              |
-| 33 | `OpBreak`          | —                               | `→ Break{}`              | Push a `Break` sentinel onto the stack                           |
-| 34 | `OpContinue`       | —                               | `→ Continue{}`           | Push a `Continue` sentinel onto the stack                        |
-| 35 | `OpMakeStruct`     | `typeIdx` (2), `fieldCount` (1) | `fN…f0 → struct`         | Pop `fieldCount` values, create a `Struct`                       |
-| 36 | `OpGetField`       | `nameIdx` (2)                   | `struct → val`           | Pop struct; push `struct.Fields[constants[nameIdx]]`             |
-| 37 | `OpSetField`       | `nameIdx` (2)                   | `val, struct → struct`   | Pop value then struct; set field; push struct back               |
-| 38 | `OpEnumValue`      | `typeIdx` (2), `tagIdx` (2)     | `→ EnumValue`            | Create `EnumValue{TypeName, Tag, ordinal}`                       |
+| 27 | `OpMultiValue`     | `count` (2)                     | `vN…v0 → multi`          | Pop `count` values into one `MultiValue`                         |
+| 28 | `OpDup`            | —                               | `a → a, a`               | Duplicate the top of the stack                                   |
+| 29 | `OpDestructure`    | `count` (2)                     | `multi → v0…vN`          | Pop a `MultiValue`; push `count` values from it                  |
+| 30 | `OpGetBuiltin`     | `idx` (2)                       | `→ fn`                   | Push the builtin at `BuiltinNames[idx & 0x7FFF]` (see §4.1)       |
+| 31 | `OpClosure`        | `fnIdx` (2), `numFree` (1)      | `fN…f0 → closure`        | Pop `numFree` free vars; wrap `constants[fnIdx]` in a `Closure`  |
+| 32 | `OpGetFree`        | `idx` (1)                       | `→ val`                  | Push `currentClosure.Free[idx]`, through the cell if it is one (decrypted) |
+| 33 | `OpCurrentClosure` | —                               | `→ closure`              | Push the currently executing closure (for named recursion)       |
+| 34 | `OpChkDbg`         | —                               | —                        | Halt (or warn) if a debugger is detected                         |
+| 35 | `OpChkSnd`         | —                               | —                        | Halt (or warn) if a sandbox environment is detected              |
+| 36 | `OpBreak`          | —                               | `→ Break{}`              | Push a `Break` sentinel onto the stack                           |
+| 37 | `OpContinue`       | —                               | `→ Continue{}`           | Push a `Continue` sentinel onto the stack                        |
+| 38 | `OpMakeStruct`     | `typeIdx` (2), `fieldCount` (1) | `fN…f0 → struct`         | Pop `fieldCount` values, create a `Struct`                       |
+| 39 | `OpGetField`       | `nameIdx` (2)                   | `struct → val`           | Pop struct; push `struct.Fields[constants[nameIdx]]`             |
+| 40 | `OpSetField`       | `nameIdx` (2)                   | `val, struct → struct`   | Pop value then struct; set field; push struct back               |
+| 41 | `OpEnumValue`      | `typeIdx` (2), `tagIdx` (2)     | `→ EnumValue`            | Create `EnumValue{TypeName, Tag, ordinal}`                       |
+| 42 | `OpGreaterEqual`   | —                               | `b, a → bool`            | `a >= b`                                                         |
+| 43 | `OpSetIndex`       | —                               | `val, idx, obj → obj`    | Mutate `obj[idx]` in place; push the container back              |
+| 44 | `OpBitAnd`         | —                               | `b, a → a&b`             | Bitwise AND; both operands must be `INTEGER`                     |
+| 45 | `OpBitOr`          | —                               | `b, a → a\|b`            | Bitwise OR; both operands must be `INTEGER`                      |
+| 46 | `OpBitXor`         | —                               | `b, a → a^b`             | Bitwise XOR; both operands must be `INTEGER`                     |
+| 47 | `OpBitNot`         | —                               | `a → ~a`                 | Bitwise complement; operand must be `INTEGER`                    |
+| 48 | `OpShiftLeft`      | —                               | `b, a → a<<b`            | Left shift; a negative count is a runtime error                  |
+| 49 | `OpShiftRight`     | —                               | `b, a → a>>b`            | Arithmetic right shift (sign-preserving); negative count errors  |
+| 50 | `OpGetLocalCell`   | `slot` (1)                      | `→ val`                  | Push `cell(bp+slot).Value` (decrypted); the slot must be boxed    |
+| 51 | `OpSetLocalCell`   | `slot` (1)                      | `val →`                  | Pop and store into `cell(bp+slot).Value` (encrypted)              |
+| 52 | `OpCaptureLocal`   | `slot` (1)                      | `→ cell`                 | Push the `*Cell` in `bp+slot` itself, for `OpClosure`'s list      |
+| 53 | `OpCaptureFree`    | `idx` (1)                       | `→ cell`                 | Push `currentClosure.Free[idx]` unread, for a nested capture      |
+| 54 | `OpSetFree`        | `idx` (1)                       | `val →`                  | Pop and store into `Free[idx].Value` (encrypted)                  |
+| 55 | `OpConcat`         | `n` (2)                         | `pN…p0 → str`            | Pop `n` pieces of an interpolated string; push the one string they spell |
+| 56 | `OpIterInit`       | —                               | `iterable → iter`        | Pop a collection; push a cursor over it (hash keys in `Inspect` order) |
+| 57 | `OpIterNext`       | `target` (2), `binds` (1)       | `iter → iter[, key], val` | Advance the cursor: push `binds` values on top of it, or jump to `target` when spent |
+| 58 | `OpMatchFail`      | —                               | `subject → (error)`      | Pop the unmatched subject and raise, naming the value that fell through |
+| 59 | `OpLess`           | —                               | `b, a → bool`            | `a < b`                                                          |
+| 60 | `OpLessEqual`      | —                               | `b, a → bool`            | `a <= b`                                                         |
 
 ### 3.2 Stack Notation
 
@@ -235,17 +257,27 @@ The "Stack effect" column uses the convention:
 - `(caller frame)` means the caller's frame is restored — no net stack value in
   the new frame's context.
 
-### 3.3 The `<` Operator Trick
+### 3.3 Comparison Operands Run In Source Order
 
-There is no `OpLess` opcode. When the compiler sees `a < b` it compiles:
+`<` and `<=` have opcodes of their own. Like every other binary operator they
+compile the left operand first, so the operands' side effects run in the order
+they are written:
 
 ```
-[compile b]         ← right operand first
-[compile a]         ← left operand second  (reversed!)
-OpGreater
+[compile a]         ← left operand first
+[compile b]         ← right operand second
+OpLess
 ```
 
-This reuses `OpGreater` without a dedicated less-than opcode.
+There used to be no `OpLess`: the compiler emitted `a < b` as `b > a`, pushing
+the right operand first and reusing `OpGreater`. That saved two opcodes and
+cost the source-order guarantee — `next() < next()` called the right-hand
+`next` first, while every other operator, and the tree-walking evaluator macro
+expansion computes an `unquote` with, called the left-hand one first. The same
+expression then answered differently inline and inside a macro. `OpLess` and
+`OpLessEqual` were appended to the instruction set and the swap removed;
+`OpGreater` and `OpGreaterEqual` keep the values and the meanings they always
+had, so bytecode compiled before the change still runs.
 
 ---
 
@@ -259,6 +291,14 @@ type ByteCode struct {
     StructDefs   map[string][]*ast.Identifier   // Field name lists per struct type
     EnumDefs     map[string][]string            // Tag name lists per enum type
     LuaPatches   map[string]*object.LuaPatch    // Lua security hook patches
+    Version      int                            // Container version (see §4.1)
+    BuiltinNames []string                       // Builtins this program calls (§4.1)
+    OpcodeMap    []byte                         // Undoes opcode permutation (§16)
+    SourceFile   string                         // Path this was compiled from (§4.2)
+    SourceText   string                         // The program's own source (§4.2)
+    LineTable    code.LineTable                 // Offset -> start line/col (§4.2)
+    EndTable     code.LineTable                 // Offset -> end line/col (§4.2)
+    MacroTable   code.LineTable                 // Offset -> macro definition site (§4.2)
 }
 ```
 
@@ -267,6 +307,160 @@ after construction (the VM clones nothing; it reads the slices directly).
 
 The `LuaPatches` field is populated by the Lua integration layer, not by the
 core compiler. See `builtin/lua.go` for context.
+
+### 4.1 Container versions and builtin resolution
+
+| Version | Emitted by | `OpGetBuiltin` operand |
+| --- | --- | --- |
+| absent (decodes to 0, normalised to 1) | up to v2.4.0 | an ordinal into the global `builtin.Builtins` registry of the release that compiled it |
+| 2 | v2.5.0 onward | `0x8000 \| i`, where `i` indexes this program's own `BuiltinNames` |
+
+Version 1 made the registry append-only forever. An ordinal baked into an
+artifact means that entry can never be renamed, retired or reordered, because
+doing so would rebind every call in every `.mu` already written — which is why
+`net_syn_scan` stayed registered long after it was documented as deprecated.
+
+Version 2 puts the *names* in the artifact. The compiler interns each builtin it
+references (`SymbolTable.ReferenceBuiltin`) and emits a position in that table;
+`vm.resolveBuiltins` binds every name to a function at construction, before a
+single instruction runs, and reports a name this runtime does not have rather
+than failing at whichever call site happens to be reached. Only referenced
+builtins are listed, so retiring an unrelated one cannot stop a program loading.
+
+Version 1 artifacts from v2.3.0 to v2.4.x still run. Their operands resolve through
+`builtin/legacy_ordinals.go`, a frozen snapshot of the registry as it stood at
+v2.4.0 — frozen because those indices are baked into files that cannot be
+recompiled. A builtin that is renamed adds an entry to `builtin.Aliases`, which
+keeps the old name resolvable for old bytecode without keeping it callable from
+new source.
+
+One ordinal meant two builtins before v2.5.0. `help` was appended to the
+registry at init, after every other entry, so it sat at whatever the end was:
+398 in v2.3.x, and 408 in v2.4.x, whose ten new builtins put `pmap` at 398.
+`legacy_ordinals.go` therefore also records v2.3.x's registry, as the v2.4.x
+snapshot with `help` at 398: v2.3.x's 399 entries are its first 399, and
+v2.2.x's 211 entries are the first 211 of both tables. Neither v2.3.x nor v2.4.x
+wrote `Version`, so the runner reads which table a version 1 artifact needs
+from the container itself: gob writes `ByteCode`'s type, naming every exported
+field, ahead of the value, and only v2.4.0 and later declare `OpcodeMap` there
+(`compiler.LegacyRegistryOf`). A stream whose type cannot be read that way is
+refused rather than guessed at.
+
+Registries before v2.2.0 ordered their entries differently, and neither table
+describes them. A v2.2.x artifact that calls a builtin does not run correctly
+either, although its registry matches: v2.3.0 widened `OpGetBuiltin`'s operand
+from one byte to two, so this runtime reads a v2.2.x builtin call's operand
+with the next instruction's first byte in it, binds whichever builtin the two
+bytes number (or stops when they number none), and reads every instruction
+after it out of step. v2.2.x wrote the same `ByteCode` type as v2.3.x, so
+nothing in the container tells such an artifact apart, and it is not refused.
+
+Two development commits between the v2.3.0 and v2.4.0 tags, `821bece` and
+`31182f3`, had v2.4.0's registry but no `OpcodeMap`. Their artifacts read as
+v2.3.x, so a `pmap` call in one reaches `help`; the builtins v2.4.0 added after
+`pmap` still resolve, because the v2.3.x table keeps the snapshot's entries
+past 398.
+
+Both stay for the whole 2.x line: retiring version 1, or the `net_syn_scan`
+alias of `net_connect_scan`, stops artifacts that already exist from running,
+which only a major release may do. 3.0 is the first release that may remove
+either, and its changelog will say so if it does.
+
+The `0x8000` tag on version 2 operands (`code.BuiltinNameTableFlag`) is for the
+one case the version field cannot cover. A pre-v2.5 runtime does not know to
+read `Version`, so gob hands it a name-table index and it reads that as a
+registry ordinal — and a small index is a perfectly plausible ordinal, so it
+calls whatever sits there. The tag puts every version 2 operand far above the
+registry's length, so the old runtime trips its own bounds check
+(`OpGetBuiltin: invalid builtin index=32768`) instead of silently calling the
+wrong builtin. It is permanent: it cannot be retired without breaking the
+artifacts it protects.
+
+### 4.2 Source positions
+
+`LineTable` maps an offset in an instruction stream back to the line and column
+that produced it. There is one per stream: `ByteCode.LineTable` covers
+`Instructions`, and every `object.CompiledFunction` carries its own alongside
+its `Name`. That is what makes a VM frame resolvable — a frame knows its
+closure and its offset, and the closure's function owns the table those are
+read against.
+
+```
+entry := uvarint(ipDelta) varint(lineDelta) varint(colDelta)
+```
+
+Deltas are against the previous entry; the line and column deltas are signed
+because positions move backwards routinely (a loop's jump is emitted after the
+body but belongs to the `for` above it). An entry is written only where the
+position changes.
+
+There are two position tables per stream. `LineTable` gives where a construct
+starts, `EndTable` where it ends. A start alone names a line, which is where
+most languages stop; both ends let the reporter underline the span that failed,
+so `total / count(xs)` says *which* division. `EndTable` is a separate field in
+the same encoding, so it can be dropped on its own.
+
+**Statements, calls, infix expressions and index expressions anchor a
+position.** Everything else inherits from the node enclosing it. Attributing a
+position to every expression node sounds more precise and is not: measured, it
+costs one entry per instruction, a table the size of the stream it describes.
+The four kinds that do anchor are the ones a reader lands on: a frame is a call,
+a statement is the unit a fault sits inside, and infix and index expressions are
+where a well-formed program actually fails at runtime -- division by zero, a
+type mismatch across an operator, an index past the end.
+
+**Debug info is not cheap and is not meant to be.** The tables come to roughly a
+fifth of an encoded artifact, and `SourceText` roughly doubles what is left, so a
+local `.mu` runs about 1.7x the size of the same program built for release. That
+is the trade `-g` makes in a C toolchain, and it is paid only by artifacts that
+never leave the machine.
+
+**Parameter names travel too**, on `CompiledFunction.Params`, so a traceback can
+print the arguments a frame received rather than only its name. They are gated on
+debug info for a second reason besides size: stack values are encrypted at rest,
+and rendering them decrypts them. A stripped build prints its frames without
+printing the program's own runtime values.
+
+**Macro expansions record two sites.** `MacroTable` has the same encoding and is
+populated only over instructions a macro produced. `LineTable` gives the call
+the user wrote; `MacroTable` gives the macro's definition. Both are needed: when
+generated code is wrong, the call site contains none of the logic that failed.
+The parser's `ast.Program.MacroExpansions` side-table carries this from
+expansion to compilation.
+
+**An entry whose line is 0 is a reset.** A lookup answers with the last entry at
+or before an offset, so "populated only over instructions a macro produced"
+needs an entry recording where an expansion stops as much as one recording where
+it starts -- without it the last macro in a program is reported as the origin of
+every instruction compiled after it. `MacroTable` and `EndTable` therefore carry
+entries whose accumulated line is 0, which mean the previous entry's coverage
+ends here: offsets from there on have no macro origin and no recorded end, and a
+reporter falls back to a caret rather than underlining a span it would be taking
+from another construct. `LineTable` never carries one -- an instruction with no
+position of its own belongs to the construct it was emitted for and inherits its
+line, which is what writing no entry achieves. The entry encoding does not
+change, so a decoder that knows nothing about resets reads line 0, and every
+consumer of a position already treats a zero line as no position at all.
+
+**Versioning.** These fields needed no `Version` bump, unlike `BuiltinNames`.
+gob omits zero values and ignores fields it does not know, so a new runtime
+reading an old artifact sees empty tables — which is exactly true of it — and an
+old runtime reading a new artifact ignores them. Absence is already the correct
+reading in both directions. A program with no tables reports frames by name and
+no lines.
+
+**Stripping.** `ByteCode.StripDebugInfo()` removes the file name, the embedded
+source, every table, and every function and parameter name. `generator.compile` calls it for release builds: those are
+what leave the machine, and a map from an artifact's bytecode back to its source
+is worth withholding from them. A `.mu` compiled to run locally keeps its
+positions.
+
+Polymorphism does **not** strip. Mutation is on by default — `mutant prog.mut`
+compiles at level 5 — so dropping positions there would mean no ordinary run
+ever had them. Instead `PolymorphicEngine.spliceFillers` carries the tables
+through the same offset remap it already builds to repoint jumps
+(`LineTable.Remap`). A stream the engine declines to pad keeps its table
+unchanged, because nothing moved.
 
 ---
 
@@ -337,8 +531,14 @@ type CompilationScope struct {
     instructions    code.Instructions    // byte buffer being built
     lastInstruction EmittedInstruction   // most recently emitted instruction
     prevInstruction EmittedInstruction   // the one before last (for pop-removal)
+
+    unresolvedJumps map[int]unresolvedJump  // forward jumps awaiting a target
 }
 ```
+
+`unresolvedJumps` is per scope and not per compiler because a jump position is
+an offset into one stream and means something else in any other. The three
+position tables the scope also builds are omitted above; see section 11.
 
 The main program compiles into `scopes[0]`. Each function literal pushes a new
 scope via `enterScope()` and pops it with `leaveScope()`.
@@ -354,17 +554,54 @@ jumps can be back-patched:
 
 ```go
 // Emit jump with placeholder target
-jumpPos := c.emit(code.OpJumpFalse, 9999)
+jumpPos := c.emitPlaceholder(code.OpJumpFalse)
 
 // ... compile consequence ...
 
-// Back-patch: replace the 9999 target with the real destination
+// Back-patch: replace the placeholder with the real destination
 c.changeOperand(jumpPos, realTarget)
 ```
 
 `changeOperand` calls `replaceInstruction` which overwrites the bytes at `pos`
 in the current instruction buffer. This works because `Make` produces the same
-byte length regardless of the operand value.
+byte length regardless of the operand value. Operands after the first are read
+back and re-emitted unchanged, so a wider instruction — `OpIterNext` carries a
+binding count after its target — keeps its tail instead of having it fall off
+the end of a shorter rebuilt instruction.
+
+#### The placeholder is owed a target
+
+`emitPlaceholder` emits operand 0 as `placeholderTarget` (9999) and records the
+position in the current scope's `unresolvedJumps`; `changeOperand` removes it.
+Nothing else writes to that map, so between them it is exactly the set of jumps
+the compiler still owes a target.
+
+`assertJumpsResolved` requires the set to be empty before a stream is finished,
+and there are two such moments: `leaveScope`, after which a function's stream
+becomes a constant in the pool and nobody holds offsets into it any more, and
+the end of the `*ast.Program` arm, which is the only ending the main stream has.
+Reaching either with an entry left is reported as an internal compiler error
+naming the opcode, the offset and the line it was emitted from — no program can
+ask for an unpatched jump, so it is a defect in the compiler rather than in the
+source.
+
+The check is there because what an unpatched jump does instead is decided by
+the length of the program it is in, and all three outcomes were measured:
+
+| the stream | what runs |
+| --- | --- |
+| shorter than 9999 bytes | jumps past the end; the run is treated as finished and the program answers whatever was last popped — a boolean, for a program whose value is an integer |
+| longer, byte 9999 mid-instruction | decodes that byte as an opcode: *"unknown opcode 225: the bytecode may be damaged or decrypted with the wrong key, or it may have been built by a newer version of mutant"*, none of which is true |
+| longer, byte 9999 on a boundary | resumes in unrelated code and does not terminate |
+
+`assertJumpsResolved` takes a mark — only jumps emitted at or after it are
+counted — because a program is not always the outermost thing being compiled,
+and an enclosing construct may legitimately be holding a forward jump of its
+own while everything inside it is compiled.
+
+A backward jump does not go through `emitPlaceholder`: a loop's head is a
+position already known, so `emit` is given the real target and there is nothing
+to owe.
 
 ### 6.4 Pop-Removal Optimisation
 
@@ -387,13 +624,16 @@ The compiler detects this with `lastInstructionIs(code.OpPop)` and either:
 4. Compile body block
 5. If last instruction is OpPop → replaceLastPopWithReturn()
 6. If last instruction is not OpReturnValue → emit OpReturn
-7. Snapshot freeSymbols = symbolTable.FreeSymbols
-8. Snapshot numLocals    = symbolTable.numDefinitions
-9. leaveScope() → captures finished instruction bytes
-10. For each free symbol: loadSymbol(sym)  → pushes captured values onto parent stack
-11. compiledFn = &CompiledFunction{Instructions, NumLocals, NumParams}
-12. fnIndex = addConstant(compiledFn)
-13. emit(OpClosure, fnIndex, len(freeSymbols))
+7.  Snapshot freeSymbols    = symbolTable.FreeSymbols
+8.  Snapshot numLocals      = symbolTable.numDefinitions
+9.  Snapshot capturedLocals = symbolTable.CapturedLocals()   (see §7.3.1)
+10. leaveScope() → captures finished instruction bytes
+11. boxCapturedLocals(insts, capturedLocals) → rewrites this function's own
+    OpGetLocal/OpSetLocal for captured slots to their cell forms, in place
+12. For each free symbol: emitCapture(sym) → pushes captured cells onto parent stack
+13. compiledFn = &CompiledFunction{Instructions, NumLocals, NumParams, CapturedLocals}
+14. fnIndex = addConstant(compiledFn)
+15. emit(OpClosure, fnIndex, len(freeSymbols))
 ```
 
 ### 6.6 Security Opcode Injection
@@ -465,10 +705,58 @@ Resolution order:
      - Appends `original` to `st.FreeSymbols`.
      - Stores a new `FreeScope` symbol with `Index = len(FreeSymbols)-1`.
      - Returns the free symbol.
+   - If the original was `LocalScope`, also mark that slot **captured** on the
+     table that owns it. A `FreeScope` original needs no marking here: the
+     recursive `Resolve` that produced it already marked whichever table owns
+     the slot, so the marking propagates outward on its own.
 
 `FreeSymbols` is consumed at the end of function compilation (step 10 in §6.5)
-to emit the instructions that push captured values onto the stack before
+to emit the instructions that push captured **cells** onto the stack before
 `OpClosure`.
+
+### 7.3.1 Boxed captures
+
+A captured local does not live in its frame slot; the slot holds an
+`*object.Cell` and the value is inside it. Every closure that captures the
+variable holds that same pointer, so there is exactly one storage location per
+variable per call and a write through any path is a write all of them see. This
+is what `object.Environment.Update` has always done in the tree-walking
+evaluator, and before it the VM captured by value: a closure's writes went into
+its own copy, and writing free *i* actually landed on local *i* — usually a
+parameter.
+
+The capture is discovered while the **inner** literal is compiled, by which time
+the enclosing function has already emitted plain `OpGetLocal`/`OpSetLocal` for
+the slot. So `boxCapturedLocals` rewrites those to `OpGetLocalCell` /
+`OpSetLocalCell` once the scope closes. Only the opcode byte changes — the cell
+forms take the same one-byte operand — so nothing moves and no jump target, line
+table offset or loop patch has to be recomputed. The alternative, boxing every
+local, needs no pass and puts a heap allocation and an indirection on the VM's
+hottest path.
+
+`CompiledFunction.CapturedLocals` carries the boxed slot indices, ascending, and
+the VM allocates the cells in `callClosure` **after** the arguments are already
+in their slots — which is why a captured *parameter* needs no special case.
+`CapturedLocals` is semantic, not debug information, and is never stripped by
+`ByteCode.StripDebugInfo`: a release build that lost it would silently stop
+boxing.
+
+Cells never reach gob and are never encrypted. `cell.Value` is encrypted on the
+way in and decrypted on the way out, so the at-rest guarantee locals already had
+is unchanged; encrypting the cell itself would return a *new* object, and a new
+cell is a second storage location — the by-value copy the design exists to
+remove.
+
+Bytecode compiled before boxing existed has an empty `CapturedLocals` and no
+cell opcodes, so nothing is boxed and `OpGetFree` finds a plain value and passes
+it through. Such a program keeps its original behaviour exactly, including the
+by-value capture.
+
+**Workers get their own cells.** `pmap`, `peach` and `spawn` run the callback on
+another VM and another goroutine, where a shared cell is a data race rather than
+a shared accumulator. Each worker is handed a closure whose cells have been
+copied, one level deep — the same rule as the globals snapshot beside it — so a
+worker's writes to a captured variable stay local.
 
 ### 7.4 `DefineFunctionName`
 
@@ -488,12 +776,24 @@ func (c *Compiler) loadSymbol(s Symbol) {
     switch s.Scope {
     case GlobalScope:   c.emit(code.OpGetGlobal,  s.Index)
     case LocalScope:    c.emit(code.OpGetLocal,   s.Index)
-    case BuiltinScope:  c.emit(code.OpGetBuiltin, s.Index)
+    case BuiltinScope:  c.emit(code.OpGetBuiltin,
+                            code.BuiltinNameTableFlag|c.symbolTable.ReferenceBuiltin(s.Name))
     case FreeScope:     c.emit(code.OpGetFree,    s.Index)
     case FunctionScope: c.emit(code.OpCurrentClosure)
     }
 }
 ```
+
+`emitAssignStore` is the write side of the same switch, and had been an `if` on
+`GlobalScope` while the enum grew to five values — the defect §7.3.1 describes.
+It writes globals, locals (`OpSetLocal`, rewritten to `OpSetLocalCell` if the
+slot turns out to be boxed) and captures (`OpSetFree`), and refuses builtins and
+the function's own name, neither of which is storage.
+
+`emitCapture` is the third form: the capture list `OpClosure` consumes wants the
+storage itself rather than a read through it, so a `LocalScope` original becomes
+`OpCaptureLocal`, a `FreeScope` original `OpCaptureFree`, and the function's own
+name stays `OpCurrentClosure` — captured by value, because it is not storage.
 
 ---
 
@@ -652,6 +952,9 @@ case code.OpJump:
 | `OpEqual/UnEqual/Greater` | 0                             | pop b, pop a, push Boolean                    |
 | `OpMinus`                 | 0                             | pop a, push `-a`                              |
 | `OpBang`                  | 0                             | pop a, push `!a`                              |
+| `OpBitAnd/BitOr/BitXor`   | 0                             | pop b, pop a, push `a op b` (INTEGER only)    |
+| `OpShiftLeft/ShiftRight`  | 0                             | pop b, pop a, push `a op b`; `b < 0` errors   |
+| `OpBitNot`                | 0                             | pop a, push `~a` (INTEGER only)               |
 | `OpJump`                  | sets ip = target-1            | —                                             |
 | `OpJumpFalse`             | +2 (not taken) or ip=target-1 | pop condition                                 |
 | `OpGetGlobal`             | +2                            | push decrypted `globals[idx]`                 |
@@ -664,9 +967,14 @@ case code.OpJump:
 | `OpCall`                  | +1                            | pop argc args + fn; push new frame            |
 | `OpReturnValue`           | —                             | pop return val; pop frame; push val           |
 | `OpReturn`                | —                             | pop frame; push Null                          |
-| `OpGetBuiltin`            | +1                            | push `Builtins[idx]`                          |
+| `OpGetBuiltin`            | +1                            | push the builtin resolved from `BuiltinNames[idx & 0x7FFF]` |
 | `OpClosure`               | +3                            | pop numFree values; push Closure              |
-| `OpGetFree`               | +1                            | push `currentClosure.Free[idx]`               |
+| `OpGetFree`               | +1                            | push `Free[idx]`, through the cell if it is one |
+| `OpSetFree`               | +1                            | pop, encrypt, store into `Free[idx].Value`    |
+| `OpGetLocalCell`          | +1                            | push decrypted `cell(bp+idx).Value`           |
+| `OpSetLocalCell`          | +1                            | pop, encrypt, store into `cell(bp+idx).Value` |
+| `OpCaptureLocal`          | +1                            | push the `*Cell` in `stack[bp+idx]` itself    |
+| `OpCaptureFree`           | +1                            | push `Free[idx]` unread                       |
 | `OpCurrentClosure`        | 0                             | push current Closure                          |
 | `OpChkDbg`                | 0                             | detect debugger → error or warn               |
 | `OpChkSnd`                | 0                             | detect sandbox → error or warn                |
@@ -696,6 +1004,12 @@ vm.push(vm.decryptForUse(vm.stack[bp+idx]))
 `*object.Encrypted`. If encryption fails (e.g., unsupported type), the object is
 stored/returned as-is.
 
+A **boxed** local slot holds an `*object.Cell`, and the cell is deliberately one
+of the types `EncryptObject` passes through unchanged. Encryption returns a new
+object, and a new cell is a second storage location — the by-value capture
+boxing exists to remove. `cell.Value` goes through the same encrypt-on-write and
+decrypt-on-read as any other local, so nothing is left in the clear.
+
 ---
 
 ## 10. Closures & Free Variables
@@ -717,19 +1031,23 @@ The compiler for `inner`:
 1. Sees `x` → resolves to outer's `LocalScope`.
 2. Calls `defineFree(x_local)` →
    `FreeSymbols = [{Name:"x", Scope:LOCAL, Index:0}]`.
-3. After body compilation, `FreeSymbols` has one entry.
-4. In the parent scope, `loadSymbol` for each free symbol emits `OpGetLocal 0`
-   (loading `x` onto the stack).
-5. Emits `OpClosure <innerFnIdx> 1`.
+3. Marks outer's slot 0 **captured**, so outer's `CapturedLocals` is `[0]`.
+4. After body compilation, `FreeSymbols` has one entry.
+5. Outer's own stream is rewritten: the `OpSetLocal 0` it emitted for `let x = 5`
+   becomes `OpSetLocalCell 0`. Same width, so nothing after it moves.
+6. In the parent scope, `emitCapture` for each free symbol emits
+   `OpCaptureLocal 0` — the cell itself, not a copy of the value.
+7. Emits `OpClosure <innerFnIdx> 1`.
 
-Bytecode for `outer`:
+Bytecode for `outer` (`CapturedLocals: [0]`, so the VM boxes slot 0 at frame
+entry):
 
 ```
 0000 OpConstant 0       ; integer 5
-0003 OpSetLocal 0       ; let x = 5
-0005 OpGetLocal 0       ; push x (as free var capture for inner)
+0003 OpSetLocalCell 0   ; let x = 5, written through the cell
+0005 OpCaptureLocal 0   ; push slot 0's cell (the capture for inner)
 0007 OpClosure 1 1      ; wrap constants[1] (inner fn) with 1 free var
-0011 OpSetLocal 1       ; let inner = <closure>
+0011 OpSetLocal 1       ; let inner = <closure>; nothing captures inner
 0013 OpGetLocal 1       ; return inner
 0015 OpReturnValue
 ```
@@ -750,19 +1068,30 @@ func (vm *VM) pushClosure(constIndex, numFree int) error {
 ```
 
 The captured values are read from the stack in **forward order** (they were
-pushed in forward order by the parent's `loadSymbol` calls).
+pushed in forward order by the parent's `emitCapture` calls). What is copied
+into `Free` is the *pointer* each `OpCaptureLocal` / `OpCaptureFree` pushed, so
+the closure and the frame end up naming the same cell.
 
 ### 10.3 Accessing Free Variables
 
 ```go
 case code.OpGetFree:
     freeIndex := ReadUint8(...)
-    vm.push(vm.decryptForUse(vm.currentFrame().cl.Free[freeIndex]))
+    captured := vm.currentFrame().cl.Free[freeIndex]
+    if cell, ok := captured.(*object.Cell); ok {
+        captured = cell.Value
+    }
+    vm.push(vm.decryptForUse(captured))
 ```
 
-Free variables are stored inside the `Closure` object itself, isolated per call
-instance. Mutating a free variable inside the function mutates the captured slot
-directly in the closure's `Free` slice.
+`Free` holds cells, and `OpSetFree` writes back through them — so a closure's
+write is visible to the enclosing frame and to every other closure over the same
+variable, which is what makes an accumulator over a callback work.
+
+The type test is not a guess. Nothing a program can compute is a `*Cell`, and
+the only two entries that are not cells are decidable: the enclosing function's
+own name, captured by value with `OpCurrentClosure` for recursion, and every
+entry in bytecode compiled before boxing existed.
 
 ---
 
@@ -874,7 +1203,7 @@ and `"Red"` respectively.
 
 ---
 
-## 13. Loop Control Flow
+## 13. Control Flow
 
 ### 13.1 For Loop Structure
 
@@ -905,12 +1234,21 @@ or post simply emits nothing for those phases.
 type LoopContext struct {
     breakPositions    []int   // byte offsets of OpJump instructions from break
     continuePositions []int   // byte offsets of OpJump instructions from continue
+    pendingAtEntry    int     // operands the enclosing expressions held at entry
 }
 ```
 
 When `break` or `continue` is encountered:
 
-- Emit `OpJump 9999` (placeholder).
+- Emit one `OpPop` for every operand the enclosing expressions have pushed
+  since the loop was entered — `c.pendingOperands - ctx.pendingAtEntry` of
+  them. Each target a break or a continue can reach reads the stack at the
+  depth the loop was entered with, so a jump out of the middle of an
+  expression has to drop that expression's operands on the way out. Without
+  the pops, `let t = [0, if (c) { break; } else { 1 }];` leaves the array's
+  first element behind and the `OpPop` meant for a for-in's cursor takes it
+  instead.
+- Emit `OpJump 9999` (placeholder), after those pops.
 - Append the emitted position to `ctx.breakPositions` / `ctx.continuePositions`.
 
 After the loop body and post-increment are fully compiled:
@@ -922,6 +1260,97 @@ After the loop body and post-increment are fully compiled:
 At runtime, `OpBreak` / `OpContinue` push sentinel objects (`&object.Break{}` /
 `&object.Continue{}`). These are only meaningful in the evaluator (tree-walk)
 path; the compiled VM path uses only the jump instructions.
+
+### 13.3 While Loop Structure
+
+```mutant
+while (c) { body }
+```
+
+The same shape with the init and post phases absent:
+
+```
+[conditionStart: label A]
+[condition: push c]
+OpJumpFalse → loopEnd
+[body: ...]
+OpJump → A
+[loopEnd: label B]
+```
+
+`continue` back-patches to A, which for this loop is the condition rather than
+a post section — there is no post section to run.
+
+### 13.4 For-In Loop Structure
+
+```mutant
+for (k, v in xs) { body }
+```
+
+```
+[iterable: push xs]
+OpIterInit                         ; [iter]
+[head: label A]
+OpIterNext → loopEnd, binds        ; [iter] → [iter, key, value], or jump
+[bind value: OpSetLocal / OpSetGlobal]
+[bind key, when the loop binds two names]
+[body: ...]
+OpJump → A
+[loopEnd: label B]
+OpPop                              ; drop the cursor
+```
+
+`break` back-patches to B — *before* the `OpPop` — so the cursor is dropped on
+every exit path. `continue` back-patches to A, so the advance is this loop's
+post section.
+
+Two things about the body differ from §13.1 and are not stylistic. The body
+must be **stack-neutral**: the cursor lives underneath whatever the body leaves
+behind, so a body that leaks one value per iteration has the next `OpIterNext`
+reading that leftover as the cursor. And `binds` is read through the VM's
+operand reader rather than indexed out of the instruction stream directly —
+a raw byte index returns the *obfuscated* byte, which silently made a
+two-binding loop bind one.
+
+### 13.5 Match Expressions
+
+<!-- mutant:fragment -->
+```mutant
+match (subject) { p1 | p2 => a, p3 => b, _ => c }
+```
+
+A `match` is an expression, so every path through it leaves exactly one value:
+
+```
+[subject: push it once]
+[per alternative]
+  OpDup                            ; [subject, subject]
+  [pattern]
+  OpEqual                          ; [subject, bool]
+  OpJumpFalse → next alternative
+[on a match]
+  OpPop                            ; drop the subject
+  [arm body]
+  [leave exactly one value]
+  OpJump → end
+[no arm matched, and no `_` arm]
+  OpMatchFail                      ; pops the subject and raises
+[end]
+```
+
+The subject lives on the stack behind `OpDup` rather than in a scratch local
+because `SymbolTable.Define` never reuses a slot: a temporary per match would
+spend one of the 256 one-byte local slots each time and eventually panic inside
+`code.Make`. A wildcard arm compiles as the body alone — no compare, no jump —
+and its presence is what omits the trailing `OpMatchFail`.
+
+"Leave exactly one value" is decided from the **syntax**, not from the last
+instruction emitted: if the arm body's last statement is an expression
+statement, its `OpPop` is removed, and otherwise `OpNull` is emitted. The
+instruction-stream test that §6.4 describes cannot be used here, because a
+`for (v in xs)` also ends in an `OpPop` — the one dropping the cursor — and
+removing that one leaks the iterator as the value of the arm. `if` branches go
+through the same rule for the same reason.
 
 ---
 
@@ -1267,10 +1696,12 @@ type Object interface {
 | `BOOLEAN_OBJ`         | `*Boolean`          | `Value bool`; singletons `global.True`, `global.False` |
 | `NULL_OBJ`            | `*Null`             | singleton `global.Null`                                |
 | `STRING_OBJ`          | `*String`           | `Value string`                                         |
+| `BYTES_OBJ`           | `*Bytes`            | `Value []byte` — a byte buffer; `Inspect()` is full hex |
 | `ARRAY_OBJ`           | `*Array`            | `Elements []Object`                                    |
 | `HASH_OBJ`            | `*Hash`             | `Pairs map[HashKey]HashPair`                           |
-| `COMPILED_FN_OBJ`     | `*CompiledFunction` | `Instructions`, `NumLocals`, `NumParams`               |
-| `CLOSURE_OBJ`         | `*Closure`          | `Fn *CompiledFunction`, `Free []Object`                |
+| `COMPILED_FN_OBJ`     | `*CompiledFunction` | `Instructions`, `NumLocals`, `NumParams`, `CapturedLocals` |
+| `CLOSURE_OBJ`         | `*Closure`          | `Fn *CompiledFunction`, `Free []Object` — cells (§7.3.1) |
+| `CELL_OBJ`            | `*Cell`             | `Value Object` — a captured variable's storage; runtime-only, never gob, never encrypted |
 | `BUILTIN_OBJ`         | `*Builtin`          | `Fn func(args ...Object) Object`                       |
 | `FUNCTION_OBJ`        | `*Function`         | AST-level function (evaluator path only)               |
 | `RETURN_VALUE_OBJ`    | `*ReturnValue`      | Sentinel (evaluator path only)                         |
@@ -1296,24 +1727,40 @@ type Hashable interface {
 type HashKey struct {
     Type  ObjectType
     Value uint64
+    Text  string
 }
 ```
 
-Implemented by `Integer`, `Boolean`, and `String`.
+Implemented by `Integer`, `Float`, `Boolean`, `String` and `Bytes`. Two keys are
+one entry only when every field is equal, and every field is exact: a boolean,
+an integer or a float's bits sit in `Value`, a string sits whole in `Text`, and
+a buffer's SHA-256 sits in `Text` -- never the buffer, which may be classified
+plaintext and would otherwise be copied into a string nothing can zero. Before
+2.6.0 a string or a buffer was keyed by its FNV-1a-64 digest alone, so two
+values with one digest were one entry.
 
 ### 17.4 `CompiledFunction`
 
 ```go
 type CompiledFunction struct {
-    Instructions code.Instructions   // bytecode for this function's body
-    NumLocals    int                 // number of local variables (stack slots)
-    NumParams    int                 // number of parameters
+    Instructions   code.Instructions // bytecode for this function's body
+    NumLocals      int               // number of local variables (stack slots)
+    NumParams      int               // number of parameters
+    CapturedLocals []int             // slots an inner function closes over (§7.3.1)
 }
 ```
 
 `NumLocals` includes the parameters (parameters are the first `NumParams`
 locals). The VM advances `stackPointer` by `NumLocals` when entering a frame to
-pre-allocate the local variable slots.
+pre-allocate the local variable slots, then boxes the slots named in
+`CapturedLocals` — after the arguments are already in place, so a captured
+parameter needs no special case.
+
+`CapturedLocals` is semantic, not debug information, and is never stripped by
+`ByteCode.StripDebugInfo`: a release build that lost it would silently stop
+boxing and resume capturing by value. Empty means "this function captures
+nothing", which is also what every artifact compiled before boxing existed says,
+and correctly so.
 
 ---
 

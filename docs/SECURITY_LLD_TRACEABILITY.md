@@ -10,7 +10,7 @@ It maps:
 1. Security requirements and controls
 2. Implementation anchors (functions/files)
 3. Runtime configuration surfaces (flags/env)
-4. Test coverage and CI enforcement
+4. Test coverage and how it is enforced
 5. Residual gaps and next validation actions
 
 ---
@@ -22,7 +22,7 @@ flowchart LR
     A[Security Objective] --> B[LLD Section]
     B --> C[Code Implementation]
     C --> D[Test Case]
-    D --> E[CI Security Profile]
+    D --> E[Repository test gate]
     E --> F[Operational Decision]
 ```
 
@@ -30,8 +30,10 @@ Evidence levels used in this matrix:
 
 - `I` = implemented
 - `T` = tested
-- `C` = CI wired
+- `C` = wired into the repository-wide `go test ./...` gate
 - `P` = partial / pending depth
+- `D` = declined by decision: no control exists, none is planned, and the
+  decision is recorded beside the row
 
 ---
 
@@ -39,24 +41,62 @@ Evidence levels used in this matrix:
 
 | ID      | Control Requirement                                                                | LLD Area                      | Implementation Anchors                                                                                                                                                                                                                                                                                                          | Config Surface                                            | Tests / CI Evidence                                                                                                                                                                                                         | Status |
 | ------- | ---------------------------------------------------------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| SEC-001 | Signed artifact envelope must be parsed and verified before execution              | Artifact format + trust model | [security/signatures.go](security/signatures.go#L33), [security/signatures.go](security/signatures.go#L54), [security/signatures.go](security/signatures.go#L98), [runner/runner.go](runner/runner.go#L27)                                                                                                                      | Mode-driven path: `--secure` / `--compat` / `--dev`       | [security/security_test.go](security/security_test.go#L101), [runner/runner_test.go](runner/runner_test.go#L13), `.github/workflows/security-profile.yml`                        | I/T/C  |
-| SEC-002 | Secure mode must pin signer identity to trusted key                                | Secure mode semantics         | [runner/runner.go](runner/runner.go#L27), [security/signatures.go](security/signatures.go#L54), [security/const.go](security/const.go#L12)                                                                                                                                                                                      | `MUTANT_TRUSTED_PUBLIC_KEY_HEX`                           | [security/security_test.go](security/security_test.go#L122), [runner/runner_test.go](runner/runner_test.go#L45)                                                                                                             | I/T/C  |
-| SEC-003 | Signature failure handling must be policy-driven                                   | Tamper response policy        | [runner/runner.go](runner/runner.go#L35), [runner/runner.go](runner/runner.go#L43), [security/response_policy.go](security/response_policy.go#L34)                                                                                                                                                                              | `MUTANT_TAMPER_RESPONSE`                                  | [security/security_test.go](security/security_test.go#L295), [runner/runner_test.go](runner/runner_test.go#L30)                                                                                                             | I/T/C  |
-| SEC-004 | Payload confidentiality and integrity at rest must use AEAD                        | Crypto layer                  | [security/crypto.go](security/crypto.go#L29), [security/crypto.go](security/crypto.go#L132), [security/const.go](security/const.go#L9)                                                                                                                                                                                          | Password input and metadata                               | indirect via runner decode path tests [runner/runner_test.go](runner/runner_test.go#L76)                                                                                                                                    | I/T/P  |
-| SEC-005 | Password-based key derivation must use bounded Argon2id params                     | KDF hardening                 | [security/kdf.go](security/kdf.go#L42), [security/kdf.go](security/kdf.go#L97), [security/crypto.go](security/crypto.go#L196)                                                                                                                                                                                                   | password mode + metadata fields                           | [security/security_test.go](security/security_test.go#L147)                                                                                                                                                                 | I/T    |
-| SEC-006 | Password quality policy required when explicit password mode is used               | Password policy               | [security/kdf.go](security/kdf.go#L73), [generator/generate.go](generator/generate.go#L26)                                                                                                                                                                                                                                      | `-password` / `-pwd`                                      | covered by generator path behavior and policy validation unit scope                                                                                                                                                         | I/P    |
-| SEC-007 | Runtime instruction decode must be offset-aware to reduce keystream reuse          | VM decode hardening           | [vm/vm.go](vm/vm.go#L90), [code/code.go](code/code.go#L177), [code/code.go](code/code.go#L190), [security/secure_random.go](security/secure_random.go#L39)                                                                                                                                                                      | runtime password/seed context                             | [security/security_test.go](security/security_test.go#L179), [security/security_test.go](security/security_test.go#L197)                                                                                                    | I/T/C  |
-| SEC-008 | Runtime integrity checks must detect instruction tampering                         | VM integrity probes           | [vm/vm.go](vm/vm.go#L333), [vm/vm.go](vm/vm.go#L662), [vm/vm.go](vm/vm.go#L681)                                                                                                                                                                                                                                                 | policy + secure default behavior                          | [vm/vm_security_policy_test.go](vm/vm_security_policy_test.go#L11)                                                                                                                                                          | I/T/C  |
-| SEC-009 | Integrity failures must trigger telemetry and policy action                        | Telemetry + policy coupling   | [vm/vm.go](vm/vm.go#L697), [security/telemetry.go](security/telemetry.go#L25), [security/response_policy.go](security/response_policy.go#L34)                                                                                                                                                                                   | `MUTANT_TAMPER_RESPONSE`                                  | [vm/vm_security_policy_test.go](vm/vm_security_policy_test.go#L21), [vm/vm_security_policy_test.go](vm/vm_security_policy_test.go#L41), [vm/vm_security_policy_test.go](vm/vm_security_policy_test.go#L59)                  | I/T/C  |
-| SEC-010 | Anti-debug checks must be staged before decode and before execution                | Runtime gate enforcement      | [runner/runner.go](runner/runner.go#L49), [runner/runner.go](runner/runner.go#L58), [runner/runner.go](runner/runner.go#L67)                                                                                                                                                                                                    | mode + tamper response env                                | policy behavior tests [security/security_test.go](security/security_test.go#L295)                                                                                                                                           | I/T/P  |
-| SEC-011 | Debugger detection must be platform-specific with weighted signal logic on Windows | Anti-debug platform design    | [security/antidebug.go](security/antidebug.go#L29), [security/antidebug_windows.go](security/antidebug_windows.go#L32), [security/antidebug_weighting.go](security/antidebug_weighting.go#L3), [security/antidebug_linux.go](security/antidebug_linux.go#L15), [security/antidebug_darwin.go](security/antidebug_darwin.go#L17) | runtime OS selection                                      | [security/security_test.go](security/security_test.go#L349)                                                                                                                                                                 | I/T/P  |
-| SEC-012 | Security telemetry must support atomic counters and secure export                  | Telemetry subsystem           | [security/telemetry.go](security/telemetry.go#L20), [security/telemetry.go](security/telemetry.go#L35), [security/telemetry.go](security/telemetry.go#L48)                                                                                                                                                                      | `MUTANT_SECURITY_AUDIT`, `MUTANT_SECURITY_TELEMETRY_FILE` | [security/security_test.go](security/security_test.go#L205), [security/security_test.go](security/security_test.go#L230), CI export in `.github/workflows/security-profile.yml` | I/T/C  |
-| SEC-013 | CLI must clearly resolve secure/compat/dev mode and developer fallback semantics   | CLI posture controls          | [main.go](main.go#L165), [main.go](main.go#L180), [main.go](main.go#L118), [main.go](main.go#L129)                                                                                                                                                                                                                              | `--secure`, `--compat`, `--dev`, `-pwd`                   | operationally validated in local runtime use; no dedicated CLI parsing tests yet                                                                                                                                            | I/P    |
-| SEC-014 | Generator must support stable signing identity via environment key                 | Signing workflow              | [generator/generate.go](generator/generate.go#L35), [generator/generate.go](generator/generate.go#L75), [security/const.go](security/const.go#L13)                                                                                                                                                                              | `MUTANT_SIGNING_PRIVATE_KEY_HEX`                          | indirectly validated by signature verification tests                                                                                                                                                                        | I/P    |
-| SEC-015 | Security-focused CI profile must run targeted hardening suites                     | CI control plane              | `.github/workflows/security-profile.yml`, `.github/workflows/security-profile.yml`                                                                                                                                                       | CI env defaults and artifact upload                       | workflow itself + package tests invoked by CI                                                                                                                                                                               | I/C    |
-| SEC-016 | Protection profile must define default tamper and builtin policy behavior          | Runtime policy profile        | [security/profile.go](security/profile.go), [security/response_policy.go](security/response_policy.go), `builtin/capabilities.go`                                                                                                                                                                      | `MUTANT_PROTECTION_PROFILE`                               | [security/security_test.go](security/security_test.go), `builtin/capabilities_test.go`                                                                                                        | I/T    |
-| SEC-017 | Risky builtins must be capability-gated by explicit allow-list                     | Builtin capability gates      | [builtin/builtin.go](builtin/builtin.go), [builtin/command_exec.go](builtin/command_exec.go), [builtin/fs.go](builtin/fs.go), [builtin/net.go](builtin/net.go), [builtin/http.go](builtin/http.go)                                                                                                                              | `MUTANT_BUILTIN_CAPABILITIES`                             | [builtin/command_exec_test.go](builtin/command_exec_test.go), `builtin/capabilities_test.go`                                                                                                  | I/T    |
-| SEC-018 | Standalone release artifacts must carry profile attestation and provenance         | Release trailer attestation   | [generator/writebinary.go](generator/writebinary.go), [runner/runner.go](runner/runner.go), [security/profile.go](security/profile.go), [security/const.go](security/const.go)                                                                                                                                                  | build profile + release generation path                   | [runner/runner_test.go](runner/runner_test.go)                                                                                                                                                                              | I/T    |
+| SEC-001 | Signed artifact envelope must be parsed and verified before execution              | Artifact format + trust model | [security/signatures.go](../security/signatures.go#L33), [security/signatures.go](../security/signatures.go#L54), [security/signatures.go](../security/signatures.go#L98), [runner/runner.go](../runner/runner.go#L27)                                                                                                                      | Mode-driven path: `--secure` / `--compat` / `--dev`       | [security/security_test.go](../security/security_test.go#L101), [runner/runner_test.go](../runner/runner_test.go#L13)                                                                                                            | I/T/C  |
+| SEC-002 | Secure mode must pin signer identity to trusted key                                | Secure mode semantics         | [runner/runner.go](../runner/runner.go#L27), [security/signatures.go](../security/signatures.go#L54), [security/const.go](../security/const.go#L12)                                                                                                                                                                                      | `--trusted-key <path>`                                    | [security/security_test.go](../security/security_test.go#L122), [runner/runner_test.go](../runner/runner_test.go#L45)                                                                                                             | I/T/C  |
+| SEC-003 | Signature failure handling must be policy-driven                                   | Tamper response policy        | [runner/runner.go](../runner/runner.go#L35), [runner/runner.go](../runner/runner.go#L43), [security/response_policy.go](../security/response_policy.go#L34)                                                                                                                                                                              | `--secure` / `--compat` / `--dev`                         | [security/security_test.go](../security/security_test.go#L295), [runner/runner_test.go](../runner/runner_test.go#L30)                                                                                                             | I/T/C  |
+| SEC-004 | Payload confidentiality and integrity at rest must use AEAD                        | Crypto layer                  | [security/crypto.go](../security/crypto.go#L29), [security/crypto.go](../security/crypto.go#L132), [security/const.go](../security/const.go#L9)                                                                                                                                                                                          | Password input and metadata                               | indirect via runner decode path tests [runner/runner_test.go](../runner/runner_test.go#L76)                                                                                                                                    | I/T/P  |
+| SEC-005 | Password-based key derivation must use bounded Argon2id params                     | KDF hardening                 | [security/kdf.go](../security/kdf.go#L42), [security/kdf.go](../security/kdf.go#L97), [security/crypto.go](../security/crypto.go#L196)                                                                                                                                                                                                   | password mode + metadata fields                           | [security/security_test.go](../security/security_test.go#L147)                                                                                                                                                                 | I/T    |
+| SEC-006 | Password quality policy required when explicit password mode is used               | Password policy               | [security/kdf.go](../security/kdf.go#L73), [generator/generate.go](../generator/generate.go#L26)                                                                                                                                                                                                                                      | prompt / `--password-file` / `--password-stdin` (`-password` refused)    | covered by generator path behavior and policy validation unit scope                                                                                                                                                         | I/P    |
+| SEC-007 | Runtime instruction decode must be offset-aware to reduce keystream reuse          | VM decode hardening           | [vm/vm.go](../vm/vm.go#L90), [code/code.go](../code/code.go#L177), [code/code.go](../code/code.go#L190), [security/secure_random.go](../security/secure_random.go#L39)                                                                                                                                                                      | runtime password/seed context                             | [security/security_test.go](../security/security_test.go#L179), [security/security_test.go](../security/security_test.go#L197)                                                                                                    | I/T/C  |
+| SEC-008 | Runtime integrity checks must detect instruction tampering                         | VM integrity probes           | [vm/vm.go](../vm/vm.go#L333), [vm/vm.go](../vm/vm.go#L662), [vm/vm.go](../vm/vm.go#L681)                                                                                                                                                                                                                                                 | policy + secure default behavior                          | [vm/vm_security_policy_test.go](../vm/vm_security_policy_test.go#L11)                                                                                                                                                          | I/T/C  |
+| SEC-009 | Integrity failures must trigger telemetry and policy action                        | Telemetry + policy coupling   | [vm/vm.go](../vm/vm.go#L697), [security/telemetry.go](../security/telemetry.go#L25), [security/response_policy.go](../security/response_policy.go#L34)                                                                                                                                                                                   | None; VM forces secure policy                             | [vm/vm_security_policy_test.go](../vm/vm_security_policy_test.go#L21), [vm/vm_security_policy_test.go](../vm/vm_security_policy_test.go#L41), [vm/vm_security_policy_test.go](../vm/vm_security_policy_test.go#L59)                  | I/T/C  |
+| SEC-010 | Anti-debug checks must be staged before decode and before execution                | Runtime gate enforcement      | [runner/runner.go](../runner/runner.go#L49), [runner/runner.go](../runner/runner.go#L58), [runner/runner.go](../runner/runner.go#L67)                                                                                                                                                                                                    | mode + tamper response env                                | policy behavior tests [security/security_test.go](../security/security_test.go#L295)                                                                                                                                           | I/T/P  |
+| SEC-011 | Debugger detection must be platform-specific with weighted signal logic on Windows | Anti-debug platform design    | [security/antidebug.go](../security/antidebug.go#L29), [security/antidebug_windows.go](../security/antidebug_windows.go#L32), [security/antidebug_weighting.go](../security/antidebug_weighting.go#L3), [security/antidebug_linux.go](../security/antidebug_linux.go#L15), [security/antidebug_darwin.go](../security/antidebug_darwin.go#L17) | runtime OS selection                                      | [security/security_test.go](../security/security_test.go#L349)                                                                                                                                                                 | I/T/P  |
+| SEC-012 | Security telemetry must support atomic counters and secure export                  | Telemetry subsystem           | [security/telemetry.go](../security/telemetry.go#L20), [security/telemetry.go](../security/telemetry.go#L35), [security/telemetry.go](../security/telemetry.go#L48)                                                                                                                                                                      | None; in-process API only                                 | [security/security_test.go](../security/security_test.go#L205), [security/security_test.go](../security/security_test.go#L230) | I/T/C  |
+| SEC-013 | CLI must clearly resolve secure/compat/dev mode and developer fallback semantics   | CLI posture controls          | [main.go](../main.go#L165), [main.go](../main.go#L180), [main.go](../main.go#L118), [main.go](../main.go#L129)                                                                                                                                                                                                                              | `--secure`, `--compat`, `--dev`, `--password-*`           | operationally validated in local runtime use; no dedicated CLI parsing tests yet                                                                                                                                            | I/P    |
+| SEC-014 | Generator must use a stable per-host signing identity                              | Signing workflow              | [generator/generate.go](../generator/generate.go#L36), [generator/generate.go](../generator/generate.go#L80), [security/key_bootstrap.go](../security/key_bootstrap.go#L37)                                                                                                                                                                              | None; local keystore only                                 | indirectly validated by signature verification tests                                                                                                                                                                        | I/P    |
+| SEC-015 | The security suites must run on every supported OS before a release                | Release validation            | [CONTRIBUTING.md](../CONTRIBUTING.md), [SECURITY_LLD.md](SECURITY_LLD.md#162-running-the-security-profile)                                                                                                                                                                     | None; `go test ./...` with `CGO_ENABLED=0`                | the suites themselves; **nothing automates the "every OS" half** since the CI workflow was removed                                                                                                                           | I/P    |
+| SEC-016 | Protection profile must define default tamper behavior                             | Runtime policy profile        | [security/profile.go](../security/profile.go), [security/response_policy.go](../security/response_policy.go)                                                                                                                                                                                                                          | None; fixed at `standard`                                 | [security/security_test.go](../security/security_test.go)                                                                                                                                                                      | I/T    |
+| SEC-017 | Per-builtin capability configuration -- declined; none exists (note 1)             | Builtin capability gates      | None. A gate would have to cover: [builtin/builtin.go](../builtin/builtin.go), [builtin/command_exec.go](../builtin/command_exec.go), [builtin/fs.go](../builtin/fs.go), [builtin/net.go](../builtin/net.go), [builtin/http.go](../builtin/http.go)                                                                                            | None. No per-builtin gate exists (note 1)                 | [security/command_exec_bounds_test.go](../security/command_exec_bounds_test.go) covers the fixed limits that do apply, there being no gate to test                                                                             | D      |
+| SEC-018 | Standalone release artifacts must carry profile attestation and provenance         | Release trailer attestation   | [generator/writebinary.go](../generator/writebinary.go), [runner/runner.go](../runner/runner.go), [security/profile.go](../security/profile.go), [security/const.go](../security/const.go)                                                                                                                                                  | build profile + release generation path                   | [runner/runner_test.go](../runner/runner_test.go)                                                                                                                                                                              | I/T    |
+
+### 3.1 Note 1 -- SEC-017, per-builtin capability configuration
+
+**There is no per-builtin capability gate, and none is planned for 2.6.0.**
+This is a decision taken on 2026-10-10, not an unfinished item: a Mutant
+program carries the authority of the process that runs it, the same way a
+program written in Python, Ruby, Node or Go does. None of those puts a
+per-call gate in front of `subprocess`, `os/exec` or opening a socket
+either.
+
+What follows from that, stated plainly because a reader deciding whether to
+run a program they did not write needs it stated rather than softened:
+
+- A program that can reach `exec_string`, `exec_argv` or `cmd_run` can run
+  commands, and one that can reach the `fs_*`, `net_*` or `http_*` families
+  can read files and open sockets, with this process's own permissions.
+- The operator's decision is **whether to run the program**, not what it may
+  do once running. The controls that support that decision are the signed
+  artifact envelope and the mode flags (SEC-001), not a capability set.
+- What does constrain command execution is fixed and not configurable: a
+  3-second timeout bounding the whole call rather than one process, 8 KiB
+  kept of each output stream, a kill that reaches the process tree, and a
+  shell named rather than written out as a command line. Those are limits on
+  blast radius, not permissions, and they are tested in
+  [security/command_exec_bounds_test.go](../security/command_exec_bounds_test.go).
+- The LSP's `commandInjection` rule is an editor-time warning. It can be
+  switched off and it does not run at execution time, so it is not an
+  enforcement point.
+- The `policy_*` builtins are not this control under another name. They wrap
+  Open Policy Agent, so a program loads a Rego module and asks it a question,
+  and the program itself decides what to do with the answer. Nothing outside
+  those five builtins calls the engine, so it is never consulted before a
+  builtin runs.
+
+The design is revisited if a user asks for it. Until then this row exists so
+that a reviewer auditing control coverage finds a recorded decision rather
+than a gap, and so that nothing in this repository describes the control as
+pending.
 
 ---
 
@@ -86,65 +126,92 @@ sequenceDiagram
 
 ---
 
-## 5. Environment and Flag Traceability
+## 5. Flag Traceability
 
-### 5.1 Execution Flags
+Every switch is a command-line flag. Mutant reads no environment variable for
+configuration, so this section is the complete control surface. See
+[CONFIGURATION_POLICY.md](CONFIGURATION_POLICY.md), which also lists the
+variables the Go runtime and Mutant's libraries still read on its behalf.
+
+0. Mode-flag validation
+
+- `validateModeFlags` rejects a command line naming two contradictory postures
+  before any other work, so the selectors below are read from a command line
+  that names at most one mode
+- anchor: [main.go](../main.go)
 
 1. `--secure` / `-secure`
 
-- default secure posture selector and explicit override
-- anchor: [main.go](main.go#L173)
+- default secure posture selector and explicit assertion of it
+- anchor: [main.go](../main.go)
 
 2. `--compat` / `-compat`
 
 - compatibility posture selector
-- anchor: [main.go](main.go#L171)
+- anchor: [main.go](../main.go#L187)
 
 3. `--dev` / `-dev`
 
 - compatibility posture + default local password fallback for `.mu` when
   password omitted
-- anchors: [main.go](main.go#L169), [main.go](main.go#L129)
+- anchors: [main.go](../main.go#L202), [main.go](../main.go#L329)
 
-4. `-password`, `-pwd`, `--password=`, `--pwd=`
+4. Password sources: prompt (default), `--password-file`, `--password-stdin`,
+   `--password-insecure`; `-password` / `-pwd` / `--password=` / `--pwd=` are
+   parsed only so the resolver can refuse them by name (since 2.6.0)
 
-- explicit password extraction
-- anchor: [main.go](main.go#L190)
+- collected into a `credential.Request` by `extractPasswordRequest`, then
+  resolved by `credential.Resolver`, which rejects a command line naming more
+  than one source
+- the deprecated argv forms emit a warning naming the process-table exposure
+- anchors: [main.go](../main.go), [credential/credential.go](../credential/credential.go)
 
-### 5.2 Environment Variables
+5. `--signer-auth` / `--no-signer-auth`
 
-1. `MUTANT_TRUSTED_PUBLIC_KEY_HEX`
+- upgrade signature verification to a trusted public key, or decline to;
+  self-verification is the floor in every mode either way
+- anchors: [main.go](../main.go#L714), [runner/runner.go](../runner/runner.go#L93)
 
-- secure runtime signer pinning requirement
-- anchors: [security/const.go](security/const.go#L12),
-  [runner/runner.go](runner/runner.go#L28)
+6. `--trusted-key <path>`
 
-2. `MUTANT_SIGNING_PRIVATE_KEY_HEX`
+- file holding the hex-encoded ed25519 public key to verify against; falls back
+  to the local keystore when absent
+- anchors: [main.go](../main.go#L223),
+  [security/key_bootstrap.go](../security/key_bootstrap.go#L85)
 
-- stable build-time signer private key source
-- anchors: [security/const.go](security/const.go#L13),
-  [generator/generate.go](generator/generate.go#L75)
+7. `--security-log-level <level>` / `--log-level <level>`
 
-3. `MUTANT_TAMPER_RESPONSE`
+- security logging verbosity in dev mode
+- anchor: [main.go](../main.go#L240)
 
-- central response mode selection
-- anchor: [security/response_policy.go](security/response_policy.go#L13)
+8. `--timing`
 
-4. `MUTANT_TAMPER_DELAY_MS`
+- per-stage run timing on stderr
+- anchor: [main.go](../main.go#L211)
 
-- delay mode sleep tuning
-- anchor: [security/response_policy.go](security/response_policy.go#L14)
+### 5.2 Fixed behaviour (no control surface)
 
-5. `MUTANT_SECURITY_AUDIT`
+These were once environment variables and are now constants, with one entry
+that was never a control at all. Listed so a reviewer does not go looking
+for a control that used to exist, or never did:
 
-- audit stderr event toggle
-- anchor: [security/telemetry.go](security/telemetry.go#L11)
-
-6. `MUTANT_SECURITY_TELEMETRY_FILE`
-
-- telemetry JSON export target path
-- anchors: [security/telemetry.go](security/telemetry.go#L12),
-  [runner/runner.go](runner/runner.go#L19)
+1. Protection profile -- `standard`
+   ([security/profile.go](../security/profile.go)).
+2. Tamper response -- derived from the mode flags above
+   ([security/response_policy.go](../security/response_policy.go)).
+3. Tamper delay -- `250` ms; no mode selects the `delay` response.
+4. Anti-tamper probe gate -- always on
+   ([security/antitamper_probe.go](../security/antitamper_probe.go)).
+5. Process-protection gate -- always on
+   ([runner/runner.go](../runner/runner.go)).
+6. Remote process scan -- off; test-only setter
+   ([security/processscan_config.go](../security/processscan_config.go)).
+7. Audit stream and telemetry export -- no-op and uncalled respectively
+   ([security/telemetry.go](../security/telemetry.go)).
+8. Signing key -- local keystore only
+   ([security/key_bootstrap.go](../security/key_bootstrap.go)).
+9. Builtin capability configuration -- never existed and is not planned;
+   declined 2026-10-10. See note 1 under the control matrix.
 
 ---
 
@@ -152,15 +219,15 @@ sequenceDiagram
 
 | Attack Scenario                                   | Expected Security Behavior                                          | Primary Tests                                                                                                            |
 | ------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| malformed `.mu` envelope in secure mode           | reject before decode                                                | [runner/runner_test.go](runner/runner_test.go#L13)                                                                       |
-| malformed envelope in compat mode                 | policy may continue; fail later during decode                       | [runner/runner_test.go](runner/runner_test.go#L30)                                                                       |
-| tampered signer identity                          | secure mode rejects untrusted signer                                | [runner/runner_test.go](runner/runner_test.go#L45), [security/security_test.go](security/security_test.go#L122)          |
-| trusted signer valid but payload unusable         | signature path passes, decode fails correctly                       | [runner/runner_test.go](runner/runner_test.go#L76)                                                                       |
-| integrity tamper under `warn/delay/terminate`     | policy-specific continue/fail behavior with telemetry increment     | [vm/vm_security_policy_test.go](vm/vm_security_policy_test.go#L11)                                                       |
-| response policy default/override correctness      | secure default terminate, compat default warn, env override honored | [security/security_test.go](security/security_test.go#L275), [security/security_test.go](security/security_test.go#L295) |
-| stream-mask roundtrip and offset byte correctness | decryptability and offset-specific correctness                      | [security/security_test.go](security/security_test.go#L179), [security/security_test.go](security/security_test.go#L197) |
-| telemetry JSON/export correctness                 | counters and file export valid                                      | [security/security_test.go](security/security_test.go#L205), [security/security_test.go](security/security_test.go#L230) |
-| windows weak/high-confidence weighting            | threshold behavior stable                                           | [security/security_test.go](security/security_test.go#L349)                                                              |
+| malformed `.mu` envelope in secure mode           | reject before decode                                                | [runner/runner_test.go](../runner/runner_test.go#L13)                                                                       |
+| malformed envelope in compat mode                 | policy may continue; fail later during decode                       | [runner/runner_test.go](../runner/runner_test.go#L30)                                                                       |
+| tampered signer identity                          | secure mode rejects untrusted signer                                | [runner/runner_test.go](../runner/runner_test.go#L45), [security/security_test.go](../security/security_test.go#L122)          |
+| trusted signer valid but payload unusable         | signature path passes, decode fails correctly                       | [runner/runner_test.go](../runner/runner_test.go#L76)                                                                       |
+| integrity tamper under `warn/delay/terminate`     | policy-specific continue/fail behavior with telemetry increment     | [vm/vm_security_policy_test.go](../vm/vm_security_policy_test.go#L11)                                                       |
+| response policy default/override correctness      | secure default terminate, compat default warn, env override honored | [security/security_test.go](../security/security_test.go#L275), [security/security_test.go](../security/security_test.go#L295) |
+| stream-mask roundtrip and offset byte correctness | decryptability and offset-specific correctness                      | [security/security_test.go](../security/security_test.go#L179), [security/security_test.go](../security/security_test.go#L197) |
+| telemetry JSON/export correctness                 | counters and file export valid                                      | [security/security_test.go](../security/security_test.go#L205), [security/security_test.go](../security/security_test.go#L230) |
+| windows weak/high-confidence weighting            | threshold behavior stable                                           | [security/security_test.go](../security/security_test.go#L349)                                                              |
 
 ---
 
@@ -185,10 +252,12 @@ integration depth:
    behavior.
 2. Add e2e fixture tests that produce real `.mu` artifacts and validate tamper
    outcomes in all policies.
-3. Add a Windows CI job for runtime anti-debug policy verification on
-   hosted/self-hosted runner.
-4. Add negative tests for malformed `MUTANT_TRUSTED_PUBLIC_KEY_HEX` and
-   `MUTANT_SIGNING_PRIVATE_KEY_HEX` values in integration context.
+3. Verify runtime anti-debug policy on a clean Windows host before each
+   release. This was a CI job in the backlog; with no CI it is a release step,
+   and it is manual.
+4. Done: negative tests for a malformed, wrong-sized and missing
+   `--trusted-key` file
+   ([security/key_bootstrap_test.go](../security/key_bootstrap_test.go)).
 5. Add deterministic artifact compatibility tests to guard accidental
    secure/compat behavior drift.
 
@@ -196,11 +265,15 @@ integration depth:
 
 ## 9. Quick Audit Checklist (Reviewer Use)
 
-1. Secure mode launch path requires trusted key env and fails if absent.
+1. Secure mode with `--signer-auth` resolves a trusted key, and a
+   `--trusted-key` file that is missing or malformed fails the run rather than
+   falling back.
 2. Any signature, debugger, or integrity event routes through policy layer.
 3. Telemetry increments occur before policy returns error on terminate.
 4. VM operand/opcode decode remains offset-aware.
-5. CI security profile still executes targeted suites with strict defaults.
+5. `go test ./...` has been run for this change — it includes the security
+   suites and the configuration guard in `policy/`. Nothing runs it for you;
+   say in the PR which OS you ran it on.
 6. Dev mode remains explicit and does not silently alter secure mode defaults
    unless chosen.
 
@@ -210,10 +283,12 @@ integration depth:
 
 ### 10.1 Control Additions
 
-1. Master anti-tamper probe gate: `MUTANT_ENABLE_ANTITAMPER_PROBE=1`
-2. Runner process-protection gate: `MUTANT_ENABLE_PROCESS_PROTECTION`
+1. Master anti-tamper probe gate: `antiTamperProbeEnabled`, a compile-time
+   `true`. Not configurable.
+2. Runner process-protection gate: `isProcessProtectionEnabled()`, which returns
+   `true`. Not configurable.
 3. Runner enforcement threshold: any probe signal with `detected=true` and
-   `confidence >= 80`
+   `confidence >= 80`. This is the only decision point left.
 
 ### 10.2 Implementation Anchors
 
@@ -229,8 +304,9 @@ integration depth:
 
 1. Runner enforcement probe scope is intentionally narrower than builtin
    diagnostic scope.
-2. If master probe gate is disabled, runner process-protection enforcement will
-   not execute probe logic even when process-protection gate is enabled.
+2. If the master probe gate is disabled, runner process-protection enforcement
+   will not execute probe logic even when the process-protection gate is
+   enabled. Only a test can reach that state.
 
 ---
 
@@ -250,25 +326,28 @@ Current implementation:
 
 Anchors:
 
-1. [main.go](main.go#L578)
-2. [runner/runner.go](runner/runner.go#L44)
-3. [runner/runner_test.go](runner/runner_test.go#L189)
+1. [main.go](../main.go#L578)
+2. [runner/runner.go](../runner/runner.go#L44)
+3. [runner/runner_test.go](../runner/runner_test.go#L189)
 
 ### 11.2 Remote Process Scan Control Surface
 
 Current implementation:
 
-1. Remote scan manager is gated by `MUTANT_ENABLE_REMOTE_PROCESS_SCAN`.
-2. Mode is controlled by `MUTANT_REMOTE_SCAN_MODE=off|observe|enforce`.
+1. Remote scan manager is gated by `remoteScanConfigState.Enabled`, which is
+   `false` in every shipped binary and writable only by
+   `SetRemoteScanConfigForTesting`.
+2. Mode is `remoteScanConfigState.Mode` (`off|observe|enforce`, default
+   `observe`).
 3. Runner blocks only on enforce-mode critical verdicts.
 4. Scan errors are non-blocking and telemetry-visible.
 
 Anchors:
 
-1. [security/processscan_config.go](security/processscan_config.go#L9)
-2. [security/processscan_manager.go](security/processscan_manager.go#L7)
-3. [runner/runner.go](runner/runner.go#L161)
-4. [runner/runner_test.go](runner/runner_test.go#L404)
+1. [security/processscan_config.go](../security/processscan_config.go#L9)
+2. [security/processscan_manager.go](../security/processscan_manager.go#L7)
+3. [runner/runner.go](../runner/runner.go#L161)
+4. [runner/runner_test.go](../runner/runner_test.go#L404)
 
 ### 11.3 Remote Scan Runtime Depth
 
@@ -281,8 +360,8 @@ Current implementation status:
 
 Anchors:
 
-1. [security/processscan_windows.go](security/processscan_windows.go#L5)
-2. [security/processscan_manager_test.go](security/processscan_manager_test.go#L36)
+1. [security/processscan_windows.go](../security/processscan_windows.go#L5)
+2. [security/processscan_manager_test.go](../security/processscan_manager_test.go#L36)
 
 ---
 

@@ -144,6 +144,9 @@ single snapshot.
 | textDocument/definition          | `definition`             | local definition + workspace fallback                        |
 | textDocument/typeDefinition      | `typeDefinition`         | `Snapshot.TypeDefinitionLocation`                            |
 | textDocument/references          | `references`             | local refs + workspace refs + dedupe                         |
+| textDocument/prepareCallHierarchy | `prepareCallHierarchy`  | declaration under the cursor, following a module member      |
+| callHierarchy/incomingCalls      | `callHierarchyIncomingCalls` | graph call edges + `alias.name(` sites in importing files |
+| callHierarchy/outgoingCalls      | `callHierarchyOutgoingCalls` | graph call edges out of the declaration                   |
 | textDocument/prepareRename       | `prepareRename`          | local rename target + workspace fallback                     |
 | textDocument/rename              | `rename`                 | location collection + per-URI sorted text edits              |
 | textDocument/codeAction          | `codeActions`            | diagnostic-driven quick fixes                                |
@@ -229,11 +232,38 @@ Diagnostics sources:
 - `mutant-lint`: semantic lint rules.
 - `mutant-format`: strict-formatting rules (the semicolon rule) — distinct from
   `mutant-lint` so quick fixes can key off it.
+- `mutant-modules`: refusals that cross a module boundary — a member another
+  module does not declare or exports privately, an import cycle, and two
+  imports binding one namespace — in the module loader's own words. A cycle
+  is shown on every import a build entered at this file would meet it
+  through, not only on the files inside it.
+- `mutant-structs`: a field a struct does not declare, read or written, in
+  the compiler's words.
+- `mutant-declarations`: a `let` the compiler refuses because it declares
+  nothing new in its scope, on the compiler's rule and in its words. Its quick
+  fix turns a single-name `let` into an assignment, which is the remedy the
+  refusal names.
+- `mutant-compiler`: the compiler's own first refusal for the file. The editor
+  compiles a document that parses, the way `mutant gen` would, and reports what
+  the compiler says at the node that raised it, unless a refusal above already
+  covers that range. A file that defines or calls macros is not compiled here,
+  because expanding a macro runs code. None of these four sources is
+  configurable: each is a refusal the build makes, and `mutant lint` exits 1
+  on any of them.
 
 Current lint rules (rule id -> default severity):
 
 - `duplicateTopLevelDeclaration` -> warning (also nested duplicates)
-- `unusedDeclaration` -> warning (top-level and local; skips `_`)
+- `unusedDeclaration` -> warning (top-level and local; skips `_`. A module-shaped
+  file -- one with no top-level action -- exempts its top-level names, because
+  they exist for whatever imports it; a top-level `_private` name is NOT
+  exempt, because no other file can reach it)
+- `unusedImport` -> information (an import that brings nothing this file uses:
+  its namespace is never read AND it declares no struct, enum or macro the file
+  names bare -- those three cross a module boundary without a namespace, so the
+  alias not appearing is not the whole question. Information rather than warning
+  because the imported module's top-level statements run either way and Mutant
+  has no `import _` form)
 - `undefinedDeclaration` -> error (scope-aware; builtins + macro special forms
   count as defined)
 - `nestingComplexity` -> warning (if/for nesting depth > 2 in function bodies)
@@ -252,6 +282,10 @@ Current lint rules (rule id -> default severity):
 - `builtinArgType` -> warning (a builtin passed a kind its parameter cannot
   accept, for arguments whose type is certain -- a literal, or a name that is
   never reassigned)
+- `builtinArgChoice` -> warning (a string literal that is not one of the words
+  a parameter takes, from `builtin.ParamSpecs(name)[i].OneOf` -- the builtin's
+  own list, compared with its own case and space folding through
+  `AcceptsChoice`. Only literals: a name's value is never guessed at)
 - `builtinSingleReturn` -> warning (several names bound from a builtin that
   returns one value rather than a `(value, err)` pair; from
   `builtin.ReturnSpec(name).Pair`)
@@ -261,12 +295,216 @@ Current lint rules (rule id -> default severity):
   rule that cannot decide at the call site: holding a pair on purpose is legal,
   so the walk collects candidates and drops any name the program later indexes,
   returns, or destructures)
+- `builtinDeprecated` -> hint (a call to a builtin kept only so existing
+  programs keep working; the message names its replacement, from
+  `builtin.DeprecatedBy`). A hint rather than a warning because the call is
+  correct and still runs. It carries `DiagnosticTagDeprecated`, which is what
+  makes editors strike the name through. Independent of the arity and type
+  rules: a wrong-arity call to a deprecated builtin is still a call to a
+  deprecated builtin, so both are reported.
 - `spawnGlobalWrite` -> warning (a `spawn`/`pmap`/`peach` callback assigning to
   a top-level name. Those callbacks run on a worker VM with a *snapshot* of the
   globals, so the write lands in a copy that is discarded when the callback
   finishes. Only a function literal written at the call site is examined, and
   only a name the callback does not rebind for itself -- a callback passed by
   name may also be called normally elsewhere, where the write does take effect)
+- `unclosedResource` -> warning (a builtin that opens a handle -- `ntfs_open`,
+  `zip_open`, `chan_new`, `net_connect` and their families -- bound to a name
+  nothing in the same scope closes. Handles live in a package-level store with
+  no cap, no eviction and no cleanup at exit, so an unclosed one is held for the
+  life of the process: theoretical in a script that exits, descriptor exhaustion
+  in a loop over a corpus or a long-running server. Curated opener/closer table
+  in [unclosed_resource.go](../lsp/internal/analyzer/unclosed_resource.go),
+  pinned to the registry by test so a new `*_close` family cannot be added
+  without being accounted for -- a closer that closes nothing a name can hold
+  (`case_close` ends a process-wide session and takes no arguments) goes in
+  `nonResourceClosers` with its reason rather than being silently skipped. The rule declines whenever the handle is used
+  somewhere it cannot follow -- returned, passed to a helper, stored, printed --
+  when the closer is named anywhere in the scope including inside the string
+  `with_resource` takes, and when the resource is held by something with no
+  reachable end: a `for` with no exit condition, or a listener handed to
+  `net_serve`)
+- `uncheckedError` -> warning (`let value, err = f(...)` against a builtin whose
+  `builtin.ReturnSpec` declares the `(value, err)` contract, where nothing reads
+  that binding of `err` before the name is rebound or the scope ends. A failed
+  call leaves null in the value, so the program carries on with nothing and
+  reports success. It reads the same contract as `builtinSingleReturn` and
+  `builtinPairReturn` from the opposite direction: those two ask whether the
+  binding's shape matches the builtin's, this one takes a binding whose shape is
+  already right and asks whether the error half was used.
+
+  It answers **per binding, not per name**, and that is the whole reason it
+  exists alongside `unusedDeclaration`. Measured over `examples/**` before it
+  was written, `unusedDeclaration` reported an unread `err` three times in 104
+  files: `err` is bound 85 times over at the top level, so it is a duplicate
+  name and gets skipped wholesale, and its reference lookup answers for the name
+  rather than the binding. Asking the narrower question finds 40.
+
+  Quiet when the error is read in any way at all -- tested, printed, returned,
+  passed on, stored -- when a nested function mentions the name (a closure runs
+  when it is called, not where it is written), when `_` is bound, and when the
+  failure is caught through the value instead: the value written into an `if` or
+  `for` condition, or a BOOLEAN success value read anywhere, since that one is
+  false on every failure path)
+- `matchExhaustiveness` -> warning (a `match` whose every arm is a variant of
+  one enum declared in the same file, with no `_` arm and at least one variant
+  unmatched. A match must produce a value, so a subject no arm matches raises
+  rather than yielding null -- which means adding a variant leaves every
+  existing match over it one arm short, silently. Quiet on a literal pattern,
+  two different enums, an imported enum whose variants live in another file, a
+  `_` arm, or a name that is both an enum and a `let` binding)
+
+### The security rules (T-2)
+
+Seven rules that read *intent* rather than a declared contract. The four
+contract rules above are right by construction -- each compares a call site
+against a fact `builtin.ReturnSpec` or `TypedSignature` states. These cannot be,
+so each carries its own answer to "what makes this certain enough to squiggle?",
+and they share one principle: **what the program does with a value decides the
+finding, not what the value looks like.** Shape heuristics alone are what makes
+a security linter something people switch off, and a switched-off rule catches
+nothing.
+
+Shared plumbing -- scope walking, one-hop `let` resolution, literal reading --
+is in [security_lint.go](../lsp/internal/analyzer/security_lint.go). Names are
+followed exactly one hop, and only when bound once in the scope, because the
+corpus writes `let tls_opts = {...}; net_tls_connect(h, t, tls_opts)` and a rule
+that only read an inline literal would miss the idiom the examples teach. §1
+applies throughout: these rules warn, and none reads or validates a capability
+policy.
+
+- `tlsVerificationDisabled` -> warning (`insecure: true` on `net_tls_connect` or
+  `net_tls_upgrade_client`, or a `min_version` of `"1.0"` / `"1.1"` on any of
+  the four TLS builtins, in a literal option hash or struct. Exact rather than
+  heuristic: it reads the keys `applyClientTLSOptions` /
+  `applyServerTLSOptions` read. `insecure` is reported only on the client side,
+  because the server never reads it. It never reports a *missing*
+  `min_version` -- a default is the runtime's business, and demanding the
+  option be written out would be style advice wearing a security rule's
+  clothes)
+- `unboundedResource` -> warning (`cidr_hosts` with more than 20 host bits, or
+  `range` longer than 10,000,000, from literal arguments. Neither builtin is
+  actually unbounded -- both raise -- so the finding is "this call fails at run
+  time", which puts the rule in `builtinArity`'s certainty class: it evaluates
+  exactly the predicate the builtin evaluates. There is no threshold here that
+  anybody chose; both numbers are read off the implementations and pinned by
+  test. `cidr_hosts("10.0.0.0/8")` is the call it exists for -- it reads as a
+  reasonable network sweep and it fails)
+- `weakCrypto` -> warning (a digest from `hash_md5`, `hash_sha1` or
+  `hash_crc32` compared for equality against a digest written into the program,
+  or an `hmac` over a literal `"md5"` / `"sha1"`. The rule does not look at the
+  algorithm, because in a forensic language MD5 *is* the job: matching an
+  artifact against a known-file set wants MD5 specifically, since the other side
+  of the comparison is MD5. It looks at the decision instead -- verifying
+  against an expected value is authenticity, and both algorithms have had
+  practical collisions for years. Comparing two computed digests, storing one,
+  printing one or passing one to `hashset_contains` is matching, and stays
+  quiet. `imphash`, `nt_hash` and `lm_hash` are never reported: they are MD5,
+  MD4 and DES by the definition of the artifact)
+- `hardcodedSecret` -> warning (a credential-shaped literal under a
+  credential-shaped name -- `let`, hash key or struct field -- or matching a
+  provider's published prefix: AWS, GitHub, Slack, a PEM private-key header, a
+  signed JWT. Three questions have to agree: is it called a secret or shaped
+  like one, does the value read as issued rather than as a word or a
+  placeholder, and does the program *use* it as a credential rather than take
+  it apart. That third one is the interesting one. A forensic language holds
+  credential-shaped strings for the same reason it holds malware -- they are
+  the subject -- so a value whose fate is `jwt_decode`, `base64_decode`,
+  `pem_decode` or `x509_parse` is a sample under examination and is never
+  reported. That keeps both sample JWTs in `examples/` quiet without a
+  suppression comment, because it is a statement about the program rather than
+  about the linter. A literal in a bare argument position carries no name
+  signal, which is what leaves `hmac("secret-key", ...)` alone)
+- `commandInjection` -> warning (a value interpolated or concatenated into the
+  string `exec_string` hands a shell, the line `cmd_add` adds to a builder, or
+  the script `lua_run_string` runs. `exec_string` does not run a program with
+  arguments -- it hands a whole string to a shell, which decides where one word
+  ends and the next begins, so a spliced value is syntax and not an argument.
+  The report sits on `cmd_add` rather than `cmd_run` because that is where the
+  string is assembled. A command built only from literals is a constant written
+  in pieces and stays quiet, and so does a value that first goes through
+  `url_encode`, `base64_encode`, `hex_encode`, `to_int`, `parse_int`,
+  `text_replace` or `regex_replace` -- the rule has to have a way to comply.
+  It says nothing about `exec_string(command)` where the whole string arrives
+  as one value: that is a question about where the value came from, which is
+  `pathTraversal`'s machinery)
+- `evidenceMutation` -> warning (`fs_write`, `fs_append`, `fs_delete`,
+  `fs_move`, or the *destination* of `fs_copy`, aimed at a path the same program
+  opened as evidence -- `raw_open`, `ewf_open`, `vhdi_open`, a filesystem or
+  hive opener, an archive. The rule only this language can write: elsewhere a
+  path is a path, but here the opener says out loud that the file is an exhibit,
+  and a hash taken after the write no longer matches the one in the notes.
+  Certainty comes from comparing what the author wrote -- the same identifier in
+  the same scope, or the same string literal anywhere in the file -- so a
+  derived path or a containing directory is never reported. `fs_copy` *from* the
+  evidence is the correct procedure and is silent. `db_open_disk` and
+  `cache_open` are deliberately not openers: those are the analyst's own files)
+- `classifiedPlaintext` -> warning (plaintext read out of a classified record
+  -- `record_read`'s buffer, `record_read_partial`'s `bytes`, a `bytes_slice` of
+  either, one of `record_search`'s hits or its `context`, or an array, hash or
+  struct literal holding one -- handed to a builtin that refuses it. A search's
+  whole result and its `hits` are not reported: they hold plaintext only when
+  the search found something. The run time is the enforcement and is exact; this is the
+  other half of the owner's "runtime + LSP lint" decision, the same finding at
+  the line before a passphrase has been typed. The sink and source lists are
+  the run time's own, `builtin.ClassifiedSinks` and `builtin.ClassifiedSources`,
+  each held to the code by a test that reads the builtin package's source.
+  Certainty is by construction: a name bound once in its scope is followed, a
+  name bound twice, a user function's result and `a + b` are not.
+  `record_release`'s result is never reported -- it is the way to comply)
+- `roleLiteral` -> warning (the `role` in `case_open`'s or `ledger_open`'s
+  options, when it is one they refuse: a word that is not a role, a recipient
+  role -- `legal`, `external_partner`, `restricted_viewer` -- or `unasserted`,
+  which is what is recorded when no role is given. The message is
+  `builtin.ExaminerRoleRefusal`, the sentence both builtins refuse with, held to
+  them by a test; the builtins are `builtin.RoleOptionBuiltins`, held to the
+  calls of `roleOption` by a test that reads the source. A role passed as an
+  argument -- `case_assign`'s, `role_define`'s, `role_assign`'s -- is a parameter
+  that declares its words, so `builtinArgChoice` reports it and this rule does
+  not. Two `role` keys in one literal are left alone: which one the run time
+  reads is the order it builds the hash in)
+- `filteredLedgerHandle` -> warning (the handle `ledger_under_view` returns --
+  the `handle` entry of its result, through names bound once -- passed as the
+  ledger of a builtin that refuses it. It asks
+  `builtin.RefusesLedgerViewHandle`: every builtin whose first parameter is a
+  ledger, except the reads in `builtin.LedgerViewReads` and `ledger_close`. The
+  test that calls every such builtin with a handle under a view is held to the
+  same predicate, so the rule and the run time cannot disagree. The message
+  lists the reads that do read under a view and says to pass the ledger's own
+  handle, knowing nothing it returns is filtered)
+- `secretOption` -> warning (an option named `passphrase`, `password`, `secret`
+  or `key`, matched exactly, in the options hash of a builtin in
+  `builtin.SecretOptionRefusers` -- every builtin that reads its options with
+  `secretOptionsArg`, which a test finds in the source and holds to the list,
+  checking too that each reads the hash where the metadata puts it
+  (`builtin.OptionsPosition`). One report per call, at the first such key
+  written. The message ends with the run time's own refusal)
+- `lifecycleState` -> warning (a state `case_transition` never moves a case to:
+  one no move in `builtin.CaseMoves` made by `case_transition` leads to. Such a
+  call is refused whatever state the case is in, and the message names the
+  builtin that makes the move -- `review_request`, `review_decide`,
+  `retention_set` -- or says the case starts out in that state. A word that is
+  not a state is `builtinArgChoice`'s, and is left to it)
+- `pathTraversal` -> warning (a path built from a value the program did not
+  write, reaching `fs_*`, a `*_read_file` or an archive entry, with nothing
+  looking at the value in between. The only rule in the family with taint
+  tracking, and so the last one built. Sources are `gets`, `serve_arg`,
+  `net_conn_read`, and the HTTP request and response builtins; the taint follows
+  one hop of `let` through concatenation and interpolation, computed as a fixed
+  point rather than a forward pass because a path may be assembled above the
+  source that feeds it; it stops at a function boundary. Any mention of the
+  value as an argument to a text-inspecting builtin -- `text_contains`,
+  `regex_match`, `str_starts_with`, `text_replace`, `hashset_contains` and
+  their relatives -- counts as the check. The rule cannot read *which*
+  characters were looked for and takes the author's word, which over-suppresses
+  on purpose)
+
+Each rule owns one file named for it, and the three seams a new rule must be
+threaded through each have a reflection test over `LintConfig`:
+`TestEveryLintRuleIsSettable` (settings reach the field),
+`TestEveryLintRuleReachesItsSeverity` (the field reaches `severityForRule`, whose
+`default` arm otherwise silently switches a rule off), and
+`TestEveryLintRuleIsExposedByTheExtension` (the field has a manifest entry).
 
 Config ingestion path:
 
@@ -286,20 +524,24 @@ Core file:
 
 Behavior model:
 
-- If hard parse errors exist (or the snapshot is invalid), the formatter degrades
-  to whitespace normalization only (CRLF -> LF, strip trailing whitespace, exactly
-  one trailing newline).
+- If hard parse errors exist (or the snapshot is invalid), the formatter makes no
+  edits at all. `mutant fmt` prints the parse errors, leaves the file
+  byte-for-byte unchanged and exits 1 in every mode; the editor's formatting,
+  range-formatting and on-type-formatting requests return an empty edit list.
+  There is deliberately no whitespace-only fallback: with no tree, "strip
+  trailing whitespace" cannot tell a line of code from a line inside a
+  triple-quoted string, so it edited string data in the one case it was reached.
 - Otherwise it applies AST-driven formatting for statements/expressions. Comments
   and blank lines are handled **through** the AST printer (re-attached from the
   `program.Comments` side-table; runs of blank lines collapse to one), so the
-  presence of comments/blank lines no longer forces the normalization path.
+  presence of comments/blank lines does not stop the formatter.
 
 Strict semicolons (canonical):
 
 - Semicolons are emitted from the AST via `ast.Statement.RequiresSemicolon()`, not
   copied from source. The formatter therefore **repairs** missing semicolons and
-  **removes** redundant ones on format. Recoverable semicolon issues do not trigger
-  the normalization fallback; only hard parse errors do. Struct fields are
+  **removes** redundant ones on format. Recoverable semicolon issues do not stop
+  the formatter; only hard parse errors do. Struct fields are
   `;`-terminated including the last.
 
 Canonical style policy:
@@ -313,9 +555,15 @@ Canonical style policy:
 On-type formatting behavior:
 
 - Server advertises `textDocument/onTypeFormatting` and supports triggers for
-  `}`, `;`, and newline.
-- Extension keeps on-type formatting disabled by default to avoid intrusive
-  edits, and exposes an opt-in setting.
+  `}` and `;`. Newline is not one: formatting the whole document on Enter
+  collapsed the block the user had just opened, because the printer has no
+  form for an empty line, and the editor's own indentation rules already
+  indent the new line.
+- Extension keeps on-type formatting off by default to avoid intrusive edits,
+  and exposes the opt-in setting `mutant.format.onType.enabled`. It writes
+  nothing into the user's settings to arrange this: the manifest turns
+  `editor.formatOnType` on for Mutant files as a default, and a language
+  client middleware asks the server only while the setting is on.
 
 Important safety guarantees:
 
@@ -527,7 +775,7 @@ LSP/server tests:
 
 Extension:
 
-- `cd vscode-extension`
+- `cd mutant-vscode-extension`
 - `npm install`
 - `npm run compile`
 - `npm test`

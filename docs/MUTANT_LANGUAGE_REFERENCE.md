@@ -10,6 +10,8 @@ Source of truth:
 
 Related references:
 - [Capability Reference](CAPABILITY_REFERENCE.md) — the full, category-grouped catalog of every builtin, with parameter types (generated from the metadata above by `cmd/gendocs`).
+- [Strings](#strings) — interpolation, raw strings, and triple-quoted blocks.
+- [Modules](MODULES.md) — `import`, namespaces, the `_` export rule, and where a path is looked up.
 - Deep-dive guides: [Secure Networking](SECURE_NETWORKING.md), [Graph Database](GRAPH_DATABASE.md), [Runtime Integration](RUNTIME_INTEGRATION.md), [Structured Data](STRUCTURED_DATA.md).
 
 ## Language Features
@@ -18,12 +20,14 @@ Mutant supports:
 - Variables and assignment with `let`
 - Primitive literals: integers, floats, booleans, strings
 - Compound literals: arrays, hashes, struct literals
-- Prefix operators: `!` and unary `-`
-- Infix operators: `+ - * / % < > <= >= == != && ||`
-- Assignment: `=`, compound assignment `+= -= *= /= %=`, and postfix `++` / `--`
+- Prefix operators: `!`, unary `-`, and the bitwise complement `~`
+- Infix operators: `+ - * / % < > <= >= == != && ||` and bitwise `& | ^ << >>`
+- Assignment: `=`, compound assignment `+= -= *= /= %= &= |= ^= <<= >>=`, and postfix `++` / `--`
 - Indexing and field access
+- A distinct `bytes` type for binary data, with explicit conversions to and from text
 - Conditionals: `if` / `else`
-- Loops: `for`, with `break` and `continue`
+- Loops: the counting `for`, `while`, and `for (item in collection)`, all with `break` and `continue`
+- Pattern matching: `match`, an expression whose value is the arm that matched
 - First-class functions, closures, and function calls
 - Return statements (single and multi-value)
 - Macros
@@ -49,6 +53,151 @@ putln("read", len(report), "bytes");
 
 This convention runs through the whole standard library; the [Capability Reference](CAPABILITY_REFERENCE.md) marks which builtins return a pair. (Idiom note: keep `return` inside functions rather than at the top level of a program. A top-level `return` is legal and stops the program there, reporting the value it returned — or nothing at all for a bare `return;` — but a program that reads top to bottom is easier to follow than one with exits scattered through it.)
 
+### Reading an error
+
+An `err` is an object, and its fields read like a struct's — with `.` or with a
+string index, which are the same table and cannot disagree:
+
+```mutant
+let data, err = fs_read(path);
+if (err) {
+    putln("failed:", err.message);        // "fs_read: open ...: no such file"
+    putln("raised by:", err.context);     // "builtin.fs_read"
+    putln("at:", err.file, err.line);     // the source path, and 12
+    putln("same thing:", err["message"]);
+};
+```
+
+| Field | Type | Where it comes from |
+| --- | --- | --- |
+| `message` | string | the raiser |
+| `context` | string | the raiser — which builtin, e.g. `builtin.fs_read` |
+| `related` | hash | the raiser: whatever else it knew — a path, an offset, the bytes it actually read |
+| `file`, `line`, `column` | string, int, int | stamped by the runtime at the call |
+| `end_line`, `end_column` | int | the end of the construct that failed |
+| `source_line` | string | the text of that line, copied when the error was stamped |
+| `stack` | array of string | the call stack, innermost first |
+
+Three things worth knowing:
+
+- **`related` keeps types.** An offset in it is an integer and a record is a
+  `bytes` buffer, not a pre-formatted string — so `err.related["offset"] > 4096`
+  works without parsing text back into a number. Today it is empty on every
+  builtin error: the field is there, and the builtins that have context worth
+  attaching have not been taught to attach it yet.
+- **An unknown field is `null`, not a failure** — the same rule a struct
+  follows. `err.kind` reads null today rather than stopping the program.
+- **The shape never changes with the build.** A binary compiled with debug
+  information stripped carries no line table, so `err.line` reads `0` and
+  `err.file` reads `""` — but they still read. A program that inspects position
+  does not have to know how it was compiled. `message` and `context` come from
+  the raiser rather than the line table, so stripping does not touch them.
+
+Errors are read-only: `err.message = "..."` is refused, because the position is
+stamped by the runtime and a program that could rewrite it could lie about where
+a failure happened.
+
+### Raising your own error
+
+`error(message, context?, related?)` builds one. Your own errors are the same
+kind of value a builtin's failure is, so they read the same, print the same, and
+travel the same way through `let value, err = ...`.
+
+```mutant
+let parse_record = fn(buf, offset) {
+    let magic, magic_err = bytes_slice(buf, 0, 2);
+    if (len(buf) < offset + 16) {
+        return "", error(
+            "record is truncated",           // message
+            "evidence.parser",               // context: where it went wrong
+            {"offset": offset,               // related: facts, keeping their types
+             "available": len(buf),
+             "magic": magic}
+        );
+    }
+    return bytes_slice(buf, offset, 16);
+};
+
+let rec, err = parse_record(buf, 8192);
+if (err) {
+    putln(err.message);              // "record is truncated"
+    putln(err.context);              // "evidence.parser"
+    putln(err.related["offset"]);    // 8192 -- an INTEGER, not the text "8192"
+    putln(err.line);                 // the line the error() call is on
+}
+```
+
+- **`context` defaults to `"user"`.** Every error names its origin: a builtin's
+  says `builtin.fs_read`, the runtime's says `evaluator`, and yours says `user`
+  until you give it something better. Naming the subsystem, as above, is what
+  makes a log line tell you where to look.
+- **`related` keys must be strings.** Mutant hashes also allow integer and
+  boolean keys; those are refused by name rather than quietly rendered, so
+  `{1: "a"}` is an error you can see instead of a `{"1": "a"}` you cannot.
+- **`related` values keep their types.** An offset stays an `INTEGER` and a
+  buffer stays `BYTES`. This is the whole reason to attach a fact rather than
+  formatting it into the message: the reader does not have to parse it back out.
+  Bind a fallible call to a name first, as the example does with `magic` --
+  writing `bytes_slice(...)` directly into the hash stores the whole
+  `(value, err)` pair, not the buffer.
+- **The position is filled in for you.** `error()` stamps the call that built it,
+  exactly as a builtin's error points at the builtin call.
+- **It returns one value, not a pair.** `let e, err = error("x")` is a mistake --
+  and one the editor reports before you run it.
+
+Two errors are equal when their `message`, `context` and `related` match.
+Position is deliberately not compared: the same failure raised from two places is
+the same failure, and a program that cares where reads `err.line`.
+
+### Closing what you open (`with_resource`)
+
+Twenty builtin families hand back a handle you are expected to close: the
+filesystem and disk-image readers, `zip_open`/`tar_open`, `hive_open`,
+`reg_open`, `db_open`, `cache_open`, `hashset_load`, `chan_new`,
+`net_connect`/`net_listen`. Those handles live in a store with no eviction, so
+one you forget is held until the process exits — invisible in a script that
+opens an image and stops, descriptor exhaustion in a loop over a corpus or a
+long-running server.
+
+Two kinds are closed for you at the end of a program: a ledger (`ledger_open`)
+and a graph store on disk (`db_open_disk`). A store still open when the process
+exits is recorded by its next open as a restart after an unclean shutdown -- in a
+custody ledger, a permanent audit entry for a crash that did not happen -- so
+running a `.mu`, `mutant test`, the debugger and the REPL close each one they
+find and name it on stderr. The warning is the bug report: close it yourself.
+
+`with_resource(resource, closer, fn)` makes the close happen:
+
+```mutant
+let files, err = with_resource(ntfs_open("disk.img"), "ntfs_close", fn(img) {
+    let names, list_err = ntfs_list_files(img["handle"], "/");
+    if (list_err) { return list_err; }
+    return names;
+});
+```
+
+The closer runs whatever the body does — returns a value, returns an error, or
+fails outright. That is the difference between this and remembering to write the
+close yourself: there is no path out of the body that skips it.
+
+- **It is transparent to a failed open.** If `ntfs_open` fails, the body never
+  runs and you get exactly the error `let img, err = ntfs_open(...)` would have
+  given you. Wrapping an existing call changes nothing else about it.
+- **The `(value, err)` convention passes through.** A body ending in a fallible
+  call hands you its two halves, not a pair to take apart. A body that *returns*
+  an error fills the error slot.
+- **The closer is a name or a function.** `"ntfs_close"` names the builtin;
+  `fn(h) { ... }` is for cleanup that is more than one call. Naming it as a
+  string is what lets the editor check the spelling.
+- **When the body and the close both fail**, the body's error is the one you
+  get, with the close's attached as `err.related["close_error"]`.
+
+The editor reports the handles this does not cover. `unclosedResource` warns
+when an opener's result is bound to a name that nothing in the same scope
+closes, and stays quiet whenever it cannot see the whole lifetime — a handle
+returned to a caller, handed to a helper, or held by a server that runs until
+it is interrupted.
+
 ### Binding several names at once
 
 `let a, b = ...` binds more than one name from a single expression. What it does
@@ -69,8 +218,8 @@ array, the binding takes it apart instead of reporting an error:
 
 ```mutant
 let items = ["a", "b"];
-let updated, err = push(items, "c");   // WRONG: push returns one array
-                                       // updated is "a", err is "b"
+let wrong, err = push(items, "c");     // WRONG: push returns one array
+                                       // wrong is "a", err is "b"
 
 let updated = push(items, "c");        // right: ["a", "b", "c"]
 ```
@@ -79,6 +228,237 @@ Nothing about this fails at compile time, and `err` is usually falsy, so an
 `if (err)` check passes and the program carries on with the wrong value. Check
 the [Capability Reference](CAPABILITY_REFERENCE.md) for whether a builtin returns
 a pair; `push`, `first`, `last`, `rest` and `len` do not.
+
+**Binding the error is not the same as reading it.** When a fallible call fails
+it leaves null in the value beside the error, so a program that never looks at
+`err` carries on with nothing and reports success:
+
+```mutant
+let report_json, err = json_stringify(report);
+let wrote, err = fs_write(path, report_json);   // writes "null" if the first
+                                                // call failed
+```
+
+`uncheckedError` warns on both lines. The first `err` is replaced before
+anything reads it; the second is never read at all. It stays quiet when you read
+the error
+any way at all -- test it, print it, return it, hand it on -- and when you catch
+the failure through the value instead, either by testing the value in an `if`
+condition or by using a boolean success flag, which is false whenever the call
+failed. When you genuinely mean to ignore a failure, bind `_` and the rule takes
+you at your word:
+
+```mutant
+let _, _ = fs_write(log_path, line);   // best-effort logging, on purpose
+```
+
+### Scope, and one declaration per scope
+
+**A block is a scope.** A name declared inside `{ ... }` means nothing after the
+closing brace, and a name declared inside a block may shadow one from outside it.
+Every brace-delimited region is one: a bare block, an `if` or `else` body, a loop
+body, a `match` arm.
+
+```mutant
+let z = 1;
+if (true) {
+    let z = 2;      // a different z
+    putln(z);       // 2
+}
+putln(z);           // 1 -- the inner one is gone
+```
+
+A loop header is a scope, and the body nests inside it. So the body may shadow
+the name the header declared, and the loop still counts with its own:
+
+```mutant
+let hits = 0;
+for (let i = 0; i < 3; i = i + 1) {
+    let i = 9;      // the body's i, not the loop's
+    hits = hits + 1;
+}
+putln(hits);        // 3 -- the loop's own i still reached 3
+```
+
+A function's parameters and its body share **one** scope, so a `let` at the top
+of a body cannot take a parameter's name.
+
+**A `let` has to declare something new.** Within one scope, a `let` is refused
+unless at least one of the names on its left is new to that scope:
+
+<!-- mutant:fragment -->
+```mutant
+let x = 1;
+let x = 2;          // refused: x is already declared in this scope
+x = 2;              // this is what was meant
+```
+
+This is what makes the `(value, err)` idiom work rather than a special case for
+it. Reusing `err` is allowed because the value half is new each time:
+
+<!-- mutant:fragment -->
+```mutant
+let head, err = fs_read(first);
+let tail, err = fs_read(second);     // fine: tail is new
+let head, err = fs_read(third);      // refused: nothing on the left is new
+```
+
+The blank is always allowed, however many times, because there is nothing to
+read back:
+
+```mutant
+let _, err = fs_write(a, line);
+let _, err = fs_write(b, line);      // fine
+```
+
+Two things follow that are worth knowing before you hit them. A name cannot
+refer to itself through its own initializer, because a declared name's scope
+begins *after* its declaration -- `let step = wrap(fn(n) { return step(n - 1); });`
+is `undefined variable: step`. And threading one handle through a pipeline needs
+a name per stage, since rebinding it would declare nothing new.
+
+**Only a `let` declares.** An assignment stores into a name that is already in
+scope; `y = 1` with no `y` declared is refused at compile time, as `cannot assign
+to y: y is not declared -- declare it with let y = ...`, and the editor marks the
+same line.
+
+### Loops
+
+Three spellings, each its own construct. `break` and `continue` work in all of
+them, and mean the same thing in each.
+
+```mutant
+// Counting, when the index is the point.
+for (let i = 0; i < len(hosts); i++) {
+    putln(hosts[i]);
+}
+
+// A condition, when the end is not a count.
+while (len(queue) > 0) {
+    let job = queue[0];
+    queue = slice(queue, 1, len(queue));
+    run(job);
+}
+
+// Over a collection, when the elements are the point.
+for (host in hosts) {
+    putln(host);
+}
+```
+
+What `for (item in collection)` binds depends on how many names it binds and
+what it is walking:
+
+| Written | Over an array | Over a hash | Over a string or bytes |
+| --- | --- | --- | --- |
+| `for (v in xs)` | element | **key** | character / byte |
+| `for (k, v in xs)` | index, element | key, value | index, character / byte |
+
+A single binding yields the thing the collection is made of, which is why an
+array gives elements but a hash gives keys.
+
+A hash is visited in the same order printing it shows. `Hash.Pairs` is a Go map
+and its iteration order differs run to run, so both the printer and the loop
+sort with the same comparison: a program that prints a hash and a program that
+loops over one agree about what order it is in.
+
+There is no range syntax. `range(start, end[, step])` is an ordinary builtin
+returning an array, so counting over one is a `for…in` like any other:
+
+```mutant
+for (n in range(0, 10)) { putln(n); }
+for (n in range(10, 0, -2)) { putln(n); }
+```
+
+Because an `if` and a `match` are expressions, a `break` can be reached from
+somewhere a value was being built. It **abandons that value**: the expression
+does not finish, nothing is bound or stored, and the loop ends.
+
+```mutant
+for (v in xs) {
+    let row = [v, if (v == stop) { break; } else { score(v) }];
+    keep(row);                 // not reached on the iteration that breaks
+}
+```
+
+So `break`, `continue` and `return` are not values and can never be used as
+one. The array above is never built on the breaking iteration, `row` is never
+bound, and `keep` is never called. The same holds for a hash value, a call
+argument, an operand of an operator, a `match` subject, an `if` condition and a
+template literal's hole.
+
+A loop's **header** is outside the loop. A `break` written in a `while`
+condition, in a counting `for`'s condition or init section, or in a `for…in`'s
+collection, belongs to the loop *surrounding* this one, and is refused outright
+if there is none. The one exception is a counting `for`'s step, which belongs to
+the loop: a `break` there ends it. A `continue` there is refused, because
+skipping the step is a loop that cannot end.
+
+### Matching (`match`)
+
+`match` is an **expression**: it evaluates to the arm that matched, so it binds,
+returns, and nests like any other value.
+
+```mutant
+let label = match (code) {
+    0         => "clean",
+    1 | 2 | 3 => "a few findings",
+    -1        => "the scan did not run",
+    _         => "many findings",
+};
+```
+
+Arms are `pattern => value`, separated by commas, tried top to bottom. A trailing
+comma after the last arm is allowed.
+
+A pattern is one of:
+
+- a literal — integer, float, string, `true`, `false`
+- a negated number — `-1`, `-2.5`
+- an enum variant — `Status.Ok`, or `mod.Status.Ok` for an imported enum
+- `_`, which matches anything
+
+Alternatives are joined with `|`, which is a *pattern* separator here rather
+than the bitwise-or operator: patterns have their own grammar, so `1 | 2 | 3`
+means those three values and not the number `3`.
+
+An arm body may be a block, whose value is its last expression:
+
+```mutant
+let weight = match (name) {
+    "critical" => {
+        let base = severity[name];
+        base * 10;
+    },
+    _ => 0,
+};
+```
+
+The parentheses around the subject are required. `{` is also the opening of a
+struct literal (`Point { x: 1 }`), so `match x { ... }` without them parses
+cleanly as a struct literal named `x` and means something else entirely.
+
+Because a `match` has to produce a value, a subject that no arm matches is a
+**run-time error naming the value**, not `null`:
+
+```mutant
+enum Status { Ok, Failed, Pending };
+
+let text = match (status) {
+    Status.Ok     => "finished",
+    Status.Failed => "raised",
+};                                   // raises when status is Status.Pending
+```
+
+That is the case the rule exists for: adding a variant to an enum leaves every
+existing `match` over it one arm short, and a `null` flowing onward would hide
+it. The language server reports the gap before the program runs — see the
+`matchExhaustiveness` rule — and writing `_` says the rest is deliberate.
+
+Not in this version: binding patterns (`n => ...`), payload destructuring (enum
+variants carry no payload), and guards (`n if n > 3 =>`, which depends on
+binding). An interpolated string is rejected as a pattern rather than quietly
+accepted, since comparing against something computed at match time is a guard.
 
 ### First-class functions and closures
 
@@ -91,6 +471,54 @@ let adder = fn(n) {
 let add10 = adder(10);
 putln(add10(5));                       // 15
 ```
+
+A closure captures its free variables **by reference**, so it can read them and
+write them, and the enclosing function sees the writes:
+
+```mutant
+let total = fn() {
+    let acc = 0;
+    each([1, 2, 3], fn(x) { acc = acc + x; });
+    return acc;                                  // 6
+};
+```
+
+There is one storage location per variable per call, shared by the frame and
+every closure over it. Two closures over the same variable therefore see each
+other's writes, and a closure that outlives the call that made it keeps its
+variable alive:
+
+```mutant
+let counter = fn() {
+    let n = 0;
+    return fn() { n = n + 1; return n; };
+};
+let next = counter();
+putln(next());                                   // 1
+putln(next());                                   // 2
+putln(counter()());                              // 1 -- a separate n
+```
+
+A captured variable is scoped to the call, not to the iteration. A closure made
+inside a `for` loop shares the loop's variable rather than getting a snapshot of
+it, which is the behaviour of `var` in JavaScript and of a Go loop variable
+before Go 1.22. Capture the value in a parameter if you want it frozen:
+
+```mutant
+let freeze = fn(v) { return fn() { return v; }; };
+```
+
+Two things are still not assignable, because neither is storage: a builtin's
+name, and the name a function literal was bound to (`f = 1` inside `f`). Both
+are refused at compile time.
+
+A call may be 10,000 deep. The next one is refused with `this call would be 10001
+deep, over the limit of 10000 nested calls`, which is almost always a recursion
+without a stopping case; `map`, `filter`, `each`, `reduce`, `sort_by`,
+`with_resource` and `test` count their callbacks against the same ceiling, because
+a callback that recurses nests the engine itself. Ten thousand is far past any
+depth a script needs -- the deepest shape here is a walk over nested evidence, and
+those are tens deep, not thousands.
 
 ### Higher-order collection functions
 
@@ -130,12 +558,23 @@ The third argument caps how many run at once. Omit it and the worker count
 follows the machine's CPU count, capped by the array length.
 
 **What the callback may rely on.** Each worker runs on its own VM with a
-*snapshot* of globals, taken when the call starts. So a callback can read
-globals and its own captured variables, but an assignment to a global stays
-local to that worker and is lost when it finishes. Write callbacks that return
-their result rather than accumulating into a global; when workers genuinely need
-to share state, put it in a `cache_*` or `db_*` store, which is what `net_serve`
+*snapshot* of globals and its own copy of every variable it can reach, taken when
+the call starts. So a callback can read both, but an assignment to either stays
+local to that worker and is lost when it finishes -- unlike the sequential
+`each`, where a captured accumulator does reach the caller. Write callbacks that
+return their result rather than accumulating; when workers genuinely need to
+share state, put it in a `cache_*` or `db_*` store, which is what `net_serve`
 handlers already do.
+
+**Reachable is the operative word**, and it is wider than "captured". A function
+the callback calls keeps its own variables, and those are detached too, however
+the callback got to it: captured directly, captured inside an array or a hash,
+held in a global, or handed in as an element. So `let tick = make_counter();`
+followed by a `pmap` whose callback calls `tick()` leaves the caller's counter
+exactly where it was, and each worker counts on its own. What stays shared is
+what the program itself shares: two functions over one variable are still two
+functions over one variable inside a worker, so a worker's own writes are visible
+to all of its own code.
 
 An error raised inside a callback stops the whole call and surfaces, the same as
 in `map`.
@@ -165,8 +604,11 @@ answers without waiting. Whatever stopped a task -- an error, a division by zero
 Collecting a task releases its handle, so wait for it once.
 
 **A spawned task follows the same rules as a `pmap` worker**: its own VM, its own
-stack, and a *snapshot* of globals taken at the spawn. It can read globals and
-its captured variables; its own writes stay local. The way back is the return
+stack, and a *snapshot* of globals and of every variable it can reach, taken at
+the spawn -- the argument of `spawn(fn, arg)` included, so passing a function in
+hands the task its own copy of that function's variables rather than the
+caller's. It
+can read both; its own writes to either stay local. The way back is the return
 value, or a channel.
 
 #### Channels
@@ -221,6 +663,51 @@ give its receive a timeout.
 At most 1024 tasks run at once. Past that `spawn` reports an error rather than
 blocking, so an accept loop can shed load instead of deadlocking.
 
+### Truthiness
+
+`if`, `while`, `for`, `match`, `&&`, `||`, `filter` and `!` all ask one question of a
+value, and one function answers it for every engine. These values are falsy:
+
+| Falsy | Note |
+| ----- | ---- |
+| `false` | |
+| `null` | including a call that produced no value |
+| `0` | the integer |
+| `0.0` | the float |
+| `""` | the empty string. A whitespace-only string is **not** empty |
+| an empty buffer | the test is `len(b) == 0`, never the contents |
+
+Everything else is truthy, including `[]`, `{}`, a function and an error value. Note
+the last one: a `(value, err)` pair whose `err` is an error value is truthy, which is
+what makes `if (err)` work and what makes `if (err)` fire for a *successful* call
+impossible.
+
+`!x` is the negation of this and nothing else. Three things follow, and all three are
+tested rather than asserted: `!x` is always a boolean, exactly one of `x` and `!x` is
+truthy, and `!!x` has the same truthiness as `x`.
+
+```mutant
+let hits = 0;
+if (!hits) { putln("no hits"); }      // fires: 0 is falsy, so !0 is true
+```
+
+### Equality
+
+`==` and `!=` never convert between types: a value is never equal to a value of
+another type, whatever the two render as. The one exception is numbers -- an
+integer and a float are compared by value, so `1 == 1.0` is true.
+
+```mutant
+"0" == 0;        // false: a string is not an integer
+"true" == true;  // false: a string is not a boolean
+[1] == "[1]";    // false: an array is not a string
+1 == 1.0;        // true: integers and floats compare as numbers
+```
+
+`null` is not the empty string either. A hash lookup that misses yields `null`,
+so `h["missing"] == ""` is false; test for a missing key with `has_key`, not by comparing
+the lookup with `""`.
+
 ### Logical operators
 
 `&&` (and) and `||` (or) combine conditions and **short-circuit** — the right
@@ -234,15 +721,92 @@ let has_both = si_frac == 0 && fn_frac > 0;   // both conditions must hold
 let ready = configured || force;               // either is enough
 ```
 
+### Bitwise operators
+
+`&` (and), `|` (or), `^` (xor), `<<` (left shift), `>>` (right shift) and the
+prefix `~` (complement) operate on integers. They are the signed 64-bit
+operations Go performs, so every result matches Go exactly.
+
+```mutant
+let READ  = 1;
+let WRITE = 2;
+let EXEC  = 4;
+
+let perms = READ | EXEC;                 // 5  -- combine flags
+let can_write = (perms & WRITE) != 0;    // false -- test one
+perms = perms | WRITE;                   // 7  -- set one
+perms = perms & ~EXEC;                   // 3  -- clear one
+
+let b = 240;
+b >> 4;                                  // 15 -- the high nibble
+b & 15;                                  // 0  -- the low one
+```
+
+**Precedence follows Go, not C.** `<< >> &` bind as tightly as `* / %`, and
+`| ^` bind as tightly as `+ -`. All of them bind tighter than the comparison
+operators, so `flags & MASK == 0` means `(flags & MASK) == 0` — the reading you
+wanted. C parses that same line as `flags & (MASK == 0)`, which is why C code
+is full of defensive parentheses around masks. Two cases still deserve them,
+because Go's answer is not the one most people would guess:
+
+```mutant
+1 | 2 + 1;    // 4, not 3: `|` and `+` are the same level, evaluated left to right
+1 << 2 + 1;   // 5, not 8: `<<` binds tighter than `+`, so it is (1 << 2) + 1
+```
+
+**`>>` is an arithmetic shift.** The operands are signed, so the sign bit is
+copied in as the value moves right: `-8 >> 1` is `-4`, and `-1 >> 63` is still
+`-1`. There is no unsigned integer type, and therefore no logical shift.
+
+**A shift count of 64 or more is not an error.** The value simply falls off the
+end, so `1 << 64` is `0` and `-1 >> 64` is `-1`. A *negative* count is an error:
+Go panics on one, and a program that shifts by a computed value can reach a
+negative count without anybody having written a minus sign.
+
+**Every operand must be an integer.** A float is refused, not truncated:
+
+```mutant
+1.5 & 1;   // error: bitwise operator & requires INTEGER operands, got FLOAT and INTEGER
+~1.5;      // error: bitwise complement requires an INTEGER, got FLOAT
+```
+
+Rounding to make the expression work would be the same class of plausible wrong
+answer the `bytes` type exists to prevent: the bits of a float are not the bits
+of the number it spells, so there is no honest result to return.
+
+The compound forms `&= |= ^= <<= >>=` are sugar in exactly the way `+=` is —
+`x &= mask` is `x = x & mask`, and the target is evaluated once, exactly as
+it is for `+=`. See [Compound assignment and increment/decrement](#compound-assignment-and-incrementdecrement).
+
+> Masks are written in decimal for now: Mutant has no hex literals, so `0xFF`
+> does not parse. Write `255`.
+>
+> A leading zero is refused rather than read, for the same reason. `0755` is a
+> permission mask to anyone who has written C and a zero-padded decimal to
+> anyone who has pasted a field out of a date or an offset listing, and the
+> text does not say which. Mutant read it as octal and said nothing -- `010`
+> was 8 and `0100 + 1` was 65 -- so it is now a compile error that names both
+> readings: write `755`, or `parse_int("0755", 8)`. A single `0` is a number,
+> and a float was never read that way, so `010.5` has always been 10.5.
+
 ### Compound assignment and increment/decrement
 
-`+= -= *= /= %=` update a variable in place using its current value, and postfix
-`++` / `--` add or subtract one. They are pure syntactic sugar: `x += y` is exactly
-`x = x + y`, and `x++` is exactly `x = x + 1`, so they follow the same operator
-semantics (integer vs. float promotion, `+=` concatenating strings, integer
-division/modulo-by-zero errors). The target must be an assignable lvalue — a
-variable, field, or index — and, like any `=`, the whole expression evaluates to
-the newly stored value.
+`+= -= *= /= %=`, and the bitwise `&= |= ^= <<= >>=`, update a variable in
+place using its current value, and postfix `++` / `--` add or subtract one.
+They are syntactic sugar: `x += y` is `x = x + y`, and `x++` is `x = x + 1`, so
+they follow the same operator semantics (integer vs. float promotion, `+=`
+concatenating strings, integer division/modulo-by-zero errors). The target must
+be an assignable lvalue — a variable, field, or index — and, like any `=`, the
+whole expression evaluates to the newly stored value.
+
+The target is evaluated **once**, which is the one place the sugar is not a
+literal rewrite of the text. Given a `next` that returns a different index each
+time it is called, `hist[next()] += 1` calls it once and folds the element that
+single call named; the expansion written out by hand,
+`hist[next()] = hist[next()] + 1`, calls it twice and so adds to a different
+element than it read. Only the target's last index is treated this
+way, because an index before the last one is refused outright unless it is a
+name or a literal.
 
 ```mutant
 let total = 0;
@@ -256,6 +820,98 @@ name += "ant";                  // string concatenation -> "mutant"
 let n = 100;
 n -= 30;   n /= 2;   n %= 9;    // chained: 100 -> 70 -> 35 -> 8
 ```
+
+### Assigning through a container
+
+A target is a variable, optionally followed by any number of index and field
+hops. Every container on the way is written back, so a write through several of
+them lands where you wrote it:
+
+```mutant
+let counts = {};
+for (host in ["a", "b", "a"]) {
+    if (!has_key(counts, host)) { counts[host] = {"n": 0}; };
+    counts[host]["n"] = counts[host]["n"] + 1;   // {a: {n: 2}, b: {n: 1}}
+}
+
+let grid = [[1, 2], [3, 4]];
+grid[0][1] = 9;                                  // [[1, 9], [3, 4]]
+```
+
+**A container is a value.** Binding an array, a hash, a struct or a buffer to a
+second name, passing it to a function, returning it, storing it inside another
+container or walking it with `for ... in` hands over a copy, so a write through
+one name is never seen through another:
+
+```mutant
+let a = [1, 2];
+let b = a;
+b[0] = 9;                                        // b is [9, 2]; a is still [1, 2]
+
+let h = {"k": [1]};
+let x = h["k"];
+x[0] = 5;                                        // h["k"] is still [1]
+```
+
+The write itself always reaches the variable its target names, at any depth,
+which is what the examples above rely on. A loop walks the collection as it was
+when the loop began: writing to that variable inside the loop changes the
+variable, not what the loop visits. What two pieces of code can share is a
+variable, never a container: a closure captures its free variables by reference
+(see [First-class functions and closures](#first-class-functions-and-closures)),
+so a closure that runs `a[0] = 9` changes the `a` it captured.
+
+Two targets are refused, and both are compile errors rather than writes that go
+nowhere:
+
+- **A target with no variable under it** — `[1, 2][0] = 9`, `f()[0] = 1`. There
+  is nothing to store the result in, so the write would land in a value the
+  program immediately drops.
+- **An index before the last one that is not a name or a literal** —
+  `a[f()][0] = 1`. Every hop but the last is loaded again on the way back out,
+  so anything with a side effect would run a number of times the source does not
+  say. Bind it first: `let k = f(); a[k][0] = 1;`.
+
+The last index is compiled once and is free to be anything, including a call.
+The editor reports both refusals where they are written, under the
+`assignmentTarget` rule.
+
+**An assignment evaluates to the value assigned**, at any depth and through any
+target — the same answer `x = 1`, `p.x = 1` and `x += 1` give:
+
+```mutant
+let grid = [[1, 2]];
+let stored = (grid[0][1] = 9);   // 9, not [1, 9] and not [[1, 9]]
+```
+
+The parts of an assignment are evaluated in the order they are written: the
+container, then the index, then the value. A compound assignment reads its
+target before its right-hand side, because `x += v` is `x = x + v` — and it
+evaluates that target's index once, not once per appearance in the expansion.
+
+**A compound literal runs its parts in the order they are written**, and that
+is a promise about both engines. An array's elements, a hash literal's pairs --
+each key, then its value, pair by pair -- and a struct literal's initialisers
+all run top to bottom as written, whatever order the struct's declaration lists
+its fields in:
+
+```mutant
+let n = 0;
+let next = fn() { n = n + 1; return n; };
+
+struct Header { size, magic }
+let h = Header{magic: next(), size: next()};   // magic is 1, size is 2
+```
+
+**A hash literal may not set one key twice.** `{"k": 1, "k": 2}` is a compile
+error that names the key and where it was written, because one of the two values
+would be dropped and the syntax does not say which -- the same reason
+`P{a: 1, a: 2}` is refused for a struct, and the same answer `json_parse` gives a
+document that names a key twice. Only keys the literal itself states are
+compared, and a kind is part of a key: `1`, `1.0` and `"1"` are three keys, not
+one. `{a: 1, b: 2}` is accepted whatever `a` and `b` turn out to hold, because
+that is not something the compiler can know; if they turn out to be the same key
+at run time, the later pair wins.
 
 ### Macros (`macro`, `quote`, `unquote`)
 
@@ -282,6 +938,26 @@ unless(1 > 2, putln("smaller"), putln("bigger"));   // prints: smaller
   **argument's source**, unevaluated. `add(dynamic, 5)` substitutes the
   identifier `dynamic`, not whatever it holds at expansion time.
 
+**What expansion may call.** Expansion happens while the compiler is running, so
+only pure computation is available there. A macro body may use the operators, the
+literals, its own parameters, and the builtins listed as macro-safe. A builtin that
+reads or writes a file, reaches the network, runs a program, opens a handle, draws
+entropy, reads the clock or writes state the program would later read back is
+refused, and so is one that decodes cryptographic material -- `aes_encrypt`,
+`aes_decrypt`, `aes_decrypt_bytes`, `x509_parse`, `der_parse`, `jwt_decode` and
+`pem_decode` -- because a compile is the wrong place to run a cipher or a
+certificate parser over bytes the source carries. The refusal names the builtin and
+says which of those it does. Parsers of ordinary structure stay available --
+`json_parse`, `yaml_parse`, `xml_parse`, `csv_parse`, `toml_parse`, `cbor_parse`,
+`msgpack_parse`, `protobuf_parse` and the rest -- because writing code from a table
+the macro carries is one of the main reasons to have macros. This applies to the
+namespaced spelling as well, because `fs.write` and `fs_write` are the same
+builtin. Nothing inside a `quote` is affected: that is source being
+captured, not code being run, and only an `unquote` inside it is evaluated.
+The editor reports the same call at the line it is on, in the same words, so the
+refusal does not have to wait for a build -- and expansion stops at the first
+one, so a build names one refusal where the editor names them all.
+
 **Declaration and scope.** Macros are collected from top-level statements only,
 and their declarations are removed from the program before compilation. A macro
 declared inside a function or a block is never collected, and is reported as
@@ -300,9 +976,262 @@ interactive REPL only defines macros when started with `-em` /
 `--enable-macros`; it then expands and compiles them on the same path the CLI
 uses, so the flag does not change what the language means.
 
+### Binary data: the `bytes` type
+
+A `bytes` value is a byte buffer — a disk sector, a PE section, a memory page, a
+socket read. It exists because a Go string holds arbitrary bytes perfectly well,
+so nothing was ever corrupted at rest, but no builtin could tell binary from
+text: `str_reverse` rune-reverses and turns every byte that is not valid UTF-8
+into U+FFFD, `str_substr` and `str_char_at` index by rune so their offsets
+disagree with `bytes_get`'s, and the `regex_*` family reads invalid bytes as
+U+FFFD. None of those fail. They return a plausible wrong answer.
+
+The same two units meet inside text, wherever a position passes from one
+builtin to another. `s[i]`, a `for` loop over a string, `str_substr`,
+`str_char_at` and the width given to `str_pad_left` and `str_pad_right` count
+characters -- runes. `len(s)` and `text_index` count bytes, as `bytes_get` and
+`bytes_slice` do. The two agree up to the first character that takes more than
+one byte and differ after it. A byte that is not valid UTF-8 counts as one
+character, one byte wide, so it does not separate them. `str_substr` and `s[i]`
+do not fail when the two differ: they answer from the wrong place, or with
+nothing once the offset runs past the last character:
+
+```mutant
+let s = "José: admin";
+let at = text_index(s, ":");            // 5: é is two bytes
+putln(len(s));                          // 12 bytes, 11 characters
+putln(str_substr(s, at, 1));            // " ", not ":"
+let name, err = bytes_slice(s, 0, at);  // bytes_slice counts bytes too
+if (err) { putln(err); } else { putln(name); }  // José
+```
+
+So a position from `text_index` belongs to the byte builtins, and a bound for
+`s[i]` or `str_char_at` comes from the characters themselves -- `for (i, c in s)`
+walks them -- rather than from `len`.
+
+There are no `bytes` literals. A buffer comes from a producer or a conversion:
+
+```
+let raw, err = fs_read_bytes("disk.img");   # a native producer
+let mz, e2   = string_to_bytes("4d5a", "hex");
+let same, e3 = string_to_bytes(fs_read(p), "raw");  # bridges any older producer
+```
+
+The conversions are explicit and name an encoding — `"raw"`, `"utf8"`
+(validated, not substituted), `"latin1"`, `"hex"`, `"base64"` — because the step
+between binary and text is the one worth being deliberate about. There is no
+implicit coercion in either direction.
+
+What a buffer supports:
+
+| Operation | Behaviour |
+| --------- | --------- |
+| `b[i]` | the byte at `i` as an **integer 0-255** (not a one-byte buffer) |
+| `b[i] = n` | writes one byte in place; `n` must be 0-255 |
+| `a + b` | concatenation, into a fresh buffer |
+| `==`, `!=` | by content; a buffer is never equal to a value of another type |
+| `len(b)` | the byte count |
+| truthiness | an empty buffer is falsy |
+| hash key | yes, in a keyspace disjoint from strings |
+| `putln(b)` | full lowercase hex, untruncated |
+
+`<` and `>` are not defined on buffers.
+
+**Nothing that returns a string today started returning a buffer.** The type
+arrived additively: `fs_read` still returns a string, and `fs_read_bytes` is the
+new name. The same holds for `hex_decode_bytes`, `base64_decode_bytes`,
+`gunzip_bytes`, `zlib_decompress_bytes`, `aes_decrypt_bytes`,
+`net_conn_read_bytes`, `mem_read_bytes`, and the `*_read_file_bytes` /
+`*_read_at_bytes` image readers. Consumers went the other way and widened: the whole `bytes_*` family,
+`fs_write`, `fs_append`, every `hash_*`, `hmac`, and the encoders accept either
+representation, and the `bytes_*` family is shape-preserving — `bytes_slice` of
+a buffer is a buffer, of a string a string.
+
+Some builtins predate the type and hex-encode their binary output defensively,
+because there was once no other way to carry it. Those are being given direct
+routes the same additive way — `mem_read_bytes` alongside `mem_read`, a
+`resident_data_bytes` field alongside `fs_deleted`'s hex `resident_data`, and a
+`data_bytes` field on the values `reg_get_value`, `reg_enum_values`,
+`hive_get_value` and `hive_list_values` return. Recovering a deleted file is
+`fs_write(out, e["resident_data_bytes"])` rather than a `string_to_bytes`
+statement first, and a REG_BINARY blob is parsed straight out of
+`v["data_bytes"]`. The hex fields stay exactly as they were.
+
+`data_bytes` is present exactly when `data` is hex — REG_BINARY, and value
+types the reader does not recognise. Other types are already carried faithfully
+(a REG_DWORD is an integer, a REG_MULTI_SZ an array), so there is no hex to
+undo, and the `type` field beside it says which case you are in. A registry
+opened from a hive-JSON file never reports it: that format is a transcription of
+a hive rather than the artifact, and has no binary type to transcribe.
+
+`sqlite_query` and `evtx_parse` get a whole second builtin rather than a second
+field, because their binary values sit under keys taken from the file being
+parsed — column names, BinXML element names — so there is no key we own to hang
+an alternative rendering on. `sqlite_query_bytes` and `evtx_parse_bytes` answer
+the same questions with the same return shapes; only the binary changes.
+
+`sqlite_query_bytes` also settles a question its older twin has to guess at.
+`sqlite_query` asks whether a BLOB happens to be valid UTF-8 and returns a
+string if it is and hex if it is not, so one column's type varies row by row
+with its content and a BLOB that decoded is indistinguishable from a TEXT that
+did not. In `sqlite_query_bytes` a BLOB is a buffer whatever bytes it holds:
+the column's type decides, not the value inside it. Other column types are
+untouched — an INTEGER is still an integer, a TEXT still a string.
+
+The language server knows the type. Passing a buffer to a text builtin raises
+`builtinArgType` before the program runs, and the message names the conversion.
+
+### Modules (`import`)
+
+A program can be more than one file. `import` loads another `.mut` file and
+binds it to a namespace; [MODULES.md](MODULES.md) is the full reference.
+
+```mutant
+import "lib/stats.mut";          // binds the namespace `stats`
+import numbers "lib/stats.mut";  // binds `numbers` instead
+
+putf("%d\n", stats.mean([12, 47, 31]));
+```
+
+The rules in brief:
+
+- **Top level only.** An import inside a block is an error: modules are resolved
+  and linked before the program runs, so there is no moment at which control
+  could "reach" one.
+- **An import binds one name.** The imported file's own names are not visible
+  unqualified, so two modules may each declare `helper` without collision.
+  Builtins are the exception and are visible everywhere with no import.
+- **`_` is private.** A top-level name beginning with an underscore is visible
+  only inside the file that declares it; `ns._x` is a compile error naming the
+  module and the name.
+- **Paths resolve relative to the importing file first,** then against each
+  `--module-path <dir>` directory in the order given. The extension is written
+  out, never guessed. Nothing else contributes to the search — no manifest, no
+  config file, no environment variable.
+- **Cycles are an error** reported as the chain that closed them. A diamond is
+  not a cycle: a shared module is compiled and run exactly once.
+- **`struct` and `enum` names are program-wide,** not namespaced. One
+  declaration is visible everywhere, and two modules declaring the same type
+  name is an error naming both files. Values are per-module, types are
+  per-program.
+- **Tracebacks name the real file.** Modules link into one instruction stream,
+  but each frame reports the file and line it came from and quotes that file's
+  source.
+
+Builtin families are addressable the same way with no import at all: `fs.read`
+is `fs_read` and `str.upper` is `str_upper`, derived by joining the halves, so
+both spellings are one function. A variable or import that already binds the
+name wins, so no existing program changes meaning.
+
+Imports are a compiled-program feature. The REPL has no file for a relative
+path to resolve against.
+
+### Strings
+
+A string literal has three spellings. All three produce the same kind of value;
+they differ only in what the source is allowed to say.
+
+```mutant
+let host = "db01";
+let port = 5432;
+
+// Ordinary: escapes are decoded, ${...} interpolates.
+putln("connecting to ${host}:${port}");
+
+// Raw: nothing is decoded. Every backslash is itself.
+let key = r"HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
+
+// Triple-quoted: spans lines, and is re-indented to its own left margin.
+let report = """
+    host: ${host}
+    port: ${port}
+    """;
+```
+
+#### Interpolation
+
+`${` opens a hole and `}` closes it. What is between them is an ordinary
+expression -- a call, an index, arithmetic, another string -- evaluated where it
+is written:
+
+```mutant
+putln("largest: ${ max(values) }");
+putln("first: ${ rows[0]["name"] }");
+```
+
+A value that is already a string contributes its own text; anything else
+contributes what it would print, so `"n=${1 + 1}"` is `"n=2"` and no conversion
+has to be written. Nothing is re-scanned afterwards: a `%` in an interpolated
+string is a percent sign, not a format directive.
+
+A lone `$` is still a `$`, so `"cost: $5"` and `"$PATH"` are unchanged. Only the
+two characters `${` open a hole, and `\${` writes them literally.
+
+A hole holds exactly one expression. `${}` and `${ let x = 1; }` are compile
+errors naming the line and column inside the string, and so is anything that
+fails to parse there -- a broken hole is reported where it is, not where the
+string starts.
+
+#### Raw strings
+
+`r"..."` decodes nothing: there are no escapes and no interpolation, which is
+what makes a Windows path or a regex readable.
+
+```mutant
+let path = r"C:\Users\Public\Desktop";     // "C:\\Users\\Public\\Desktop"
+let stamp = r"\d{4}-\d{2}-\d{2}";
+```
+
+A raw string ends at the first `"`, so it cannot contain one. Use an ordinary
+string or a raw triple-quoted one when you need a quote inside.
+
+#### Triple-quoted strings
+
+`"""..."""` spans lines. Escapes and interpolation still work; `r"""..."""` is
+the raw form of the same thing, and either may contain a lone `"` or `""`.
+
+Three things happen to the text, and all three exist so that a block reads as
+the text it is rather than as the text plus the code's indentation:
+
+- A newline immediately after the opening `"""` is dropped.
+- The smallest indentation of any non-blank line -- counting the line the
+  closing `"""` is on when it is alone on one -- is removed from every line.
+  Indentation is counted in characters, so a tab counts as one.
+- `\r\n` becomes `\n`. The line endings in a multi-line literal come from
+  however the file was checked out, and a program must not mean two different
+  things in two clones of the same repository. Write `\r` for a carriage
+  return.
+
+Re-indentation applies only when the opening `"""` is alone on its line. A
+literal that starts text on the opening line has no indentation to measure, so
+it is left exactly as written.
+
+#### Escape sequences
+
+In an ordinary or triple-quoted string: `\n`, `\r`, `\t`, `\"`, `\\`, `\0`, and
+`\$`. Anything else is kept as both characters, so `"\d+"` is a usable regex
+without doubling -- though `r"\d+"` says so on purpose.
+
+#### A literal has to be closed
+
+All four spellings are refused if the closing delimiter is missing, and the
+error names the line and column the literal opened at rather than the end of
+the file.
+
+That is worth stating because the opposite behaviour is easy to write and hard
+to see: an unterminated literal used to swallow the rest of the file as its own
+text, so the program compiled, ran the statements written before the stray
+quote, and reported success. Anything after it -- a verification step, an
+`exit`, a custody write -- was inside the string and never ran, with nothing
+said about it.
+
+A newline inside an ordinary `"` literal is still allowed; it always has been.
+What is refused is reaching the end of the file without the closing quote.
+
 ### Notes
-- String literals are simple quoted strings; escape-sequence behavior is intentionally limited.
 - **Semicolons are required to terminate statements** — including statements whose value is a block, e.g. `let f = fn() { ... };` and `if (c) { ... };`. The language server's formatter enforces this canonically (it repairs missing semicolons and removes redundant ones on format), and the `semicolon` diagnostic flags them while you type.
+- **A block has to be closed too.** A `{` with no matching `}` is refused, naming the line and column it opened at. It used to be accepted: everything after it became part of that body, so in `let f = fn() { return 1;` followed by `putln(f());` the call was inside `f` and never ran, and the parse reported nothing wrong at all.
+- **Nesting is bounded.** One construct may be nested inside another up to 1,000 levels deep — parentheses, prefix operators, array and hash literals, calls, indexes, function literals and block bodies all count. Nothing written by hand comes near it, and a long expression is not a deep one: `1 + 1 + 1 + ...` does not nest at all. Past the limit the program is refused, where it previously ended the process with a stack overflow. See [LIMITS_REFERENCE.md](LIMITS_REFERENCE.md).
 
 ## Reserved Keywords
 
@@ -314,53 +1243,72 @@ uses, so the flag does not change what the language means.
 - fn
 - for
 - if
+- import
+- in
 - let
 - macro
+- match
 - return
 - struct
 - true
+- while
 
 ## Builtins
 
-**Total builtins currently registered: 409**, across 33 capability categories.
+The standard library is **694 builtins** across **41 categories**.
+
+Those two numbers, and every count in the table below, are checked against the
+registry by `cmd/gendocs`' prose-count tests. They were not, until 2026-09-22: the
+sentence here said 493 across 38 and had done for several releases, because it was
+worded "currently registered: 493" and "38 capability categories", and the guard
+looks for "N builtins" and "N categories". A drift gate that a rewording walks
+past is a drift gate for the phrasing, not for the claim.
 
 The complete catalog — every builtin with its typed signature, platform support, and description — lives in the **[Capability Reference](CAPABILITY_REFERENCE.md)**, which is generated directly from `builtin/metadata.go` by `cmd/gendocs` so it never goes stale. Regenerate it with `go run ./cmd/gendocs` after adding or changing a builtin; `go run ./cmd/gendocs -check` (and the `cmd/gendocs` test) fails if it has drifted. The categories are indexed below; each links into that reference.
 
 | Category | Count | What it covers |
 | --- | --- | --- |
-| [Standard library](CAPABILITY_REFERENCE.md#standard-library-56) | 56 | Core primitives, collection/hash ops, higher-order functions (including parallel `pmap`/`peach`), I/O, introspection |
+| [Standard Library](CAPABILITY_REFERENCE.md#standard-library-59) | 59 | Core primitives, collection/hash ops, higher-order functions (including parallel `pmap`/`peach`), I/O, introspection |
+| [Testing](CAPABILITY_REFERENCE.md#testing-10) | 10 | `test`/`before_each`/`after_each` and the assertions `mutant test` reads |
 | [Concurrency](CAPABILITY_REFERENCE.md#concurrency-8) | 8 | Background tasks (`spawn`/`task_wait`) and channels for passing values between them |
 | [Strings](CAPABILITY_REFERENCE.md#strings-18) | 18 | Rune-aware string manipulation |
-| [Text analysis](CAPABILITY_REFERENCE.md#text-analysis-14) | 14 | Search, split/replace, regex, fuzzy matching |
-| [Structured data](CAPABILITY_REFERENCE.md#structured-data-25) | 25 | JSON, encoding, compression, type/base conversion, plist |
+| [Text Analysis](CAPABILITY_REFERENCE.md#text-analysis-14) | 14 | Search, split/replace, regex, fuzzy matching |
+| [Structured Data](CAPABILITY_REFERENCE.md#structured-data-46) | 46 | JSON, encoding, compression, type/base conversion, plist |
 | [Math](CAPABILITY_REFERENCE.md#math-5) | 5 | Constants and random helpers |
 | [Hashing](CAPABILITY_REFERENCE.md#hashing-11) | 11 | Digests, HMAC, UUID/ID generators |
 | [Time](CAPABILITY_REFERENCE.md#time-7) | 7 | Unix timestamps, formatting, parsing, arithmetic |
-| [Bytes](CAPABILITY_REFERENCE.md#bytes-30) | 30 | Binary buffer read/write, cursor, slicing |
-| [Filesystem](CAPABILITY_REFERENCE.md#filesystem-19) | 19 | Files/dirs plus file-level forensics (hash, entropy, magic, carve, deleted) |
-| [Network](CAPABILITY_REFERENCE.md#network-32) | 32 | Sockets, TLS/CA, HTTP inspection, WebSocket, scanning, pcap |
+| [Bytes](CAPABILITY_REFERENCE.md#bytes-31) | 31 | Binary buffer read/write, cursor, slicing |
+| [Archives](CAPABILITY_REFERENCE.md#archives-10) | 10 | ZIP and TAR containers: entry listing, reading, and guarded extraction |
+| [Filesystem](CAPABILITY_REFERENCE.md#filesystem-20) | 20 | Files/dirs plus file-level forensics (hash, entropy, magic, carve, deleted) |
+| [Network](CAPABILITY_REFERENCE.md#network-33) | 33 | Sockets, TLS/CA, HTTP inspection, WebSocket, scanning, pcap |
 | [Http](CAPABILITY_REFERENCE.md#http-11) | 11 | HTTP client + request/response parse/build |
-| [Graph database](CAPABILITY_REFERENCE.md#graph-database-14) | 14 | Nodes/edges/relations, traversal, pathfinding, stats |
+| [Graph Database](CAPABILITY_REFERENCE.md#graph-database-20) | 20 | Nodes/edges/relations, reading them back by value, traversal, pathfinding, schema and index checks |
+| [Forensic Ledger](CAPABILITY_REFERENCE.md#forensic-ledger-43) | 43 | A graphene-backed signed ledger: strict store, inclusion and redaction proofs, custody and checkpoint anchoring, attributed redaction and the review of redactions older builds made, indexed reads, and the same reads under a view |
 | [Cache](CAPABILITY_REFERENCE.md#cache-8) | 8 | In-memory key/value cache with TTLs |
 | [Policy](CAPABILITY_REFERENCE.md#policy-5) | 5 | Allow/deny policy evaluation and tracing |
-| [Runtime integration](CAPABILITY_REFERENCE.md#runtime-integration-3) | 3 | Sandboxed Lua execution |
-| [Command execution](CAPABILITY_REFERENCE.md#command-execution-4) | 4 | Guarded external command execution |
-| [Cryptography](CAPABILITY_REFERENCE.md#cryptography-5) | 5 | X.509, JWT, PEM, AES-GCM |
+| [Runtime Integration](CAPABILITY_REFERENCE.md#runtime-integration-3) | 3 | Sandboxed Lua execution |
+| [Command Execution](CAPABILITY_REFERENCE.md#command-execution-5) | 5 | Guarded external command execution |
+| [Cryptography](CAPABILITY_REFERENCE.md#cryptography-6) | 6 | X.509, JWT, PEM, AES-GCM |
 | [Fingerprinting](CAPABILITY_REFERENCE.md#fingerprinting-4) | 4 | imphash, JA3, NT/LM hashes |
-| [Network intelligence](CAPABILITY_REFERENCE.md#network-intelligence-11) | 11 | IOC defang/refang, IP/CIDR, domain/eTLD+1, IOC extraction |
-| [Detection](CAPABILITY_REFERENCE.md#detection-5) | 5 | Injection, beaconing, persistence, priv-esc, suspicious files |
-| [Process forensics](CAPABILITY_REFERENCE.md#process-forensics-9) | 9 | Live process inspection, memory scan, modules |
-| [Memory forensics](CAPABILITY_REFERENCE.md#memory-forensics-6) | 6 | Memory-dump analysis, PE/shellcode discovery |
-| [Binary analysis](CAPABILITY_REFERENCE.md#binary-analysis-14) | 14 | PE/ELF/Mach-O/DWARF, imports, GoReSym |
-| [Registry forensics](CAPABILITY_REFERENCE.md#registry-forensics-15) | 15 | Hive/JSON/live registry, Amcache, Shimcache |
-| [Filesystem forensics](CAPABILITY_REFERENCE.md#filesystem-forensics-31) | 31 | NTFS/FAT/exFAT/ext/HFS+/XFS parsers, $MFT |
-| [Disk image forensics](CAPABILITY_REFERENCE.md#disk-image-forensics-17) | 17 | Raw/EWF/VHD(X) images, MBR/GPT tables |
-| [Windows artifacts](CAPABILITY_REFERENCE.md#windows-artifacts-4) | 4 | Prefetch, EVTX, LNK, Jump Lists |
-| [Unix artifacts](CAPABILITY_REFERENCE.md#unix-artifacts-1) | 1 | syslog (RFC 5424 / 3164) |
-| [Browser artifacts](CAPABILITY_REFERENCE.md#browser-artifacts-4) | 4 | Chromium/Firefox history/cookies/downloads, SQLite |
-| [Forensic timeline](CAPABILITY_REFERENCE.md#forensic-timeline-5) | 5 | Timestamp normalize, merge/sort, bodyfile/mactime |
-| [Email forensics](CAPABILITY_REFERENCE.md#email-forensics-5) | 5 | Header/body/attachment parsing, DKIM verification |
-| [Hash-set forensics](CAPABILITY_REFERENCE.md#hash-set-forensics-3) | 3 | NSRL-style known-file filtering |
+| [Network Intelligence](CAPABILITY_REFERENCE.md#network-intelligence-11) | 11 | IOC defang/refang, IP/CIDR, domain/eTLD+1, IOC extraction |
+| [Detection](CAPABILITY_REFERENCE.md#detection-9) | 9 | Injection, beaconing, persistence, priv-esc, suspicious files |
+| [Process Forensics](CAPABILITY_REFERENCE.md#process-forensics-9) | 9 | Live process inspection, memory scan, modules |
+| [Memory Forensics](CAPABILITY_REFERENCE.md#memory-forensics-7) | 7 | Memory-dump analysis, PE/shellcode discovery |
+| [Binary Analysis](CAPABILITY_REFERENCE.md#binary-analysis-14) | 14 | PE/ELF/Mach-O/DWARF, imports, GoReSym |
+| [Reporting](CAPABILITY_REFERENCE.md#reporting-7) | 7 | Build a report as a value, render it as HTML, Markdown or CSV, write it out with its digest |
+| [Chain of Custody](CAPABILITY_REFERENCE.md#chain-of-custody-37) | 37 | Case session, evidence record, drift verification, signed manifest, the handover bundle, the case key and its erasure, the classification labels tagged under it, the case's lifecycle and roles kept in its ledger, the custody of each exhibit, the reviews of the case and what it holds, how long it is kept and what holds it, and what was erased in it |
+| [Classified Records](CAPABILITY_REFERENCE.md#classified-records-13) | 13 | The `.mrec` container: classification ranges, sealing at those boundaries or rounded outward, opening, reading with the withheld spans named, searching what one reader could read, verifying with no key at all, the one recorded way to let read plaintext out, and erasing the key in one copy |
+| [Disclosure](CAPABILITY_REFERENCE.md#disclosure-15) | 15 | Named disclosure postures, the recipient roles that may be given them, the grants issued under them and the redaction versions they carry out, the package a recipient verifies, and who holds which bytes after the fact |
+| [Registry Forensics](CAPABILITY_REFERENCE.md#registry-forensics-15) | 15 | Hive/JSON/live registry, Amcache, Shimcache |
+| [Filesystem Forensics](CAPABILITY_REFERENCE.md#filesystem-forensics-115) | 115 | NTFS/FAT/exFAT/ext/HFS+/XFS parsers, $MFT |
+| [Disk Image Forensics](CAPABILITY_REFERENCE.md#disk-image-forensics-34) | 34 | Raw/EWF/VHD(X) images, MBR/GPT tables |
+| [Windows Artifacts](CAPABILITY_REFERENCE.md#windows-artifacts-5) | 5 | Prefetch, EVTX, LNK, Jump Lists |
+| [Unix Artifacts](CAPABILITY_REFERENCE.md#unix-artifacts-1) | 1 | syslog (RFC 5424 / 3164) |
+| [Browser Artifacts](CAPABILITY_REFERENCE.md#browser-artifacts-5) | 5 | Chromium/Firefox history/cookies/downloads, SQLite |
+| [Forensic Timeline](CAPABILITY_REFERENCE.md#forensic-timeline-5) | 5 | Timestamp normalize, merge/sort, bodyfile/mactime |
+| [Schema Interchange](CAPABILITY_REFERENCE.md#schema-interchange-7) | 7 | One event vocabulary for every artifact, written out as ECS, OCSF or Timesketch/plaso; indicators written out as STIX 2.1 |
+| [Email Forensics](CAPABILITY_REFERENCE.md#email-forensics-5) | 5 | Header/body/attachment parsing, DKIM verification |
+| [Hash-Set Forensics](CAPABILITY_REFERENCE.md#hash-set-forensics-3) | 3 | NSRL-style known-file filtering |
 
 ### Platform support
 
@@ -370,6 +1318,1546 @@ Almost every builtin is pure-Go and cross-platform — the forensic parsers oper
 - `process_modules` — Windows, Linux
 - `reg_open` — cross-platform for hive-file/JSON inputs; the live-registry path (`HKLM\...`) is Windows-only
 - `process_kill` — cross-platform; on Windows only SIGKILL semantics apply
+
+### A virtual disk is not a file
+
+Under the partition table, before anything is parsed, there is a question about
+what the image file *is*. For a raw image the answer is nothing: the file is the
+device. For VHD and VHDX it is three things at once, and a tool that reads the
+file as a byte stream sees none of them.
+
+**Most of the device may not exist.** A dynamic image stores only the blocks
+something wrote; every other range reads back as zeroes that are nowhere in the
+file. Reading the device end to end moves the whole virtual size through memory,
+most of it zeroes the image never held, and carving those zeroes is carving the
+absence of data. `vhdi_extents` maps a window of the address space to the runs
+that back it, so a script reads what is there and skips what is not.
+
+```mutant
+let disk, err = vhdi_open("evidence/vm/snap.avhdx")
+let meta, metaErr = vhdi_metadata(disk["handle"])
+
+let map, mapErr = vhdi_extents(disk["handle"], 0, meta["virtual_size"])
+putln(to_string(map["mapped_bytes"]) + " of " +
+      to_string(map["virtual_size"]) + " bytes are actually stored")
+
+for (run in map["extents"]) {
+  if (run["kind"] != "mapped") { continue; }
+  // file_offset is a place in run["path"], which on a differencing chain is
+  // not necessarily the file the handle was opened from
+  putln(run["path"] + " +" + to_string(run["file_offset"]) +
+        " backs device offset " + to_string(run["virtual_offset"]))
+}
+```
+
+Four kinds, and the last two are the ones worth reading twice:
+
+| `kind` | What it means | `is_write` | `reads_as_zero` |
+| --- | --- | --- | --- |
+| `mapped` | Bytes exist, at `file_offset` in `path` | yes | no |
+| `zero` | Nothing in the chain ever wrote here | no | yes |
+| `zeroed_by_child` | A differencing disk explicitly cleared this range | **yes** | yes |
+| `unresolved` | This resolves to a parent that is not attached | no | no |
+
+`zero` and `zeroed_by_child` read back identically and are opposite facts. The
+second is a *write*: a deletion that clears its blocks appears only that way, so
+a script filtering on `mapped` alone under-reports deletions and does it
+silently. `file_offset` is `-1` for every kind but `mapped`, because there is no
+place in any file — and `0` is a real offset, the first byte of the file.
+
+A mapped range means bytes exist there, not that the bytes are live data. An
+image whose file parameters say blocks are never returned to the free pool keeps
+them mapped after the guest deleted what was in them, and the answer carries
+`allocated_blocks_never_freed` when that is so.
+
+#### The device is often several files
+
+A differencing disk holds only what was written since its parent. The device an
+examiner sees is the chain read together, and the files that make it up are what
+an evidence record has to name. `vhdi_chain` names them, outwards from the disk
+that was opened, with what produced each link — because the links of a chain are
+routinely made by different tools at different times, and one flattened record
+loses the detail that explains the chain.
+
+```mutant
+let chain, chainErr = vhdi_chain(disk["handle"])
+if (!chain["complete"]) {
+  putln("incomplete: " + chain["incomplete_reason"])
+  putln(chain["parent_resolve_error"])
+}
+for (link in chain["links"]) {
+  putln(to_string(link["index"]) + "  " + link["path"] +
+        "  " + link["disk_type"] +
+        "  made by " + link["creator_application"] +
+        "  footer " + link["footer_source"])
+}
+```
+
+This is also why an extent carries a chain index and a path at all.
+`vhdi_map_offset` resolves one virtual byte to one file offset and documents
+that it cannot answer for a differencing disk: a single file offset cannot
+express an address space assembled from several files, and two links can supply
+two different ranges of the device from the same offset in their own files.
+
+#### What a checkpoint changed
+
+Block-level change tracking needs no filesystem knowledge, which is what makes a
+checkpoint chain worth keeping. Chain indices count outwards from the disk that
+was opened — `0` is that disk, `1` its parent — so `1` is what the leaf alone
+wrote:
+
+```mutant
+let delta, deltaErr = vhdi_changed_extents(disk["handle"], 1)
+putln(to_string(delta["changed_bytes"]) + " bytes written since the checkpoint")
+
+// the same question, naming the checkpoint instead of counting to it
+let since, sinceErr = vhdi_changed_since(disk["handle"], "evidence/vm/base.vhdx")
+```
+
+`vhdi_changed_since` compares paths the way the platform's filesystem compares
+them, so a script does not have to get Windows's case-insensitivity right
+itself, and it reports the index it resolved to. Naming the disk that was opened
+yields nothing — nothing can have been written since the leaf — and that empty
+answer carries `named_disk_is_the_leaf`, so it is not read as a finding. A path
+that names no disk in the chain is an error rather than an empty answer, because
+"nothing changed" and "the disk you named is not part of this device" are
+different claims and only one of them is reassuring.
+
+**`deletions_expressible` is the field to read before trusting the absence of
+one.** VHD has no block state meaning zero: its per-block sector bitmap says
+only whether a sector belongs to the child or is to be read from the parent.
+A region the guest cleared on a VHD chain is therefore recorded as the parent's
+and reads back as the parent's old contents — the clearing is not merely
+invisible to change tracking, at the format level it did not happen. Deletion-
+aware change detection needs VHDX, and every answer that crosses a VHD link says
+so rather than leaving the reader to assume the absence means anything.
+
+An unresolved range is neither changed nor unchanged: the disk that would say is
+the one that is missing. It is returned as itself rather than being counted
+either way.
+
+#### Surveying a machine's folder
+
+`Chain` walks upward from one image to its ancestors, which is the wrong
+direction for checkpoints. Checkpoints branch — applying an earlier one and then
+continuing produces two children of the same parent — and from a leaf the
+sibling branch is invisible. `vhdi_discover` reads the headers of every image in
+a directory and builds the whole tree, parsing no block allocation table and
+replaying no log, which is what makes surveying a folder of terabyte images
+cheap.
+
+```mutant
+let tree, treeErr = vhdi_discover("evidence/vm")
+if (tree["branched"]) {
+  putln("this folder holds " + to_string(len(tree["leaf_paths"])) + " devices")
+}
+for (line in tree["lineages"]) {
+  putln(line["root_path"] + " -> " + line["leaf_path"] +
+        "  " + to_string(line["checkpoint_count"]) + " checkpoint(s)" +
+        "  complete=" + to_string(line["complete"]))
+}
+```
+
+Children are joined to parents by recorded identity alone. Matching on virtual
+size would attach any image of the right size and matching on a recorded
+filename would follow a name that may have been reused; both produce a plausible
+tree that is wrong. A child whose parent is not in the directory stays a root
+and raises `parent_not_in_directory`, with `parent_locators` listing where it
+expected to find one. Which branch a virtual machine is actually using is
+recorded in the machine's configuration and not in the disks, so it is reported
+and not guessed.
+
+Files that could not be probed are kept and named rather than dropped — an
+unreadable file in a checkpoint directory may be the link that would have joined
+two halves of the tree — and files that are not images at all are listed
+separately, since a machine folder holds `.vmcx`, `.vmrs`, `.bin` and `.vsv`
+files beside the disks and reporting those as failures would bury the real one.
+
+`vhdi_probe` asks the same header-only question about a single file.
+
+**One boundary is drawn deliberately.** `vhdi_probe` registers the image it
+reads as evidence and `vhdi_discover` registers nothing, and the difference is
+who named the file. A program that passes a path has said that file is evidence.
+A program that passes a directory has asked what is in it. Registering every
+image a directory happens to hold would put files in the manifest the
+examination never opened, and would hash each of them under the case's policy —
+turning the one call in this family that reads nothing but headers into the most
+expensive call in the language. Use `case_evidence`, or open the images you go
+on to read, to bring them under custody.
+
+### When more than one partition table is true
+
+`table_open` answers with one table. Several kinds of media have more than one,
+and the difference between them matters enough that the language makes the
+script say which answer it wants.
+
+```mutant
+let seen, err = table_detect("/evidence/laptop.dd");
+putln(seen["table_type"]);                   // "gpt" — what preference order picks
+putln(to_string(seen["ambiguous"]));         // true  — it was a choice, not a reading
+
+let tables, err = table_open_all("/evidence/laptop.dd");
+for (t in tables) {
+  putln(t["table_type"] + ": " + to_string(t["partition_count"]) + " rows");
+}
+```
+
+**Four openers, because there are four defensible answers.** `table_open`
+resolves by a documented preference order and records every candidate it passed
+over. `table_open_strict` refuses instead, naming each candidate and the one
+preference would have returned. `table_open_as(image, scheme)` forces one of
+`mbr`, `gpt`, `bsd`, `sun` or `mac`, which is how an examiner records having
+decided rather than accepted a default. `table_open_all` returns a handle per
+scheme, and is the one a hybrid disk needs: an MBR that carries both the 0xEE
+protective record and real entries describes partitions that GPT does not, and
+`table_open` — which must answer with one table — leaves them reachable by no
+other route. `table_detect` asks the same question without opening anything, so
+a script that only wants to know what an image is has no handle to release.
+
+**A warning is a code, not a sentence.** Every entry in `warnings` carries
+`code`, `message` and the `lba` it was found at, and `warning_codes` is the set
+of codes without the loop. The codes are `overlap`, `out_of_bounds`,
+`block_size_overridden`, `entry_count_truncated`, `hybrid_mbr`, `crc_skipped`,
+`backup_used`, `backup_missing`, `backup_mismatch` and `nested`. Branch on the
+code. The prose beside it is written for a report and is reworded between
+library releases, so a check that matches the prose stops matching without ever
+saying that it has stopped.
+
+**`gpt_backup` is a tamper indicator, not a health check.** The two GPT copies
+are written together, so `mismatch` — both structurally valid, disagreeing on
+the disk GUID, the usable range or the entry-table checksum — means one was
+rewritten without the other, which no ordinary partitioning operation does.
+`missing` is the secondary being absent or failing its own checks, expected on a
+truncated or carved image and not on a full acquisition. `unknown` means the
+question did not apply: the table is not GPT, or was itself recovered from the
+backup.
+
+**The listing maps the device, not only its volumes.** Every row says what it
+is: `allocated` is a partition, `unallocated` is a gap, `meta` and `structure`
+are the table's own sectors — the MBR, each EBR, both GPT headers and entry
+arrays, a disklabel. A script that hands every row to `fat_open` is handing it
+GPT headers and interior gaps. `occupies_space` marks the rows that tile the
+device exactly once, so summing `length_byte` over them accounts for every byte
+of the image and summing the unallocated ones is summing space that is genuinely
+free. Meta rows without `structure` are containers — an MBR extended entry, a
+Sun whole-disk backup slice — which span the extents they hold and would
+double-count.
+
+**A scheme can live inside a partition of another one.** A BSD disklabel in an
+MBR 0xA5 slice is the case that occurs in practice, and it is the partition
+table the examiner is actually after; the MBR entry is only the container. Every
+parse looks for one, the slice that holds it reports `has_nested` and
+`nested_type`, and `table_nested(handle, index)` returns it:
+
+```mutant
+let sub, err = table_nested(disk["handle"], 0);
+for (p in sub["partitions"]) {
+  putln(to_string(p["start_byte"]));   // absolute within the image
+}
+```
+
+Those offsets are computed by the inner table, which is the only thing that
+knows which convention the label was written with: real installers write
+disklabel addresses both relative to the slice and absolute on the disk, and the
+parse reports through `warnings` when it had to fall back to the second.
+Multiplying `start_lba` by `block_size` is correct under neither. A partition
+that holds no nested scheme is an error rather than an empty listing, since an
+empty listing reads as a container that held nothing — `has_nested` is how to
+ask first.
+
+### Opening a partition where it lies
+
+A disk image holds partitions; a filesystem parser wants a volume. Those two
+facts used to meet by carving: `table_list_partitions` told you a partition
+began at byte 32256, and you wrote a copy of it out before `ntfs_open` could
+read it. On a 2 TB image that is a second 2 TB and the hours to write it.
+
+The six filesystem families take the partition directly instead:
+
+```mutant
+let disk, err = table_open("/evidence/laptop.dd");
+let parts, err = table_list_partitions(disk["handle"]);
+
+let fs, err = ntfs_open("/evidence/laptop.dd", parts[0]);
+putln(to_string(fs["volume_offset"]));   // 32256 — where the volume begins
+putln(to_string(fs["bounded"]));         // true  — reads stop at its end
+```
+
+The second argument is that partition hash, or an explicit byte offset with an
+optional length:
+
+```mutant
+let fs, err = ntfs_open("/evidence/laptop.dd", 32256, 2147483648);
+```
+
+Four things are worth knowing about it.
+
+**Every offset the handle goes on to report is absolute within the image.** The
+partition's start is handed to the parsing library as a base offset, and the
+library adds it to every offset it reports — a file fragment's location, a
+carved record's position, a slack range. So a byte range from
+`table_list_partitions` and a byte range from `ntfs_metadata` are in the same
+coordinate system, and comparing them needs no arithmetic. This is not a
+convenience. The alternative — reading the partition through a window that
+starts at its first byte — produces offsets relative to the partition that look
+exactly like offsets relative to the image, and intersecting the two succeeds
+and is wrong. Four of the six libraries warn about that failure in their own
+documentation, independently, which is a good sign that it is the one worth
+designing against.
+
+**A partition hash is safer than two integers, and not only shorter.** It
+carries `start_byte` and `length_byte` together, so the two cannot be
+transposed, the length cannot be forgotten, and no line of the script performs
+arithmetic on an offset. Passing a third argument alongside a partition hash is
+an error rather than an override: the partition already said how long it is.
+
+**`bounded` is the difference between a volume and a starting point.** An open
+with no length reports `bounded: false`, and means it — reads can run past the
+end of the partition into whatever follows it on the disk and return those bytes
+as this volume's. With a length, they cannot. A report that quotes a file
+recovered from a filesystem should be able to say which of the two it was.
+
+**A partition the image does not contain is refused, by name.** A zero-length
+entry is a malformed partition table, and opening it unbounded would read the
+rest of the disk and attribute it to that partition; a partition that runs past
+the end of the file is what a truncated acquisition looks like from the inside.
+Both refuse and say both numbers, rather than opening something that fails later
+somewhere less informative.
+
+**The case manifest records which volume, not only which file.** Two
+partitions of one disk are two volumes and one path, so every open record
+carries `volume_offset` and `volume_length` alongside the builtin and the
+handle. Both are zero for an opener that reads a whole file, which is every
+opener outside these six — the fields are always there, so a report template
+that prints them never meets a record that lacks them.
+
+Opening with one argument is unchanged, and is still what a carved partition
+image wants: offset zero, no bound, the file is the volume.
+
+### Reading a file that does not fit in memory
+
+`ntfs_read_file_bytes` and its five siblings return the whole file as one
+value, so the size of the file is the size of the allocation. That is the right
+shape for a registry hive or a log, and the wrong shape for a disk image inside
+a disk image. Each of the six families therefore also carries three builtins
+that never hold the file at all.
+
+```mutant
+let fs, fsErr = ntfs_open(disk, parts[2])
+
+// Written to disk a megabyte at a time, and digested on the way past.
+let out, outErr = ntfs_extract_file(fs["handle"], "/Users/j/vault.vhdx", "vault.vhdx")
+putln("wrote " + to_string(out["bytes_written"]) + " bytes, sha256 " + out["digest"])
+
+// Or digested where it lies, with nothing written anywhere.
+let known, knownErr = ntfs_hash_file(fs["handle"], "/Windows/System32/cmd.exe", "sha256")
+
+// Or just the head of it, to find out what it is.
+let magic, magicErr = ntfs_read_file_at(fs["handle"], "/Users/j/vault.vhdx", 0, 512)
+```
+
+**The peak allocation has nothing to do with the size of the file.** All three
+read in fixed chunks through the random-access API every one of the six
+libraries exposes. `*_extract_file` has no size limit at all; `*_read_file_at`
+is capped at 32 MiB because that is what the returned value has to fit into, and
+the refusal names `*_extract_file` as the way to get the rest.
+
+**`size` and `located_bytes` are two different numbers, and all three builtins
+report both.** `size` is what the volume records — the directory entry's field,
+or the inode's. `located_bytes` is how many of those bytes the library could
+actually find. They come apart on a FAT or exFAT entry whose cluster chain was
+broken when the file was deleted: the entry still records the original length,
+and only a prefix of it leads anywhere. The clusters after that prefix still
+hold bytes; those bytes belong to whatever was written there since.
+
+**So a read stops at `located_bytes`, and `truncated` says that it did.** An
+extraction of a broken chain writes the recoverable prefix and reports
+`truncated: true` — writing nothing would throw away evidence, and writing the
+whole recorded length would return one file's content under another file's name.
+A window that begins past what was located is refused, naming both numbers,
+because a short buffer or a run of zeroes there is the same call quietly
+succeeding.
+
+**The digest covers what was read, never what was claimed.** `*_extract_file`
+computes the SHA-256 of the bytes it wrote during the same pass, so nothing has
+to read the extracted copy back to obtain one. For a truncated chain that digest
+is the digest of the prefix, which will not match a hash set entry for the
+intact file. That is the honest answer; `truncated` is what makes it legible
+rather than puzzling.
+
+**An extraction never writes over an existing file.** Two files in one image can
+carry the same name, and evidence written over by accident does not come back,
+so the destination must not exist. A copy that fails part way has its partial
+output removed and says so, because a prefix left under the name of the whole
+file reads as the whole file to everything downstream.
+
+`*_hash_file` takes `md5`, `sha1` or `sha256` — the same set `case_open`'s
+custody policy accepts, so a digest in a manifest and a digest from a script are
+never a different shape. An empty string means `sha256`.
+
+### What a filesystem still remembers
+
+Deleting a file destroys different things on different filesystems, and the
+`*_deleted` family reports what survived rather than a verdict on whether the
+file is recoverable.
+
+```mutant
+let fs, err = ntfs_open("/evidence/laptop.dd", parts[2]);
+let gone, err = ntfs_deleted(fs["handle"]);
+
+putln(to_string(gone["entry_count"]) + " records, " +
+      to_string(gone["unreadable"]) + " unreadable");
+
+for (e in gone["entries"]) {
+  if (e["content_state"] == "preserved") {
+    putln(e["path"] + ": " + to_string(e["located_bytes"]) +
+          " of " + to_string(e["size"]) + " bytes located");
+  }
+}
+```
+
+**Two questions, never one.** Whether something was deleted here and whether
+its bytes can be read are independent, and one `recoverable` boolean would
+answer neither. Every entry carries `content_state`, the provenance of its byte
+map, and that is what a script branches on before it reads anything:
+
+| `content_state` | what it means |
+| --- | --- |
+| `resident` | the bytes are inside the metadata record itself |
+| `preserved` | the filesystem's own map survived the unlink |
+| `declared_contiguous` | the volume declared the run contiguous before deletion |
+| `first_cluster_only` | only the starting cluster is known; the chain was freed |
+| `none` | no map survives -- the file is described and cannot be located |
+| `unsupported` | this library offers no content path for this entry |
+
+`preserved` is the NTFS case and it is unusual: NTFS clears the in-use bit on
+an MFT record and nothing else, so the run list is the one the filesystem
+wrote. `none` is the ext4 case, which zeroes the extent tree on unlink.
+`declared_contiguous` happens only on exFAT, where a stream extension carrying
+NoFatChain is the volume stating the layout while the file was live -- freeing
+the chain took nothing away, so it is a fact and not a hypothesis.
+`first_cluster_only` is what FAT and exFAT report otherwise, and `located_bytes`
+beside `size` is how much of the claim it covers.
+
+**The two bits, again.** `allocation_checked` and `reallocated` are separate for
+the reason `checked` and `passed` are separate in `*_verify`: a cross-reference
+that never ran says nothing about the file. NTFS forces the distinction -- it
+reports `allocation_checked` false on every entry, because libntfs exposes no
+cluster-allocation query and there is no answer to give. `reallocated` false
+beside it means nobody looked.
+
+**A name can be partly invented.** `name_source` is `intact`, `reconstructed`,
+`synthetic` or `none`. FAT overwrites the first character of a short name on
+deletion and brute-forces it back out of the name checksum where it can,
+substituting `_` where it cannot; exFAT gives a carved entry with no surviving
+name a placeholder derived from its cluster number. Writing either into a
+report as a filename is fabricating evidence, which is why the grade travels
+with the name.
+
+**An empty warning list is not silence.** `warnings_available` says whether the
+library has a warnings channel at all. libext accumulates warnings, libhfs
+anomalies, libxfs per-listing anomalies -- libntfs and libfat have none, so a
+record they skipped leaves no trace anywhere and their scans report
+`warnings_available` false. `complete` and `incomplete_reason` carry the gaps
+that could be detected; `examined` and `unreadable` are the denominators,
+because a scan that looked at two hundred slots and one that looked at two
+million are not the same evidence for the same empty answer.
+
+**`confidence` is the library's own word, not a common scale.** ext grades
+`none`/`partial`/`likely`, HFS+ and XFS grade `low`/`medium`/`high`, and NTFS
+and FAT grade nothing because they compute nothing to grade. Quoting the parser
+is deliberate -- a single invented scale would read as a measurement. The fields
+that do mean the same thing on every filesystem are `content_state`,
+`allocation_checked`, `reallocated`, `name_source` and `located_bytes`.
+
+**XFS asks two questions and they are different builtins.** `xfs_deleted` takes
+a directory path, because libxfs recovers deleted names out of one directory's
+blocks and has no volume-wide sweep; scanning the root instead would be a claim
+about every directory made from evidence about one. Nothing it finds has
+content: XFS clears `di_mode` when it frees an inode and refuses to open an
+unallocated one. `xfs_unlinked` is the other question, and it is the only
+evidence in any of the six filesystems that the filesystem itself asserts --
+an inode reaches an AGI unlinked bucket because it was unlinked while a process
+still held it open, so it is still allocated, still readable, and its extents
+are live rather than stale. It carries no name, because the directory entry is
+already gone.
+
+### Writing the bytes back out
+
+`*_deleted` enumerates; `*_recover_file` writes. They are separate calls rather
+than one builtin with a destination argument, because `content_state` is what
+decides whether the output is worth anything and a script has to have seen it
+before it produces a file somebody will hash and attach.
+
+```mutant
+let fs, err = fat_open("/evidence/card.dd", parts[0]);
+let gone, err = fat_deleted(fs["handle"]);
+
+for (e in gone["entries"]) {
+  if (e["content_state"] == "none") { continue; }
+
+  let out, err = fat_recover_file(fs["handle"], e["index"],
+                                  "/out/" + e["name"]);
+  if (err) { putln(e["name"] + ": " + err.message); continue; }
+
+  putln(e["name"] + ": " + to_string(out["bytes_written"]) + " of " +
+        to_string(out["size"]) + " bytes, sha256 " + out["digest"]);
+  for (c in out["caveats"]) { putln("  -- " + c); }
+}
+```
+
+**An entry is named by its index, not by an identifier.** Each scanned entry now
+carries `index`, its position in that scan, and that is the only thing the
+recovery builtins take. No identifier these six filesystems keep survives
+deletion uniquely: a CNID repeats across records HFS+ carves out of node slack,
+and FAT and exFAT keep none at all and report their first cluster, which two
+deleted files share the moment it is reused. The index is exactly as stable as
+the scan it came from, which is the honest scope of the claim -- and the result
+echoes `name`, `path` and `record_id` so a script can assert it recovered what
+it meant to.
+
+Recovering before scanning is an error rather than an implicit scan. The
+enumeration is where an entry's provenance is established, and an implicit one
+would leave no record of it in the manifest.
+
+**Three kinds of zero, counted apart.** `bytes_written` splits into
+`located_bytes`, read from the image at a run's offset; `sparse_bytes`, a hole
+the filesystem recorded, where the zeros are the file's own content; and
+`unlocated_bytes`, ranges no locatable run covers. The last are written -- the
+file has to be that long for the offsets after them to land -- and they are
+never evidence that the file held zeros there. A single "could not read" number
+would let a report present a library's failure to place a run as content.
+
+**The contiguity hypothesis has its own builtin.**
+`fat_recover_file_assuming_contiguous` and
+`xfat_recover_file_assuming_contiguous` ask the library to synthesise
+`ceil(size / cluster)` clusters following the first, which is what recovers a
+FAT file whose chain was freed. It is a separate builtin and not a flag so that
+a caller has to say the word at the call site. What comes back in `assumed` is
+the library's own answer, not the argument that was passed: an entry whose
+chain turned out to be walkable, or an exFAT entry that recorded NoFatChain,
+needed no hypothesis and reports `assumed` false. When `assumed` is true,
+nothing in the filesystem connects those bytes to that file beyond their
+position, and `content_state` says `assumed_contiguous` rather than borrowing
+one of the six words a scan uses.
+
+**`caveats` is part of the result, not commentary on it.** Every entry in it is
+derivable from the other fields, and that is the point -- the prose an examiner
+would have to write by hand is the prose that gets left out. It names an
+assumed layout, blocks a live file now owns, an allocation nobody checked, the
+zeros that are not content, a directory recovered as though it were a file, a
+name that was reconstructed or invented, and a write shorter than the size the
+record claimed. A report quoting `digest` without `caveats` is quoting a number
+out of its scope.
+
+`size_matched` rather than `complete`: one builtin away, on the scan the
+entry came from, `complete` says the enumeration was not cut short. A
+recovery made entirely of assumed clusters can write exactly as many bytes
+as the record claimed, and `complete` beside it would read as a verdict on
+the recovery instead of an observation about two numbers.
+
+**What each filesystem can actually give back.** `ntfs_recover_file` reads the
+map NTFS itself wrote; a resident value comes from the parsed MFT record and is
+never re-read from the image, because the record carries update-sequence fixups
+and a resident value crossing a sector boundary read off the disk is quietly
+two bytes wrong. A compressed or EFS-encrypted stream is refused rather than
+written, since its runs describe compression units or ciphertext.
+`ext_recover_file` works only where the extent tree survived, which on ext4
+means files unlinked while still open. `hfs_recover_file` uses the eight
+extents held in the catalog record and nothing that overflowed into the extents
+B-tree. `xfs_recover_file` recovers from an unlinked chain and nothing else --
+an entry from `xfs_deleted` reports `unsupported` and is refused.
+
+A destination that already exists is never written over: two deleted entries in
+one image can carry the same name, and evidence overwritten by accident is not
+recoverable. A write that fails part way has its partial output removed, because
+a prefix left under the name of the whole file reads as the whole file.
+
+### What the filesystem wrote down before it did it
+
+Everything above reads a filesystem as a statement about the present. A journal
+is the one structure that is a statement about the past, and three of the six
+formats keep one.
+
+```mutant
+let fs, err = ntfs_open("/evidence/disk.raw", parts[0]);
+let usn, err = ntfs_usn_journal(fs["handle"]);
+
+if (!usn["present"]) {
+  putln("no change journal on this volume");
+}
+
+for (r in usn["entries"]) {
+  if (!r["has_timestamp"]) { continue; }
+  putln(r["timestamp"] + "  " + r["name"] + "  " + to_string(r["reasons"]));
+}
+```
+
+| builtin | what it reads |
+| --- | --- |
+| `ntfs_usn_journal` | the USN change journal: timestamps, filenames, reason flags |
+| `ntfs_log_records` | `$LogFile`'s operation stream, by LSN |
+| `ntfs_log_transactions` | the same records grouped into transactions |
+| `ext_journal` | JBD2's transactions, its superblock and its feature bits |
+| `ext_journal_block_copies` | every journalled copy of one filesystem block |
+| `ext_journal_inode_versions` | prior on-disk states of one inode |
+| `ext_recover_journalled_file` | the bytes a journalled version points at |
+| `xfs_log_records` | XLOG's records, by log sequence number |
+| `xfs_log_transactions` | the same records grouped into transactions |
+
+FAT, exFAT and HFS+ have none here. libhfs exposes no journal API at all, so
+HFS+'s journal is not read even though the format has one -- which is a gap in
+the library, not a statement about the format.
+
+**Circularity is the fact everything here turns on.** All three journals are
+fixed regions written round and round, so the order records sit in is the order
+they happened in only until the writer laps itself. Every scan therefore reports
+`ordering`:
+
+- `lsn` -- sorted by log sequence number, which is the order of events
+- `stream` -- the order of an append-only stream, which is also the order of
+  events, because nothing was overwritten in place
+- `physical` -- the order records sit in the region, which is **not** the order
+  of events once the region has been written round
+
+and beside it the two bits. `wrap_checked` says whether the scan could look for
+the seam; `wrapped` says whether it found one. They are separate for the same
+reason `allocation_checked` and `reallocated` are separate: a check that never
+ran is not a negative result.
+
+**Where `wrapped` is true and `ordering` is `physical`, the entries array is not
+a timeline.** Mutant does not reorder it. An order the library declined to
+establish is not one this package gets to assert on its behalf; what it does
+instead is say the seam is there and leave the claim unmade.
+
+**libext is where that stops being academic.** Its transaction walk reads the
+journal linearly from the first block to the last, parses the superblock's
+`Start` and `Sequence` and then uses neither, so a wrapped journal interleaves
+stale pre-wrap transactions among new ones. The same wrap creates a second
+trap: a transaction whose commit block sits at a *lower* physical block than its
+descriptor has its commit processed first, matched against nothing, and
+discarded -- so a transaction that did commit is reported as one that never
+did. `ext_journal` raises `commit_state_unreliable` when it sees the seam,
+because `committed: false` is otherwise read as evidence that an operation
+failed to complete.
+
+**`timestamps_available` is per journal, not per format.** USN records carry a
+wall-clock time; JBD2 carries one on the commit block, so a transaction that
+never committed has none rather than a zero one; `$LogFile` carries none; XLOG
+carries none at all. An XFS log can say what happened and in what order, and can
+never say when -- a sequence assembled from it is an ordering, and calling it a
+timeline is the mistake this field exists to prevent.
+
+**What none of the three can report is what it skipped.** libntfs has no
+warnings channel anywhere, and its log page walker drops an entire page -- and
+the partial record carried into it -- when the update-sequence fixups fail. A
+fixup failure is a torn write, which is the most forensically interesting thing
+a log page can hold, and it is discarded with no counter and no error: a
+`$LogFile` whose every page failed and a pristine one both produce zero records
+and no error. libext reports unreadable journal blocks through a channel capped
+at 256 for the life of the handle. libxfs raises a coded anomaly at every
+failure point and is the only one of the three that does.
+`warnings_available` says which of those three a reader is in, and an empty
+warnings list means nothing at all when it is false.
+
+**`ntfs_usn_journal` is the richest timeline artifact on a Windows volume**, and
+its blind spot is worth naming. `$J` is a sparse stream appended to and trimmed
+from the front, so its surviving records are a contiguous window ending at the
+most recent change and `lowest_position`/`highest_position` bound it in USN --
+itself a byte offset into the stream. What it cannot see is a journal deleted
+and recreated, a classic anti-forensic action: the `$Max` stream holding the
+journal's identifier, maximum size and lowest valid USN is one libntfs never
+reads, so a wiped journal looks like a volume with a short history.
+
+Version 4 USN records track extents rather than names and carry neither a
+timestamp nor a filename. They report `has_timestamp` and `has_name` false
+rather than a year-1 date and an empty string, because a zero time rendered into
+a timeline sorts before every real event in it.
+
+**`ntfs_log_transactions` reports `committed` and `forgotten` as two bits**, and
+neither is the negation of the other. NTFS ends almost every transaction with
+`ForgetTransaction` rather than `CommitTransaction`, so a log holding tens of
+thousands of records may contain no commit record at all: `committed: false`
+across a whole volume is the normal reading rather than a finding, and
+`end_state` is the field a report should quote. `start_present` reports whether
+a transaction's earliest surviving record names no previous record of its own --
+where it is false, the beginning was overwritten by the wrap and `first_lsn` is
+merely the oldest surviving part, which the grouping otherwise presents as the
+beginning.
+
+### Getting back what ext4 zeroed
+
+`ext_journal_inode_versions` is the one path in the language that can locate an
+ext4 file the filesystem itself can no longer locate.
+
+Unlink zeroes the extent tree in the live inode and leaves everything else,
+which is why the usual deleted ext4 file comes back from `ext_deleted` fully
+described and entirely unfindable, with `content_state` `none`. A journalled
+copy of the same inode-table block from before the unlink still carries the
+tree.
+
+```mutant
+let fs, err = ext_open("/evidence/disk.raw", parts[1]);
+let gone, err = ext_deleted(fs["handle"]);
+
+for (e in gone["entries"]) {
+  if (e["content_state"] != "none") { continue; }
+
+  let past, err = ext_journal_inode_versions(fs["handle"], e["record_id"]);
+  if (err) { continue; }
+
+  for (v in past["entries"]) {
+    if (v["content_state"] != "preserved") { continue; }
+
+    let out, err = ext_recover_journalled_file(fs["handle"], e["record_id"],
+                                               v["version"], "/out/" + e["name"]);
+    if (err) { putln(err.message); continue; }
+    putln(e["name"] + ": " + to_string(out["bytes_written"]) + " bytes from " +
+          "journal version " + to_string(v["version"]));
+    break;
+  }
+}
+```
+
+Each version reports `content_state` in the same vocabulary `*_deleted` uses and
+`runs` as image-absolute byte ranges, so a version reporting `preserved` can be
+read with `raw_read_at_bytes` or written out with `ext_recover_journalled_file`,
+which returns the same result shape the `*_recover_file` family does -- the same
+three-way split of `bytes_written`, the same `caveats`, the same digest.
+
+**`version` is an index, not a date.** libext orders the versions newest first,
+and that holds only while the journal has not been written round, which is
+exactly why `ext_journal_inode_versions` pays for a second journal walk to
+establish `wrapped`. Where the seam is present, version 0 is the most recent
+*surviving* copy and not necessarily the state just before the deletion, and the
+recovery result echoes the version index so that a report cannot quietly become
+a claim about when.
+
+`deleted_at_raw` is carried beside `deleted_at` because ext4 reuses the
+deletion-time field to hold the next inode number while an inode sits on the
+legacy orphan list. Inode 11, read as a date, is a timestamp eleven seconds
+after the epoch.
+
+Two limits are worth stating before anything is quoted from a journalled copy.
+Revoke records are precisely the statement that a journalled copy must not be
+replayed, and libext identifies them without parsing them, so a copy cannot be
+shown *not* to have been revoked. And the filesystem reallocated those blocks
+freely after the unlink -- nothing here checks whether they still hold the
+file's content, which is why the recovery carries that caveat whether or not
+anyone reads it.
+
+### The bytes a file owns and never wrote
+
+A file rarely fills its own allocation. The filesystem hands out whole clusters
+or blocks, and what the file does not use is still there, still holding what the
+last occupant left. Two different things get called slack in this field and
+Mutant refuses to merge them, because they are found in different places and
+mean different things about what someone did:
+
+| class | where it is | what it means |
+| --- | --- | --- |
+| `file_slack` | past the recorded size, inside the allocation | the tail of the last unit; the classic slack |
+| `unwritten` | inside the recorded size, allocated, never written | space reserved and skipped; reads back as zeros |
+
+```mutant
+let img, err = raw_open("/evidence/disk.raw");
+let fs, err = ntfs_open("/evidence/disk.raw", parts[0]);
+let s, err = ntfs_slack(fs["handle"], "/Users/mal/report.docx");
+
+if (!s["file_slack_checked"]) {
+  putln("slack not established: " + s["incomplete_reason"]);
+}
+
+// Offsets are into the image, not into the file, so the bytes come back
+// through the image handle rather than through the filesystem.
+for (r in s["ranges"]) {
+  if (r["offset"] < 0) { continue; }
+  let bytes, err = raw_read_at_bytes(img["handle"], r["offset"], r["length"]);
+  putln(r["class"] + " @ " + to_string(r["offset"]) + "  " + hex_encode(bytes));
+}
+```
+
+| builtin | what it reports |
+| --- | --- |
+| `ntfs_slack` | the cluster tail, and the `InitializedSize` gap |
+| `fat_slack` | the cluster tail |
+| `xfat_slack` | the cluster tail, and the `ValidDataLength` gap |
+| `ext_slack` | the blocks past the end of the file, and preallocated extents |
+| `hfs_slack` | slack on every extent of the data fork, not only the last |
+| `xfs_slack` | the block tail, and unwritten extents |
+| `ext_dir_slack` | directory records surviving in a directory's own slack |
+| `hfs_unallocated` | the runs of a volume that belong to no live file |
+
+Every range carries its `class`. A valid-data-length gap quoted in a report as
+"slack" is a false statement about where the bytes came from, and `class` is
+what stops a script making it.
+
+**Two levels of "we did not look", and they answer different questions.**
+`classes` and `classes_unavailable` are about the library: FAT records no
+valid-data length at all, so `fat_slack` reports `unwritten` as unavailable on
+every file, for ever. `file_slack_checked` and `unwritten_checked` are about
+*this* file, and where one is false its byte count is `-1` rather than `0`,
+because zero is an answer and this is not one.
+
+That second pair exists because of what FAT does. `SlackRange` returns the same
+empty result and `false` from five different situations -- a directory, an empty
+file, a chain that could not be walked, a file ending exactly on a cluster
+boundary, and a tail falling past the end of the volume -- and only the fourth
+means the file has no slack. So Mutant walks the chain itself and says which of
+the five it is, naming a reallocated first cluster, a broken chain or a loop in
+the warnings.
+
+**What these cannot reach.** They address a live file by its path, and a deleted
+entry cannot be opened by one -- the listers return its name and the openers
+refuse it. The slack of a deleted file is the most valuable slack there is, and
+getting at it needs the scan index the `*_deleted` family hands out, which this
+family does not take. Four of the six libraries could answer for a deleted entry
+if it did: NTFS keeps the whole run list and both sizes through an unlink, exFAT
+keeps the layout of an entry it had declared contiguous, libhfs carries fork
+extents on a carved catalog record, and an XFS inode on an unlinked chain is
+still allocated and still readable. FAT and ext could not -- the chain is freed
+and the extent tree zeroed.
+
+Directories divide the two FAT libraries. libxfat reports directory slack and
+calls its sibling's refusal a deliberate divergence, because directory cluster
+slack is where deleted directory records survive. `fat_slack` therefore reports
+a directory as unchecked rather than as empty.
+
+**Two of the six libraries have no slack API at all and are computed here.**
+NTFS slack comes from `AllocatedSize`, `RealSize` and `InitializedSize` on the
+non-resident `$DATA` attribute, located through its run list -- including the
+whole clusters past the end of the stream that `Fragments` drops and a file
+truncated in place still owns. It is refused rather than guessed on a compressed
+stream, whose runs map compression units rather than stream bytes, and on a
+sparse one, whose allocated size is *smaller* than its recorded size so their
+difference is not a tail. ext slack is the difference between `Extents`, which
+keeps the blocks past the end of the file, and `DataRuns`, which trims to the
+recorded size.
+
+Offsets are image-absolute and carry the base offset of the partition the volume
+was opened at, so a slack range from a FAT volume and one from an ext volume
+elsewhere in the same image are directly comparable. An offset of `-1`, never
+`0`, means the range has no location -- and every counted byte still gets a row,
+so a total never floats free of the ranges behind it.
+
+#### Two things that are not file slack
+
+`ext_dir_slack` reads a different artifact entirely. Unlinking a file does not
+erase its directory record: the preceding record's `rec_len` is extended to
+swallow it, leaving the old record intact in the gap. On ext4 that is frequently
+the only surviving evidence a name existed, because unlink also zeroes the
+inode's extent tree. Each record is reported at two positions -- `dir_offset`
+inside the directory's own data stream, which is all libext gives, and `offset`
+on the image, which Mutant maps through the directory's data runs because
+nothing in libext does and a finding nobody can re-read is not one.
+
+Every name there is a candidate: the record is real, but the inode it names may
+since have been reused. Records that duplicate a live entry are kept and flagged
+through `shadows_live` rather than dropped -- `ext_deleted` filters them out and
+this deliberately does not, because a directory rewrite leaving copies behind is
+itself worth seeing. Two limits libext does not report: a record whose inode
+field was *cleared*, which is the classic ext2 and ext3 unlink marker, is never
+recovered, and a block with an implausible record length is abandoned from that
+point on in silence.
+
+`hfs_unallocated` answers a volume-level question rather than a file-level one,
+and it is the only free-space traversal available anywhere in these six
+libraries -- the others offer a per-cluster or per-block query, a raw bitmap, or
+a count the volume merely claims. It reports `free_blocks`, counted bit by bit,
+beside `free_blocks_claimed`, which is what the volume header records, because
+they are different kinds of statement: `claim_matches` false means the volume
+was not unmounted cleanly or its metadata is inconsistent, and that is worth
+knowing before anything carved out of that space is relied on. A free block is
+not a statement that anything was ever written there. Blocks still claimed by a
+deleted file are not free and do not appear -- `hfs_deleted` is what finds
+those.
+
+### The content a path does not name
+
+A file's bytes are not all of a file. Every format here lets one carry content
+and metadata that its path does not address and that a directory listing does
+not show, reached instead by a *pair* -- the path **and** a name. NTFS calls the
+content an alternate data stream; HFS+ calls it a resource fork; ext, XFS and
+HFS+ all carry labelled values called extended attributes; NTFS carries a
+security descriptor and a reparse point besides. A tool that walks a volume by
+path alone sees none of it, which is exactly why things get put there.
+
+Two kinds of thing, and they are not merged:
+
+| | What it is | Where it is |
+| --- | --- | --- |
+| **A named body of bytes** | A second stream of content, with a length and a place on the image. It can be read out and hashed like any file. | `ntfs_streams`, `ntfs_read_stream`, `ntfs_extract_stream`, `hfs_resource_fork` |
+| **A label** | A small value attached to a file that asserts something *about* it. It holds no file content. | `ext_xattrs`, `xfs_xattrs`, `hfs_xattrs`, `ntfs_security`, `ntfs_security_descriptors`, `ntfs_reparse` |
+
+The label is frequently the more useful of the two. A `Zone.Identifier` stream
+on a downloaded executable records the URL it came from and the security zone
+Windows assigned it; `com.apple.quarantine` records the same thing on macOS. No
+amount of reading the executable itself produces either.
+
+```mutant
+let fs, err = ntfs_open("evidence/c.img")
+
+// what the path addresses, and what it does not
+let streams, streamsErr = ntfs_streams(fs["handle"], "/Users/j/Downloads/setup.exe")
+putln(to_string(streams["alternate_count"]) + " alternate stream(s)")
+
+for (s in streams["streams"]) {
+  if (!s["is_alternate"]) { continue; }
+  putln("  " + s["name"] + "  " + to_string(s["size"]) + " bytes")
+
+  // a label is small enough to read in place; a payload is not
+  if (s["size"] < 4096) {
+    let raw, readErr = ntfs_read_stream(fs["handle"],
+      "/Users/j/Downloads/setup.exe", s["name"], 0, s["size"])
+    putln("    " + bytes_to_string(raw))
+  } else {
+    let out, extractErr = ntfs_extract_stream(fs["handle"],
+      "/Users/j/Downloads/setup.exe", s["name"], "case/ads-" + s["name"] + ".bin")
+    putln("    extracted " + to_string(out["bytes_written"]) + " bytes, sha256 " + out["digest"])
+  }
+}
+```
+
+An empty stream name selects the unnamed stream, which makes `ntfs_read_stream`
+a superset of `ntfs_read_file_at`. Names are matched case-insensitively, as NTFS
+matches them. A *directory* has no unnamed stream but can still carry named
+ones, and `ntfs_streams` warns when it finds one: a directory has no content of
+its own, so a stream on one was put there deliberately.
+
+**An access control list is not an access decision.** This is the one place in
+the family where rendering the obvious thing inverts the answer. A security
+descriptor carrying **no DACL at all** grants *everyone* full access. A
+descriptor whose DACL **is present and holds no entries** denies *everyone*.
+Rendered as an empty array those two are the same value and mean opposite
+things, so `ntfs_security` reports `dacl_present` as a field of its own,
+separate from `dacl_ace_count` and from the array, and warns on both cases by
+name.
+
+```mutant
+let sd, sdErr = ntfs_security(fs["handle"], "/Windows/System32/config/SAM")
+if (!sd["dacl_present"]) {
+  putln("no DACL: everyone has full access")
+} else if (sd["dacl_ace_count"] == 0) {
+  putln("empty DACL: nobody has any access")
+}
+putln("owner " + sd["owner_sid"] + " (" + sd["owner_name"] + ")")
+```
+
+No field answers whether a particular account *could* open the file. That needs
+group memberships, privilege assignments and an inheritance walk which a disk
+image does not contain, and a builtin that appeared to answer it would be
+answering something else. `source` says where the descriptor came from, because
+one stored on the entry belongs to that file alone while one resolved through
+the entry's security ID is shared with every other file carrying that ID --
+which matters when the finding is about a single file.
+`ntfs_security_descriptors` reads the volume's whole `$Secure:$SDS` in one pass,
+which is how you ask *which* descriptors on this image grant what, rather than
+asking file by file.
+
+#### Where each format keeps its attributes, and what that costs
+
+`ext_xattrs`, `xfs_xattrs` and `hfs_xattrs` share one envelope, and each
+attribute says which storage it came from, because the storage is evidence:
+an inline value travels with the metadata record, a block or fork value lives in
+allocation blocks and can outlive the record pointing at it.
+
+Reading only one storage is the trap on ext, and libext's own documentation
+names it. `GetXAttrs` follows the inode's external attribute block and nothing
+else, returning an empty list with no error for an inode that has no such block
+-- while `security.selinux` and `system.posix_acl_access` are small enough on a
+typical modern system never to need one. A reader that follows only the block
+reports a file carrying SELinux labels and POSIX ACLs as having no attributes at
+all. `ext_xattrs` consults both and flags a name that appears in each, because
+which one the kernel would return is not recorded on disk.
+
+On XFS, libxfs performs no deduplication and says so: two records carrying the
+same fully-qualified name both come back, which is an inconsistency in the
+attribute fork rather than a rendering artifact, so it is counted and warned on.
+XFS is also the one format here whose attribute values carry no location --
+`offset` is `-1` throughout, because libxfs exposes the attribute fork's extents
+nowhere a per-value offset can be derived from.
+
+On HFS+, `com.apple.decmpfs` and `com.apple.ResourceFork` come back like any
+other attribute and are flagged rather than filtered. That flag is the answer to
+a question the previous section raises: `hfs_slack` reports a decmpfs-compressed
+file's data fork as empty, and `com.apple.decmpfs` is *why*. Where the payload
+actually went is `hfs_resource_fork`'s answer -- either that fork, or, when it
+is small enough, inline in the attribute itself. The two cases are kept apart:
+`holds_compressed_payload` is true only when the file is compressed **and** the
+fork is not empty. The bytes are never decompressed on the way out, which is
+libhfs's rule and the right one, because the compressed payload as stored is the
+artifact.
+
+A value is rendered as hex, capped, with its true length always reported, and
+offered as text beside the hex where it is text -- one trailing NUL is trimmed
+first, because the most common extended attribute on Linux stores a C string and
+refusing to call that text would make the field useless where it is most wanted.
+A value past the cap reports its length and, where the format supplies one, its
+position, so the bytes stay reachable through `raw_read_at_bytes`. `supported`
+is about the volume rather than the file: a filesystem without the attribute
+feature, or a classic HFS volume with no attributes B-tree, can never carry one,
+and that is a different claim from a file that carries none.
+
+#### Two things a reparse point is not
+
+`ntfs_reparse` decodes a target for the three tags that name one -- symbolic
+links, mount points, and WSL symlinks, each with a different layout -- and hands
+back the tag-specific bytes as hex for every other tag, which covers
+deduplication, cloud placeholders, WOF-compressed files and whatever ships next.
+
+It is **not** a file with no reparse point. `is_reparse_point` distinguishes an
+ordinary file from one whose tag names no target this library decodes, and those
+are different findings.
+
+It is **not** followed. A directory carrying a reparse point lists its own
+index, usually empty, rather than the target's, and whether the target exists is
+not checked -- on an image of one volume it frequently cannot be.
+
+### What a filesystem can record, and what it did
+
+Every answer about a file has the same hole under it. A field that comes back
+empty means one of two things and the value cannot tell them apart: the volume
+recorded nothing there, or the format has nowhere to record it. Merge six
+filesystems into one table without that distinction and every FAT file appears
+to have lost permissions it never had, and every ext2 file a birth time that
+never existed.
+
+`*_capabilities` closes it. Each of the six libraries ships a declaration of
+what its format keeps, and this is that declaration, read rather than guessed.
+
+```mutant
+let disk, err = ext_open("evidence/root.img")
+let caps, capsErr = ext_capabilities(disk["handle"])
+
+if (!contains(caps["supported"], "creation_times")) {
+  putln("this volume's inodes are too small to hold a birth time")
+}
+```
+
+Three lists, not two. `supported` and `unsupported` are the questions the
+library answered; **`unanswered` is the questions it did not**, and a name there
+appears in neither of the others. That is not pedantry. `hfs_capabilities`
+declares nine capabilities where `ntfs_capabilities` declares twenty-two, and of
+the eighteen questions asked of every filesystem here it answers eight — yet
+HFS has recorded a creation date since 1985. Rendering libhfs's silence as
+`creation_times: false` would put the opposite of the truth in a document an
+examiner would quote, so nothing here fills a gap from its own knowledge of the
+format.
+
+| Filesystem | Declared | Of the 18 shared questions |
+| --- | --- | --- |
+| `ntfs_capabilities` | 22 | 18 |
+| `fat_capabilities` | 24 | 18 |
+| `xfat_capabilities` | 22 | 18 |
+| `ext_capabilities` | 23 | 17 |
+| `xfs_capabilities` | 25 | 15 |
+| `hfs_capabilities` | 9 | 8 |
+
+The other half of each answer is where it came from. Most are constants of the
+format, but not all, and `volume_specific` is the list that must not be cached:
+ext2, ext3 and ext4 are one on-disk format governed by feature flags, so eleven
+of ext's twenty-three answers are read from the superblock in hand and two ext
+volumes will disagree. On HFS every one of the nine is volume state, because
+"HFS" names three formats and the library decides which it opened before it
+answers anything.
+
+Nothing here describes the contents. A true `access_times` says the record has
+the field, not that any atime on the volume was ever maintained.
+
+#### One document per volume
+
+`*_report` walks the volume once and returns the library's own versioned
+document — every entry, with identity, times and the image-absolute offsets of
+its data. Before it there was no way to list a whole image at all: `*_list_files`
+reads one directory, `*_metadata` one file.
+
+```mutant
+let doc, err = ntfs_report(disk["handle"])
+putln(to_string(doc["file_count"]) + " records, " +
+      to_string(doc["deleted_count"]) + " of them deleted")
+
+for (file in doc["files"]) {
+  if (!file["is_deleted"]) { continue; }
+  for (run in file["fragments"]) {
+    if (!run["located"]) { continue; }
+    putln(file["path"] + " +" + to_string(run["start_offset"]))
+  }
+}
+```
+
+The six documents do not agree with each other, so they are rendered into one
+shape: the fields that mean the same thing everywhere are named the same way,
+and everything a format records that the others do not travels verbatim in each
+row's `extra`. Normalizing is additive here exactly as it is in `events_from`.
+
+**A fragment offset of zero is not a fragment at offset zero.** libntfs leaves
+both offsets at zero on a sparse run, and libxfs leaves them at zero both for a
+hole and for a run whose block number would not resolve against the volume's
+geometry — and zero is the first byte of the image, where a consumer that seeked
+there would read the boot sector and call it file content. Every run with no
+place in the image reports `located: false` and offsets of `-1`.
+
+**The identity column says how to read itself.** `identity_kind` names the
+addressing — an MFT entry with its sequence number, an inode with its
+generation, a catalog node ID, a slot in a directory — and `identity_stable`
+says whether it survives that slot being reused, read out of the same
+capabilities the sibling builtin reports. It carries `identity_stable_answered`
+beside it, because two of the six libraries never say. Diffing two readings of a
+FAT volume on identity reports a deleted file whose slot was reused as a
+modified one, and the field that would have warned you is there.
+
+**`complete` is not a completeness claim.** It says the walk had no known gap.
+Five of the six libraries can report what their walk reached and none of them
+can report what it missed — a directory tree walk cannot find a file no
+directory names. `xfs_report` alone reconciles the listing against every inode
+the allocation groups say exists, from three independently maintained counters,
+so `completeness_checked` says whether anything did that and
+`completeness_proven` means nothing without it.
+
+Nothing is assumed. A deleted entry's cluster chain has been freed, so its
+layout past the first cluster is absent rather than guessed;
+`fat_recover_file_assuming_contiguous` is where that hypothesis is asked for by
+name. The walk is `O(volume)` in time and memory, and the listing is capped at
+50000 rows with every count beside it honest past the cap.
+
+#### Into a supertimeline
+
+A report is not a dead end. One source spec covers all six, because the six
+documents already share a row shape:
+
+```mutant
+let events, err = events_from(ntfs_report(disk["handle"]), "fs_report")
+let rows, rowsErr = timesketch_event(events)
+```
+
+Four events per row, five where the format records a deletion time — ext's
+`dtime` is the only timestamp in this tree that does, and the only one that
+carries the `delete` action. The filesystem travels as the envelope's `dataset`,
+so a timeline merged from an NTFS volume and an ext one still says which row
+came from which, and so the Timesketch emitter can give an NTFS row plaso's
+`fs:stat:ntfs` and everything else the generic `fs:stat` rather than borrowing a
+`data_type` whose analyzers would then run over rows they were never written
+for.
+
+### Reporting
+
+An investigation ends in a report, not a stdout dump.
+
+```mutant
+let opened, err = report_new("Laptop triage", {"examiner": "G. Gogia", "case_id": "IR-2026-0413"});
+let narrated, err = report_text(opened, "Two hosts beaconed to the same domain within four minutes.");
+let sectioned, err = report_section(narrated, "Indicators");
+let document, err = report_table(sectioned, iocs, {"columns": ["type", "value", "first_seen"]});
+
+let page, err = report_render(document, "html");      // the document as a string
+let wrote, err = report_write(document, "case.html"); // or straight to disk
+putln(wrote["sha256"]);
+```
+
+The report is a plain hash — a title, a `generated` stamp and a list of
+sections — so it can be JSON-encoded, stored, diffed against the last one, or
+written by hand without going through the builders at all. Every builder returns
+a new document rather than changing the one it was given, so a report can be
+branched: two summaries over one body of findings do not interfere.
+
+`generated` defaults to now and is the only thing in the document that cannot be
+derived from the rest of it, so it is an option. Pin it and two renders of one
+investigation are the same bytes — the same rule `stix_bundle`'s `created`
+follows, and for the same reason.
+
+**Why the escaping is the interesting part.** Nearly every string in a report
+came from the evidence, which is to say it was written by the subject of the
+investigation: a filename off a disk image, a registry value, a URL out of a
+phishing mail. So the model holds values, and text becomes markup in exactly one
+place per format — each escaped for the thing that actually goes wrong in it.
+
+*HTML is the security boundary.* Every string is escaped, the stylesheet is
+inlined, and the document contains no script, font, image or link at all. A
+report that fetches something tells whoever serves it that the examiner opened
+it, and when. Evidence text is never turned into a link either: a report that
+makes the attacker's URL clickable is a report that can be clicked.
+
+*Markdown is structural.* A pipe inside a table cell ends the cell and a newline
+ends the row, so an unescaped one silently shifts every column after it and the
+row reads as evidence it is not. A line-leading `#` or `4.` in a paragraph
+becomes a heading or item four. All of that is escaped — but Markdown is escaped
+so it reads correctly, not so it is safe to convert. When the output is going to
+be looked at in a browser, render HTML.
+
+*CSV is formula injection.* Excel and LibreOffice execute a cell that begins
+`=`, `+`, `-` or `@` when the file is opened, so a filename recovered from an
+image is code on the examiner's workstation. Such a cell is written with a
+leading apostrophe, which spreadsheets strip on display; a value that is simply
+a signed number is left alone, since a report whose numbers all gained an
+apostrophe is one nobody can sort. `{"formula_guard": false}` turns it off for
+output that will be parsed rather than opened.
+
+A CSV file holds one table, so `report_render(r, "csv")` on a report with
+several refuses until one is named with `{"table": 1}` or its caption, rather
+than stacking two different headers into a file no spreadsheet reads correctly.
+
+**Writing one out.** `report_write(report, path)` renders and writes in one
+step, taking the format from the path's extension — `.html`, `.htm`, `.md`,
+`.markdown`, `.csv` — or from `{"format": ...}` when the name says nothing. It
+hands back `{path, bytes, format, sha256}`.
+
+The digest is the point of it. A report is written to be given to someone, and
+the only useful thing to say about a file that has left your hands is what it
+hashed to when it left them. So the digest is read back off the disk and checked
+against the document that was meant to be there: a short write or a filter that
+rewrote the bytes on the way past is a refusal, not a hash of something nobody
+can reproduce. And when a case is open, the write becomes a timeline entry
+carrying the path and that digest — which is the whole of the link between an
+investigation and the documents it produced.
+
+**A block nothing renders is an error, not a gap.** `report_render` validates
+the whole document before writing any of it and refuses by section and block
+index. A renderer that stepped over what it did not understand would hand back a
+report that looks complete and is missing a finding.
+
+### Chain of custody
+
+A forensic answer is only worth what its provenance is worth. `case_open` starts
+a session that records the investigation as it happens:
+
+```mutant
+let opened, err = case_open("IR-2026-0413", "G. Gogia", {"hash": "sha256", "role": "case_owner"});
+
+let image, err = raw_open("/evidence/laptop.E01");     // recorded: path, size, digest
+let header, err = raw_read_at(image["handle"], 0, 2);  // recorded: raw_read_at x1
+
+let drift, err = case_verify();                        // re-measures every source
+let written, err = case_write("case.json");            // sealed and signed
+let manifest, err = case_close();
+```
+
+Five properties are worth knowing before you reach for it.
+
+**Nothing is recorded until `case_open` is called.** The hooks sit in every
+evidence opener and every handle resolver, so a program that does not open a case
+pays one atomic load and behaves exactly as it did before.
+
+**Hashing is opt-in, and the manifest says which it was.** `{"hash": "sha256"}`
+digests each source as it is opened; the default is no digest, because the
+alternative is `raw_open` on a 500 GB image silently reading the whole thing
+before it hands back a handle. A case without digests records size and
+modification time and states `"hash_policy": "none"` — and `case_verify` then
+says `"basis": "size and mod time"` per source, so a weaker check is never
+mistaken for a stronger one.
+
+**The touch record is aggregated, not logged.** Per source, per builtin: first
+touch, last touch, and a count. A program that reads a hundred thousand files
+produces a manifest a person can read.
+
+**A role is recorded, not checked.** `{"role": "case_owner"}` names which of
+six examiner roles you are acting under -- administrator, case_owner,
+lead_investigator, investigator, reviewer, auditor -- and every timeline entry
+carries it, beside `"role_authenticated": false` in the manifest. A ledger you
+open with `ledger_open` takes the same role unless you name one, and a ledger
+opened as auditor refuses every write. None of that is access control: it keeps
+the record consistent with what you said you were.
+
+**A case can outlive the run.** `case_attach(ledger)` binds the open case to a
+ledger its examiner opened. The first attach registers the case there; a later
+run's attach reads it back -- its lifecycle state, who holds which role in it,
+and the classes and views declared under the open key -- so the same script run
+again gets `already_defined: true` from `class_define` rather than a refusal.
+Attach before you define anything. `case_transition(ledger, "active", reason)`
+moves the case along registered, active, in_review, concluded, retained and
+disposed, and each state refuses what it cannot take: nothing is sealed while a
+case is in review, concluded or retained, and a disposed case takes nothing but
+a withdrawal and the movement of an exhibit it already holds. `case_assign(ledger, "bob", "investigator", reason)` records a
+role in the case, and the ledger's assignments decide the role each examiner
+attaches under. Keys and grants are never read back from the ledger.
+
+```mutant
+case_open("IR-2026-014", "examiner", {"role": "case_owner"});
+case_key_open("case.mkey");
+let info, err = ledger_open("case-ledger", "examiner");
+let ledger = info["handle"];
+case_attach(ledger);
+class_define("pii");
+case_transition(ledger, "active", "evidence received");
+```
+
+**An exhibit has a custody chain.** `evidence_intake(ledger, "EXH-1", path)`
+takes a file into the attached case: it is hashed with SHA-256 and the ledger
+records who holds it. `evidence_release(ledger, "EXH-1", "bob", reason)` hands
+it to another examiner the case assigns, and bob, in their own run, records
+taking it with `evidence_accept(ledger, "EXH-1", path)`, which hashes what they
+were handed and refuses a file that does not match the intake unless they state
+what happened with `{"discrepancy": "..."}`. `evidence_return` returns an
+exhibit out of the case; if it comes back, `evidence_intake` takes it in again
+under its own name, as the next step of the same chain, and holds what came
+back to the same test against what was first taken in. `evidence_dispose` ends
+the chain; a disposal is a statement and deletes nothing.
+`evidence_history(ledger)` reads every exhibit's custody back and needs no case
+open. The holder records where an exhibit goes, and every reader refuses a chain
+that forks, skips a step, has a hand-off recorded by anybody but the holder or
+an accept by anybody but the person it was released to, or has a hash check its
+own digests contradict.
+
+```mutant
+evidence_intake(ledger, "EXH-1", "evidence/laptop.E01", {"received_from": "DC Rao"});
+evidence_release(ledger, "EXH-1", "bob", "to the lab for imaging");
+let history, err = evidence_history(ledger, {"exhibit": "EXH-1"});
+putln(history["exhibits"][0]["where"]);
+```
+
+**A case is reviewed, and kept.** `review_request(ledger, "case", note,
+{"manifest": path})` submits an active case for review, bound to a manifest
+`case_write` wrote -- one that still hashes to its seal and was written with the
+case where it stands now, because the manifest a run renders in memory changes
+every time it is looked at. The case is then in review, and takes nothing that
+would change what the reviewer was shown until a reviewer who did not ask for
+the review records `review_decide(ledger, request, decision, reason)`: approved
+concludes it, changes_requested or rejected sends it back. A record's uid or a
+redaction version's uid is reviewed the same way, bound to its digest, and moves
+nothing. `retention_set(ledger, until, basis)` retains a concluded case until a
+date, and `retention_hold(ledger, reason)` places a legal hold: while one is in
+force `evidence_dispose` refuses, until `retention_release` lifts it.
+`review_list` and `retention_list` read them back with the ledger alone.
+
+```mutant
+case_write("IR-2026-014.manifest.json");
+let request, err = review_request(ledger, "case", "ready for peer review", {"manifest": "IR-2026-014.manifest.json"});
+retention_hold(ledger, "litigation is pending", {"authority": "Legal"});
+```
+
+**A key is erased, and a case is disposed of.** `record_erase(ledger, path,
+reason)` overwrites the record key in one copy's header and checks that nothing
+in the file still unwraps. Every other copy of the record still opens, and a
+grant still opens the segments it names, and the result says so in
+`does_not_erase`. `case_key_erase(ledger, key_path, reason)` is the erasure that
+reaches every copy: it overwrites the key file and removes it, so nothing wrapped
+under any generation of it opens with the case key; `{"generation": n}` erases
+one earlier generation instead. A retained case is then disposed of with
+`case_transition(ledger, "disposed", reason)`, which is refused -- naming all of
+what is missing -- until no hold is in force, the retention period has run,
+every exhibit is returned or disposed of, and the case key is erased.
+`erasure_list` reads the erasures back with the ledger alone.
+
+```mutant
+let preview, err = record_erase(ledger, "IR-2026-014/disk.mrec", "court order 77", {"preview": true});
+case_key_erase(ledger, "IR-2026-014.key", "the retention period ran");
+case_transition(ledger, "disposed", "nothing is left to keep");
+```
+
+**The seal is checkable by someone else.** `case_write` puts a SHA-256 over every
+field except the seal itself, plus an Ed25519 signature over the same bytes and
+the public key that verifies it, into the document. `case_manifest_verify(path)`
+is then a function of the file alone — it needs neither the case that produced it
+nor any key the reader does not already hold. Reformatting the JSON does not
+break it; altering a single character does.
+
+**The handover.** `case_report()` renders the case itself as a report value —
+the header, the evidence with its digests, what each builtin touched and how
+often, the timeline, the integrity statement and the security counters. It is
+built from the manifest rather than from the session, so the report and the
+manifest cannot disagree about what was examined; and because it is a value, an
+examiner's conclusions go in with `report_section` and `report_text` before
+anything is rendered.
+
+```mutant
+let bundle, err = case_bundle("handover/IR-2026-0413");
+putln(bundle["manifest_hash"]);
+```
+
+`case_bundle(dir)` writes the four documents somebody else opens:
+`manifest.json`, `report.html`, `report.md`, and a `SHA256SUMS` that any
+`sha256sum -c` can check.
+
+**Which document vouches for which.** The reports are written first and the
+manifest records what they hashed to, so the manifest's seal — the SHA-256 over
+every other field, and the Ed25519 signature over the same bytes — covers the
+reports too. Edit a byte of `report.html` and it no longer matches the digest
+inside a document whose own integrity still verifies. The binding runs one way on
+purpose: a report quoting the manifest's hash would have to quote it before the
+manifest existed, and would be quoting a document that was about to change.
+`SHA256SUMS` is the convenience on top of that, not the guarantee underneath it.
+
+**The security counters have a log behind them.** Every anti-debug, anti-tamper
+and command-execution check the runtime performs is recorded in an append-only
+hash chain: each entry carries the hash of the one before it, so the chain's
+head is a single commitment to every event in order. The counters say a check
+tripped eleven times; the chain says at which stage, and in what order relative
+to the evidence that was open at the time, which is a question a counter cannot
+be asked after the fact.
+
+```mutant
+let head, err = audit_head();       // the commitment, and how much is readable
+let written, err = audit_write("audit.json");
+
+let manifest, err = case_manifest();
+let checked, err = audit_verify("audit.json", manifest["audit"]["head"]);
+```
+
+The head is written into the manifest, inside the seal, because a hash chain
+nobody kept the head of proves nothing. That is what the second argument to
+`audit_verify` is for: without it the log is checked against the head stored
+inside the same file, which is a check against a value its own writer chose, and
+the result says `anchored: false` rather than quietly passing. What the chain
+cannot show — and says so, in a `does_not_cover` field in every document it
+writes — is a log deleted or truncated as a whole. An edited entry breaks every
+link after it; a missing document breaks nothing, because there is nothing left
+to break. The chain keeps the most recent entries in memory and reports how many
+it dropped, so a capped log is never mistaken for a short one; the head still
+covers the events it can no longer show you. Entries deleted from the front of a
+written log break it too: the last entry's sequence number is inside its hash,
+and the cap drops entries by a fixed rule, so that number says exactly which
+entry the log has to start with.
+
+The manifest also carries a reproducibility record: the tool build, and the path
+and digest of the exact `.mu` that produced the document. And it asserts
+`integrity.evidence_read_only: true` — a claim backed by a guard that fails the
+build if any evidence-reading code asks the operating system to change something.
+See [EVIDENCE_HANDLING_POLICY.md](EVIDENCE_HANDLING_POLICY.md) for the rule and
+its two reviewed exceptions, and
+[`examples/forensics/chain_of_custody.mut`](../examples/forensics/chain_of_custody.mut)
+for a program that runs the whole cycle.
+
+The case key is a separate object from the manifest, and the separation is
+the point: the manifest is the case document and it is signed, while the key
+is the thing an examiner keeps away from the handover. `case_key_create`
+writes a key file, `case_key_open` unlocks the session, `case_key_rotate`
+re-wraps it under a new passphrase or a new generation, and
+`case_key_fingerprint` identifies one without opening it. All four take a
+path; none takes, returns or prints key material, and the passphrase is read
+from the terminal rather than from an argument, from a file named in program
+text, or from an environment variable. `class_define` and `class_list`
+declare the classification labels a record may carry, so a typo is an error
+at the line that made it rather than a new secret class nobody recognises.
+Each label's tag is an HMAC keyed to the case key, so two investigations that
+both declare `restricted` produce different tags and neither can be linked to
+the other by an observer holding both. What that costs -- a record separated
+from its case manifest holds tags whose meaning is not recoverable from
+anything its holder has -- is stated along with everything else a disclosure
+refuses to promise in [DISCLOSURE_POLICY.md](DISCLOSURE_POLICY.md).
+
+A classification becomes bytes through the `record_*` family.
+`record_classify_range(offset, length, label)` names a run and resolves the
+label to its tag; `record_seal(source, record, ranges, options)` writes a
+`.mrec` in which each classification span is split into segments of at most
+`segment_size`, and a segment never straddles a span -- so holding one segment's
+key can never open bytes of two classifications. The `default` option is
+required and covers every byte no range names, because a record with an
+unlabelled remainder discloses that remainder to everyone who is disclosed
+anything. `record_seal_quantised` rounds boundaries outward where a short secret
+must not advertise its length; its `rounds_to` option is required and names the
+one class rounding may grow, because a range that is widened takes the bytes it
+grows over into its own class, and whether that withholds them or releases them
+depends on which class is the more sensitive -- which nothing here knows.
+`quantised_extra` is how many bytes changed class and `rounds_to` is which class
+they changed into, both in the header and both reported by `record_verify`.
+`record_open` needs the case key; `record_verify` needs none at all, which is
+the property a recipient who was granted nothing still has, and it reports in a
+`does_not_prove` field what a valid signature does not establish. `record_read`
+refuses a span it cannot fully decrypt and names the segments that stood in the
+way; `record_read_partial` is the separate contract that returns those as data.
+
+`record_search(record, pattern, options?)` finds a literal in what one reader of
+a record could read. Opened under a grant, that is the segments the grant opens;
+opened with the case key, the search names a view (`{"view": "counsel"}`) and
+reads exactly the segments a grant under it would open, and no other segment is
+read from the file. A match that would need even one byte the search did not
+read is never reported, so `count` covers the searched bytes and `complete` says
+whether that was every segment. Each hit carries its offset, the segments and
+classes it lies in, and up to `context` bytes either side (32 unless asked,
+never past what was readable, never zero-filled). The case timeline records the
+search with the pattern only as a digest keyed to the case key.
+
+```mutant
+let found, err = record_search(record, "example.org", {"view": "counsel"});
+putln(found["count"], "found; complete:", found["complete"]);
+```
+
+Plaintext any of these returns -- a search's as the context of each hit -- is
+marked with the record it came from and the classes it crossed, and every
+builtin that sends a value out of the process --
+`putln`, `putf`, `fs_write`, `fs_append`, `http_post`, `http_request`,
+`report_write`, `report_render`, `report_table`, `report_list`, `case_note`,
+`cache_put`, `ledger_add_node`, `ledger_add_edge`, `db_add_artifact` and
+`db_add_relation` -- refuses a marked buffer, whether it is
+passed directly or sits anywhere inside an array, hash or struct. The refusal
+names the record, the classes and the length, and not one byte. `bytes_slice`
+carries the mark to the slice it returns, and `+` of two buffers to the joined
+one. `record_release(buffer, reason)` is the
+deliberate way out: it requires a reason and an open case, writes the release
+into the case timeline, and returns an unmarked copy. The mark catches
+accidents, not adversaries: a conversion to a string, to hex, to base64 or to
+JSON drops it, and so does a loop that rebuilds a buffer byte by byte.
+
+Who may open which part of a record is decided by the `view_*` family.
+`view_define(label, classes)` declares a named posture -- the set of
+classifications a grant issued under that name will open -- and `view_list`
+reports the postures in force. A view names the classes it grants and cannot
+negate: an "everything except" posture would widen by itself every time a class
+was declared after it, changing what it releases with nothing edited and nothing
+recorded. `view_preview(record, view)` says exactly what a view would release
+from a particular record and exactly what it would hold back, as byte ranges on
+both sides, and it is arithmetic over the record's public header -- it opens no
+segment and needs no plaintext. Where the record was quantised, the preview
+states the rounding in the terms of the view in front of it, because rounding
+moves bytes into one named class and therefore releases more or withholds more
+depending on whether that view grants it: the same twelve bytes read as released
+to one posture and held back to another. A class whose tag this case cannot name
+is counted in `unnamed_classes` rather than passed off as unclassified, and a
+`does_not_say` field records that a preview establishes what would be disclosed
+and not whether the classification behind it was right.
+
+**A grant goes to a recipient under a role.** `role_define(role, views)` says
+which views a recipient role may be granted -- its bundle -- and
+`role_assign(ledger, recipient, role, reason)` records that a named recipient
+holds one, as the next event of a hash-linked chain of their assignments. A
+disclosure is refused unless the ledger assigns its recipient a role in force,
+the case bundles that role, and the bundle holds the view: nobody is given
+anything by default, and a bundle defined empty says so in `grants_nothing`.
+The recipient roles are fixed -- `legal`, `external_partner`,
+`restricted_viewer`, and `reviewer` and `auditor`, who are on both sides -- and
+asserted like an examiner's: the refusal keeps the record consistent with the
+role it names, and the passphrase on a grant is still the only thing that stops
+anybody reading. `role_list` reports the bundles and, given a ledger, who holds
+which role.
+
+The `disclose_*` family carries a view out. `disclose_to_passphrase(ledger,
+record, view, recipient)` issues a grant -- the key material for exactly the
+segments the view selects, and nothing from which any other segment's could be
+derived -- seals it under a passphrase asked for at the terminal, and records the
+disclosure in the forensic ledger before handing anything back. The record a
+recipient receives is byte-identical to the one under custody; a disclosure is a
+key grant, never a re-encryption. `disclose_bundle` writes the package and
+returns the ledger snapshot root to be sent separately, and
+`disclose_verify(dir, root)` checks it, where a null root is a finding and never
+a pass. A recipient reads with `record_open(path, {"grant": path})`, which needs
+no case and no case key. `disclose_withdraw` stops further grants and says, in
+`bytes_recoverable: false`, that it reaches nobody's copy; `disclose_history`,
+`disclose_for_segment` and `disclose_reclassified` answer who was given what,
+and who holds bytes whose class has since changed.
+[`examples/forensics/record_disclosure.mut`](../examples/forensics/record_disclosure.mut)
+runs the whole cycle on one exhibit -- seal, preview, a role for each recipient,
+two disclosures that each withhold what the other grants, both packages, and the
+recipient's check -- and asks at the terminal for every passphrase it needs.
+
+Every disclosure names the version of the record's redaction it carries out:
+what its view releases from the evidence, as plaintext byte ranges. A version
+is written only when that changes, so a reclassification that moves bytes
+between two classes a view releases writes none, and
+`redaction_commit(ledger, record, view, reason)` writes one ahead of any
+disclosure, so that it can be reviewed first. `redaction_versions(ledger,
+record_uid)` lists them, and calls every disclosure issued under a version since
+superseded `stale`.
+
+A view is also a way to read the forensic ledger. `ledger_classify(ledger, node,
+classes, reason)` records which of the case's classes a node a script wrote
+holds, as a hash-linked chain of that node's classifications, and
+`ledger_classifications` lists them. `ledger_under_view(ledger, view)` returns a
+second handle through which `ledger_node`, `ledger_edge`, `ledger_provenance`,
+`ledger_path`, `ledger_subgraph`, `ledger_patterns`, `ledger_query_nodes` and
+`ledger_prove_node` show only what the view shows: the script nodes classified
+within the classes it grants, the case's Case and Record nodes, and the classes
+it grants. A node nobody classified is shown by no view, no walk crosses a node
+the view withholds, and nothing counts what was withheld. Every other builtin
+that takes a ledger refuses the handle, and `ledger_close` drops it.
 
 ## Quick Example
 
@@ -417,14 +2905,22 @@ analyzer the language server uses, so editor and command-line results agree:
 - `mutant fmt [--check] [--stdout] <file-or-dir>...` — rewrite source in the
   canonical style in place. `--check` lists files that are not already formatted
   and exits non-zero (for CI) without writing; `--stdout` prints the formatted
-  result instead of editing. Formatting is idempotent.
+  result instead of editing. Formatting is idempotent. A file that does not parse
+  is never rewritten: in every mode its parse errors are printed and the exit
+  code is non-zero, as `gofmt` does.
 - `mutant lint [--strict] <file-or-dir>...` — print diagnostics as
   `file:line:col: severity: message [source]`; exits non-zero on any error, or on
   any warning with `--strict`.
-- `mutant test [file-or-dir]...` — run every `*_test.mut` file. A test file is an
-  ordinary program: it **passes** unless running it errors (parse, compile, or
-  runtime) or its final value is `false`. With no path it tests the current
-  directory.
+- `mutant test [options] [file-or-dir]...` — run every `*_test.mut` file, with
+  `--run` to select tests by name, `-v`, `--json` for CI, `--fail-fast`, and
+  `--cover` / `--coverprofile` for line coverage. With no path it tests the
+  current directory. See [TESTING.md](TESTING.md).
+- `mutant graph export --out <dir> [--module-path DIR] <entry.mut>` — write the
+  symbol graph of a whole program to a graph store, for asking questions across
+  a codebase that no single file can answer.
+- `mutant graph query --store <dir> <question> [argument]` — ask that store one
+  of a fixed set of questions: `summary`, `modules`, `where`, `callers`,
+  `callees`, `outline`, `exported`, `types`, `type`, `deps`, `rdeps`.
 
 Directory arguments are walked recursively (skipping `.git`, `node_modules`, and
 `vendor`).
@@ -432,8 +2928,222 @@ Directory arguments are walked recursively (skipping `.git`, `node_modules`, and
 ```mutant
 // math_test.mut  -> `mutant test .`
 let add = fn(a, b) { return a + b; };
-add(2, 3) == 5 && add(-1, -1) == -2;   // final value must be true to pass
+
+test("adds", fn() {
+    assert_eq(add(2, 3), 5);
+    assert_eq(add(-1, -1), -2);
+});
 ```
+
+A test file is an ordinary program, compiled the same way any program is, so it
+can `import` the module it tests. A file that declares no `test` still counts as
+one test and keeps the original contract: it **passes** unless running it errors
+or its final value is `false`.
+
+### Exporting a program's symbol graph
+
+`mutant graph export` walks the entry file's whole import closure and writes
+down what every name in it means: a node per module and per declaration
+— functions, values, parameters, loop bindings, import aliases, structs, enums,
+fields and variants — and an edge per relationship between them.
+
+```
+mutant graph export --out ./example_graph_data_symbols examples/modules/main.mut
+```
+
+| Edge | From → To | What it says |
+| --- | --- | --- |
+| `DECLARES` | module → declaration | which file a name is written in |
+| `ENCLOSES` | declaration → declaration | which declaration a name is written inside |
+| `REFERENCES` | declaration → declaration | one per use, carrying its position and whether it was a call |
+| `IMPORTS` | module → module | one per resolved `import` |
+| `USES_TYPE` | declaration → struct or enum | a further label on the references that name a type |
+| `CONSTRUCTS` | declaration → struct | a further label on the references that build one: `Point{x: 1}` |
+| `MATCHES` | declaration → enum or variant | a further label on the references in a match arm's pattern |
+
+Each declaration also carries its kind as a second node label, so counting the
+functions in a program is a count rather than a traversal. The label names are
+written beside the store, so it stays readable without the `mutant` binary.
+
+**A struct or enum is followed across modules the way the compiler follows it.**
+Type names belong to the whole program, and the compiler resolves `Loc{a: 1}`
+against the types of every module compiled before the one it is in — which is
+every module that one imports, and some it does not. The export does the same,
+so a type built in `main.mut` from a struct `lib/geo.mut` declares is an edge
+into `lib/geo.mut`. A use the compiler would refuse — the type is declared only
+by a module compiled later, or by none — has no edge; the export prints how
+many there are, and `types` lists them. `CONSTRUCTS` and `MATCHES` are new in
+2.6.0: a store exported earlier still opens, and the questions about types say
+what it cannot tell rather than answering zero.
+
+Three things are worth knowing before relying on it:
+
+- **It is a snapshot.** The compiler and the editor build their own graph in
+  memory and never read this one. An exported store describes the source as it
+  was when it was written, and says nothing about the source afterwards.
+- **Positions are file-local**, matching the files on disk rather than the
+  concatenated source the compiler sees.
+- **A program that does not compile still exports.** Rules the program breaks
+  are printed as refusals and the graph is written anyway, because a graph of a
+  broken program is the one worth having.
+
+The target directory must be empty or absent: a store is written in one pass so
+that what is in it describes one program at one moment. `example_graph_data*/`
+is already in `.gitignore`, which makes it a convenient place to look around.
+
+### Reading a symbol graph back
+
+`mutant graph query` asks a store one of a fixed set of questions.
+
+```
+mutant graph query --store ./example_graph_data_symbols summary
+mutant graph query --store ./example_graph_data_symbols where mean
+mutant graph query --store ./example_graph_data_symbols callers report
+```
+
+| Question | Takes | Answers |
+| --- | --- | --- |
+| `summary` | | what the store holds, broken down by label |
+| `modules` | | every module, what it declares, what it imports, and which one nothing imports |
+| `where` | `<name>` | every declaration of a name, with its kind, scope and position |
+| `callers` | `<name>` | every recorded use of a name, and where it is used from |
+| `callees` | `<name>` | every name a declaration uses |
+| `outline` | `<module>` | the declarations of one module, nested as they are written |
+| `exported` | | every declaration another module could name |
+| `types` | | every struct and enum, and how often each is built, matched and used |
+| `type` | `<name>` | one struct or enum: its members, and every use, sorted into the ones that build it, match it, and the rest |
+| `deps` | `<module>` | every module one module imports, directly or through another, nearest first |
+| `rdeps` | `<module>` | every module that imports one module, directly or through another |
+
+`deps` and `rdeps` follow each import in its own direction and keep every one:
+a module imported twice under two aliases is listed with both.
+
+**There is no query language, and the fixed list is why.** graphene has none,
+so what makes a store answerable is what was indexed when it was written — and a
+filter on a property that was not indexed matches nothing and reports no error.
+Worse, one ANDed onto a correct filter empties that too, because the planner
+costs the unindexed key at zero and drives the query from it. So no word you
+type ever becomes a property key: the questions above are the shapes the
+export’s index was built for, and anything else is refused with the list.
+
+Four of them can read every declaration record rather than an index —
+`exported` always, and `where`, `callers` and `callees` when the name matched
+nothing exactly, to find the casings that do exist — and each says so in the
+answer when it does. `mutant help graph` prints that list from the registry
+rather than from prose, so it cannot drift from what the questions actually do.
+
+**Every answer carries its own limits beside it**, because several of them are
+complete only for one module:
+
+- A use written `stats.mean(...)` is recorded against the import alias `stats`,
+  which is a declaration of the *calling* file, and never reaches `mean`. So
+  `callers` is complete within a module and a floor across one, and a zero from
+  it is not "nothing calls this".
+- A name the export could not resolve leaves no node and no edge at all, so an
+  answer derived from an edge being absent is "complete as far as the export
+  got", never "complete".
+- A struct or enum is the exception: its uses are followed across modules, as
+  above. A field read — the `x` of `p.x` — is recorded against nothing, because
+  which struct `p` holds is inference, and the export does not infer.
+- The label counts in `summary` overlap: every declaration carries `Declaration`
+  **and** its kind, and a `USES_TYPE`, `CONSTRUCTS` or `MATCHES` edge is a
+  `REFERENCES` edge with a further label. Adding them up reports more than the
+  store has.
+
+**Nothing that carries what the store says is written to.** The store is
+identified by its own label table before it is opened — a directory that is not
+one of these exports is refused by name, rather than opened and reported as a
+program with no declarations in it — and then opened read-only.
+
+That is deliberately narrower than "the store is not changed by being read",
+which is what this section used to claim and which is not true. graphene takes
+its shared lock through `graphene.lock` and opens that file `O_CREATE`, so
+reading a store that has no lock file would create a zero-byte one and move the
+directory's mtime. Stores without a lock file are ordinary: graphene's own
+`Backup` excludes it, so every store recovered through its supported restore
+path arrives without one.
+
+So a store with no `graphene.lock` is read **without** taking a lock, rather
+than given one, and a store whose lock file cannot be written — write-protected
+media — is read the same way. Both cases are named in the answer, separately,
+because they are not equally comfortable: the second is only sound once the
+lock's own owner record says no writer died holding it, and a writer that is
+still running on read-only media is refused rather than read around.
+
+### What the linter checks for you
+
+`mutant lint` runs the same rules the editor does. Most of them read a fact the
+builtin registry states — how many arguments a builtin takes, what kinds it
+accepts, whether it returns a `(value, err)` pair — and are simply right.
+
+Eight more read intent, and those are the ones worth knowing about, because they
+are about the work this language is for:
+
+| Rule                      | What it reports                                                                                                    |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `evidenceMutation`        | A write, delete or move aimed at a path the same program opened with `raw_open`, `ewf_open`, `ntfs_open` and friends |
+| `commandInjection`        | A value spliced into the string `exec_string` gives a shell, a `cmd_add` line, or a `lua_run_string` script          |
+| `pathTraversal`           | A path built from `gets`, `serve_arg` or a request, reaching the filesystem with nothing looking at it first         |
+| `weakCrypto`              | An MD5, SHA-1 or CRC-32 digest compared against one written into the program — an authenticity check                 |
+| `hardcodedSecret`         | A credential written into the source, by name or by a provider's own prefix                                          |
+| `tlsVerificationDisabled` | `insecure: true`, or a `min_version` below 1.2                                                                       |
+| `unboundedResource`       | A `cidr_hosts` or `range` whose literal arguments exceed what the builtin will return                                |
+| `classifiedPlaintext`     | Plaintext from `record_read` handed to `putln`, `fs_write`, `http_post` or another builtin that refuses it           |
+
+Each of these has a way to say "I have handled this", and taking it is what
+silences the rule — there is no suppression comment:
+
+```mutant
+// pathTraversal: look at the value, and the rule takes you at your word.
+let leaf, err = serve_arg();
+if (text_contains(leaf, "..") == false) {
+    let body, rerr = fs_read("/srv/files/" + leaf);
+};
+
+// commandInjection: strip what could be syntax, or encode it away.
+let out, xerr = exec_string("whois " + text_replace(host, ";", ""));
+
+// weakCrypto: comparing two computed digests is matching, not verifying.
+let same = hash_md5(a) == hash_md5(b);
+
+// classifiedPlaintext: letting plaintext out is a decision, and a decision is
+// recorded. record_release needs a reason and writes it into the case timeline.
+let address, rerr = record_read(record, 551, 19);
+let released, lerr = record_release(address, "the complainant's own address");
+let wrote, werr = fs_write("statement/address.txt", released);
+
+// hardcodedSecret: a value handed to a decoder is a sample, not a credential.
+let token = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.sig";
+let claims, jerr = jwt_decode(token);
+```
+
+They all decline where they cannot be certain, and they all err towards saying
+nothing: a false positive on a security rule is how a security rule gets turned
+off. Any of them can be set to `off` — or to `error`, for CI — through
+`mutant.lint.rules.<name>.severity`.
+
+Four more know what the case, record and ledger builtins refuse. Each of these
+calls compiles and fails when it runs, often after the program has asked for a
+passphrase, so the editor says so at the line, in the run time's own words:
+
+| Rule                   | What it reports                                                                                           |
+| ---------------------- | --------------------------------------------------------------------------------------------------------- |
+| `roleLiteral`          | A `role` in `case_open`'s or `ledger_open`'s options that is not a role, is a recipient's, or is `unasserted` |
+| `filteredLedgerHandle` | The handle `ledger_under_view` returns, passed to a builtin that does not read under a view                 |
+| `secretOption`         | An option named `passphrase`, `password`, `secret` or `key`, which those builtins refuse by name            |
+| `lifecycleState`       | A state `case_transition` never moves a case to, with the builtin that does make the move                    |
+
+The lists they read are the run time's, exported by the builtin package and held
+to its code by tests, so the editor cannot warn about a call the run time
+accepts.
+
+One more is about *when* code runs rather than what it does. A macro body is
+evaluated while the compiler is running, where a builtin that touches a file, the
+network, a process, the clock or cryptographic material is refused; `macroSafety`
+reports such a call inside a macro body, in the expander's own words. It says
+nothing inside `quote(...)`, which is the program being written rather than the
+compiler running, and it does report an `unquote(...)` inside one, which is the
+compiler running again.
 
 ## Maintenance
 

@@ -66,8 +66,15 @@ Enforcement condition:
 
 Gates:
 
-- MUTANT_ENABLE_ANTITAMPER_PROBE=1 must be enabled.
-- MUTANT_ENABLE_PROCESS_PROTECTION controls runner-side enforcement.
+- Probe execution: `antiTamperProbeEnabled` (security/antitamper_probe.go), a
+  compile-time `true`. Probes always run.
+- Runner-side enforcement: `isProcessProtectionEnabled()` (runner/runner.go),
+  which returns `true`. Enforcement is always active on the runner path.
+
+Neither is configurable, and neither ever reads the environment. The only thing
+that varies per run is the response to a detection: `terminate` in secure mode,
+`warn` under `--compat`/`--dev`. See
+[CONFIGURATION_POLICY.md](CONFIGURATION_POLICY.md).
 
 ---
 
@@ -77,15 +84,9 @@ Gates:
 
 Function: detectProcessInjection()
 
-Signal sources:
+Signal source:
 
-1. Environment markers
-   - COR_ENABLE_PROFILING
-   - COR_PROFILER
-   - COR_PROFILER_PATH
-   - JAVA_TOOL_OPTIONS
-   - _NT_SYMBOL_PATH
-2. Process list markers via tasklist output
+1. Process list markers via tasklist output
    - processhacker
    - x64dbg
    - ollydbg
@@ -95,9 +96,16 @@ Signal sources:
 
 Confidence strategy:
 
-- Base marker hit: 70
-- Environment-only hit: 90
-- Env + process hit: 95
+- Process marker hit: 70. That is below the runner's 80, and the runner weighs
+  each signal alone, so this probe never stops a run.
+
+No environment variable is a signal. Before 2.6.0 the probe also read
+`COR_ENABLE_PROFILING`, `COR_PROFILER`, `COR_PROFILER_PATH`,
+`JAVA_TOOL_OPTIONS` and `_NT_SYMBOL_PATH`, and scored any of them 90 (95 beside
+a process marker), which stopped a secure-mode run. They configure the .NET
+runtime, a Java VM and symbol handlers such as dbghelp's, none of which runs in
+Mutant's process, so a symbol path set for WinDbg, or a profiler set for .NET
+programs, stopped the run as injection when nothing had been injected.
 
 ### 4.2 Probe: trampoline
 
@@ -198,7 +206,7 @@ sequenceDiagram
 ## 6. Why this design is useful
 
 1. Fast and low-overhead.
-2. Cross-checks different evidence types (env/process/hooks/pages/modules).
+2. Cross-checks different evidence types (process/hooks/pages/modules).
 3. Confidence model avoids hard fail on weak single marker.
 4. Runner enforces policy at two useful stages.
 
@@ -511,24 +519,31 @@ type ProcessRiskVerdict struct {
 }
 ```
 
-### 13.3 Config and env gates (security/processscan_config.go)
+### 13.3 Config (security/processscan_config.go)
 
-Current env vars:
+Remote process scanning has no configuration surface. It is off in every shipped
+binary and reachable only from tests. `remoteScanConfigState` holds the whole
+model as package-level state, with these shipped values:
 
-1. MUTANT_ENABLE_REMOTE_PROCESS_SCAN
-2. MUTANT_REMOTE_SCAN_MODE (off, observe, enforce)
-3. MUTANT_REMOTE_SCAN_MAX_PROCESSES
-4. MUTANT_REMOTE_SCAN_INTERVAL_MS
-5. MUTANT_REMOTE_SCAN_ALLOWLIST
+| Field | Shipped value |
+| --- | --- |
+| `Enabled` | `false` |
+| `Mode` | `observe` |
+| `Allowlist` | empty; `parseRemoteProcessAllowlist` has no source to read |
+| `HighRiskScore` | `70` |
+| `CriticalScore` | `85` |
 
-Suggested struct:
+`SetRemoteScanConfigForTesting` and `ResetRemoteScanConfigForTesting` are the
+only writers. When a flag is added for this it will be a `--scan-*` flag or a
+path to an allowlist file, never an environment variable. See
+[CONFIGURATION_POLICY.md](CONFIGURATION_POLICY.md).
+
+The struct (security/processscan_types.go):
 
 ```go
 type RemoteScanConfig struct {
    Enabled       bool
    Mode          string // off|observe|enforce
-   MaxProcesses  int
-   IntervalMs    int
    Allowlist     map[string]struct{}
    HighRiskScore int
    CriticalScore int
