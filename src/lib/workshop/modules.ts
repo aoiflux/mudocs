@@ -5,7 +5,8 @@
  *
  * A module is `available` only once every program, output and builtin it shows
  * traces to a recorded run at the pinned Mutant release. Until then it is listed
- * as in preparation and has no page.
+ * as in preparation, and its page, if it has one, is a noindex preview that
+ * the path map does not link.
  */
 
 export type ModuleStatus = 'available' | 'in-preparation';
@@ -70,7 +71,8 @@ export const WORKSHOP_MODULES: readonly WorkshopModule[] = [
 		title: 'Registry persistence',
 		summary: 'Run and RunOnce keys: what Windows starts at logon, and how to spot the entry that does not belong.',
 		minutes: 20,
-		status: 'in-preparation'
+		status: 'in-preparation',
+		href: '/workshop/registry-persistence'
 	},
 	{
 		id: 'triage',

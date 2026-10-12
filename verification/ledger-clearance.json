@@ -1,0 +1,14 @@
+{
+	"$comment": "Written by scripts/ledger-clear.mjs. Builtins with no OPEN correctness finding at this pin; held names are not recorded.",
+	"pin": "v2.6.0",
+	"commit": "59689e05d9815e224efe108a6998d78ca518683a",
+	"ledgerSha256": "5479a660c27161f4dd56a0115da811e4fe08b36e25356d467ccbe56354081433",
+	"checkedAt": "2026-10-12",
+	"cleared": [
+		"reg_close",
+		"reg_deleted_keys",
+		"reg_enum_keys",
+		"reg_open",
+		"reg_timeline"
+	]
+}

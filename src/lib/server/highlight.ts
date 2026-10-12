@@ -139,3 +139,30 @@ export async function highlightFences(body: string): Promise<string> {
 
 	return result;
 }
+
+/**
+ * Highlight `code` and return one HTML string per source line, so a page can
+ * mark individual lines (the workshop walkthrough). Falls back to escaped
+ * plain text, line for line, if shiki cannot start or has no grammar.
+ */
+export async function highlightLines(code: string, lang: string): Promise<string[]> {
+	const lines = code.replace(/\r\n/g, '\n').replace(/\n$/, '').split('\n');
+	try {
+		const highlighter = await getHighlighter();
+		const resolved = ALIASES[lang] ?? lang;
+		if (!highlighter.getLoadedLanguages().includes(resolved)) return lines.map(escapeHtml);
+		// The Mutant grammar is loaded under its own name, which shiki's bundled-language type does not list.
+		const { tokens } = highlighter.codeToTokens(lines.join('\n'), { lang: resolved as 'text', theme: THEME });
+		return tokens.map((line) =>
+			line
+				.map((token) => {
+					const color = token.color ? token.color.replace(DIMMED_COMMENT, COMMENT_LIFTED) : '';
+					const style = color ? ` style="color:${color}"` : '';
+					return `<span${style}>${escapeHtml(token.content)}</span>`;
+				})
+				.join('')
+		);
+	} catch {
+		return lines.map(escapeHtml);
+	}
+}

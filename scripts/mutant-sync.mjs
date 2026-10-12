@@ -2,11 +2,12 @@
 // pins, and detects any drift between the two.
 //
 // The mirror is exact: every file under Mutant docs/ (into docs/) plus the
-// project files in REPO_FILES (into content/repo/, keeping their repo paths),
-// with the same bytes, and nothing else. mutant.sync.json records the commit
-// and the git blob id of each file by its path in the Mutant repo, so drift can
-// be checked offline (has anyone edited a mirrored file, or re-pinned without
-// re-syncing?) and against the source (does the record match Mutant?).
+// project files in REPO_FILES and WORKSHOP_FILES (into content/repo/, keeping
+// their repo paths), with the same bytes, and nothing else. mutant.sync.json
+// records the commit and the git blob id of each file by its path in the Mutant
+// repo, so drift can be checked offline (has anyone edited a mirrored file, or
+// re-pinned without re-syncing?) and against the source (does the record match
+// Mutant?).
 //
 // Usage:
 //   node scripts/mutant-sync.mjs --mutant <path>            mirror from a local Mutant clone
@@ -40,9 +41,24 @@ const REPO_FILES = [
 	'mutant-vscode-extension/README.md',
 	'mutant-vscode-extension/CHANGELOG.md'
 ];
+/**
+ * Programs, their recorded outputs (.golden) and the fixtures they read, for the
+ * workshop. Mirrored under content/repo/ like REPO_FILES; the workshop shows
+ * only these bytes, so every program and output on it is the pinned release's.
+ * A workshop module that names a file not listed here fails the build.
+ */
+const WORKSHOP_FILES = [
+	'examples/data/autoruns_hive.json',
+	'examples/data/offline_hive.json',
+	'examples/registry/registry_forensics_example.golden',
+	'examples/registry/registry_forensics_example.mut',
+	'examples/registry/registry_persistence_hunt.golden',
+	'examples/registry/registry_persistence_hunt.mut'
+];
 const repoDir = path.join(siteRoot, 'content', 'repo');
 
-const isMirrored = (repoPath) => repoPath.startsWith(DOCS_PREFIX) || REPO_FILES.includes(repoPath);
+const PROJECT_FILES = [...REPO_FILES, ...WORKSHOP_FILES];
+const isMirrored = (repoPath) => repoPath.startsWith(DOCS_PREFIX) || PROJECT_FILES.includes(repoPath);
 
 /** Where a file at `repoPath` in Mutant lives in this site. */
 function localPathFor(repoPath) {
@@ -101,7 +117,7 @@ function localSource(clone, commit) {
 	return {
 		label: `${clone} @ ${commit.slice(0, 7)}`,
 		async list() {
-			const out = git('ls-tree', '-r', '-z', commit, '--', DOCS_PREFIX, ...REPO_FILES).toString('utf8');
+			const out = git('ls-tree', '-r', '-z', commit, '--', DOCS_PREFIX, ...PROJECT_FILES).toString('utf8');
 			const files = new Map();
 			for (const line of out.split('\0').filter(Boolean)) {
 				const [meta, filePath] = line.split('\t');
@@ -167,7 +183,7 @@ async function sync(lock, source) {
 	if (![...files.keys()].some((p) => p.startsWith(DOCS_PREFIX))) {
 		throw new Error(`${source.label} has no files under ${DOCS_PREFIX}`);
 	}
-	const absent = REPO_FILES.filter((p) => !files.has(p));
+	const absent = PROJECT_FILES.filter((p) => !files.has(p));
 	if (absent.length) throw new Error(`${source.label} has no ${absent.join(', ')}`);
 
 	for (const repoPath of await listLocal()) {

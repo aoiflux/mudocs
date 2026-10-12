@@ -20,7 +20,7 @@ const tag = '[check-links]';
 const UNPINNED = /https:\/\/github\.com\/aoiflux\/mutant\/(?:tree|blob)\/(?:main|master|dev)\b[^"'\s<)]*/g;
 
 /** Built routes not yet linked from the site or the sitemap, crawled as well. */
-const UNLINKED_ROUTES = ['/workshop'];
+const UNLINKED_ROUTES = ['/workshop', '/workshop/registry-persistence'];
 
 /** Large or generated static files: checked for existence, never downloaded. */
 const HEAD_ONLY = /\.(wasm|js|css|png|jpe?g|svg|webp|ico|mp4|woff2?|zip|json|txt)$/i;
