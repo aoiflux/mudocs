@@ -9,6 +9,7 @@
 	import { extractDiagrams } from '$lib/diagrams';
 	import { prefersReducedMotion } from '$lib/artist/motion';
 	import { REPO } from '$lib/site';
+	import { MUTANT_RELEASE_URL, MUTANT_SHORT_COMMIT, MUTANT_TAG } from '$lib/mutant-pin';
 
 	let { data } = $props();
 
@@ -135,7 +136,10 @@
 				<span class="meta-chip">Reviewed {doc.frontmatter.last_reviewed}</span>
 			{/if}
 			<span class="meta-chip">Audience: {doc.audience}</span>
-			<span class="meta-chip">{doc.sourcePath}</span>
+			<a class="meta-chip" href={MUTANT_RELEASE_URL} data-testid="doc-pin">Mutant {MUTANT_TAG}</a>
+			<a class="meta-chip" href={githubUrl} target="_blank" rel="noopener noreferrer"
+				>{doc.sourcePath} @ {MUTANT_SHORT_COMMIT}</a
+			>
 			{#each doc.themes as theme (theme)}
 				<a class="meta-chip" href={`/docs/themes/${theme}`}>theme: {theme}</a>
 			{/each}

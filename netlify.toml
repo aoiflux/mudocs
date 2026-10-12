@@ -1,10 +1,10 @@
 [build]
-command = "npm run check && npm run build"
+command = "npm run check && npm run build && npm run check:links"
 publish = "build"
 
 [functions]
 directory = ".netlify/functions-internal"
-included_files = ["docs/**"]
+included_files = ["docs/**", "content/**"]
 
 [[redirects]]
 from = "/*"

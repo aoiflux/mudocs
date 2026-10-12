@@ -1,76 +1,77 @@
-# mudocs-next (SvelteKit)
+# mudocs
 
-This directory contains the production SvelteKit implementation for mudocs. It
-includes:
+The documentation and teaching site for [Mutant](https://github.com/aoiflux/mutant),
+served at <https://mudocs.aoiflux.xyz>. SvelteKit 2 + Svelte 5, deployed to
+Netlify (`@sveltejs/adapter-netlify`).
 
-- Industry design-system baseline (steel accent on a paper ground, Barlow
-  Condensed over Barlow, square hairline "blueprint" frames with `+`
-  registration marks) — tokens live at the top of `src/app.css`
-- Reusable components in `src/lib/components/`; motion primitives in
-  `src/lib/artist/motion.ts` (no animation dependency)
-- Marketing copy is derived from the markdown corpus at request/build time by
-  `src/lib/server/page-content.ts` — it is never hand-written in the routes
-- Server-side markdown ingestion from `./docs` (override with
-  `MUDOCS_DOCS_ROOT`)
-- Full-text docs search route at `/search` powered by Lunr indexing
-  (server-side)
-  - Lunr index is cached in-memory and rebuilt when docs content changes
-- Diagram rendering support for Mermaid and PlantUML fences in markdown docs
-- Light/Dark/Auto theming with persistent user preference
-- Section and document routes:
-  - `/`
-  - `/docs`
-  - `/search`
-  - `/docs/[section]`
-  - `/docs/[section]/[slug]`
-  - `/docs/[section]/[slug]/raw` (source markdown, fetched by the Source tab)
-  - `/docs/themes`, `/docs/themes/[theme]`, `/docs/quality`
-  - `/about`
-  - `/playground` (worker-based WASM REPL path)
-  - `/showcase`
-  - `/extension`
-  - `/theme-lab` (effects showcase; not indexed)
-  - `/sitemap.xml` (generated from the live corpus on every build)
+The site teaches **one Mutant release at a time**, named in
+[`mutant.lock.json`](mutant.lock.json) (currently `v2.6.0`). Everything that
+describes Mutant (the docs, the playground's REPL, every GitHub link) comes
+from that release, and the build fails if any of it drifts.
 
 ## Run locally
 
+Requires Node 22.12 or newer (`.nvmrc`).
+
 ```sh
-cd site
 npm install
 npm run dev
 ```
 
-`predev` automatically syncs artifacts from `../wasm-repl/` into
-`static/wasm-repl/`.
+`predev` installs the pinned browser REPL into `static/wasm-repl/` (see below).
+The first run downloads about 18 MB; later runs verify the installed files and
+skip the download.
 
-Docs ingestion checks, in order:
+## How content gets here
 
-1. `MUDOCS_DOCS_ROOT`
-2. `./docs`
-3. `../docs`
-4. `../mutant/docs`
+| What | Source | Command | Check |
+| --- | --- | --- | --- |
+| Docs (`docs/**`) | Mutant `docs/` at the locked commit, mirrored byte for byte. Never edit them here; edit them in Mutant | `npm run sync:mutant -- --mutant <path to a Mutant clone>` or `-- --remote` | `npm run check:sync` |
+| Browser REPL (`static/wasm-repl/`, gitignored) | `wasm-repl.zip` from the locked GitHub release, verified against the lock's SHA-256 digests | `npm run fetch:wasm` (runs automatically before `dev` and `build`) | `npm run check:wasm` |
+| The pin itself | The GitHub release | `npm run pin:mutant -- vX.Y.Z` | — |
 
-Diagram fences currently supported inside docs markdown:
+`mutant.sync.json` records the git blob id of every mirrored doc, so
+`check:sync` works offline. Add `--mutant <path>` or `--remote` to also compare
+the record with Mutant itself.
 
-1. `mermaid` fenced blocks
-2. `plantuml` fenced blocks (plus `puml` alias)
-
-Diagram runtime notes:
-
-1. Mermaid runtime is loaded from CDN at page runtime to keep JS bundles small.
-2. PlantUML blocks are encoded to public PlantUML SVG URLs.
-
-## Quality checks
+### Moving to a new Mutant release
 
 ```sh
-npm run check
-npm run build
+npm run pin:mutant -- v2.7.0                        # rewrites mutant.lock.json, installs the REPL
+npm run sync:mutant -- --mutant ../mutant           # or: -- --remote
+npm run check && npm run build && npm run check:links
 ```
 
-## Notes
+Commit `mutant.lock.json`, `mutant.sync.json` and `docs/` together.
 
-- WASM runtime files expected from `../wasm-repl/`:
-  - `mutant_repl.wasm`
-  - `wasm_exec.js`
-- The playground worker uses Go's `wasm_exec.js` bootstrap and attempts to
-  discover the exported runtime bridge function from the WASM module.
+## Checks
+
+| Command | What it fails on |
+| --- | --- |
+| `npm run check` | Docs drift (`check:sync`), host-only builtins in WASM docs examples (`check:docs:wasm`), type errors (`svelte-check`) |
+| `npm run check:links` | After a build: any internal link or `#anchor` that does not resolve, and any link into the Mutant repo that names a branch instead of the pinned tag |
+
+Netlify runs `npm run check && npm run build && npm run check:links`, so a
+deploy with drift, broken links or type errors does not go out.
+
+## Layout
+
+- `src/lib/server/content.ts`: docs pipeline. Loads `docs/**/*.md` (override
+  the root with `MUDOCS_DOCS_ROOT`), assigns sections from
+  `src/lib/server/docs-manifest.ts`, rewrites repo links, renders Mermaid and
+  PlantUML fences, highlights code with Shiki (Mutant grammar in
+  `mutant-grammar.ts`) and builds the Lunr search index.
+- `src/lib/mutant-pin.ts`: the pinned version, commit and REPL size, read from
+  the lock. Import from here; never hand-type a version or size.
+- `src/lib/components/`, `src/app.css`: design system (tokens at the top of
+  `app.css`); motion primitives in `src/lib/artist/motion.ts`.
+- `src/lib/game/`: the Codebreaker puzzle game, opened from the footer glyph.
+- `static/repl-worker.js`: runs the REPL in a worker through its
+  `mutantReplEval` export.
+
+## Routes
+
+`/`, `/docs`, `/docs/[section]`, `/docs/[section]/[slug]` (and `/raw`),
+`/docs/themes[/[theme]]`, `/search`, `/playground`, `/showcase`, `/extension`,
+`/about`, `/theme-lab` (not indexed), `/sitemap.xml`. Security advisories are
+`/docs/security/advisories` and `/docs/security/mvf-YYYY-NNNN`.

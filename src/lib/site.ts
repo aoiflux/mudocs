@@ -42,7 +42,9 @@ export const REPO = {
 	 */
 	docsBlobBase: `https://github.com/aoiflux/mutant/blob/${MUTANT_TAG}`,
 	/** Directories (and files, which GitHub redirects to /blob/) at the pinned release. */
-	treeBase: `https://github.com/aoiflux/mutant/tree/${MUTANT_TAG}`
+	treeBase: `https://github.com/aoiflux/mutant/tree/${MUTANT_TAG}`,
+	/** File bytes (images) at the pinned release, for embedding rather than viewing. */
+	rawBase: `https://raw.githubusercontent.com/aoiflux/mutant/${MUTANT_TAG}`
 } as const;
 
 /**

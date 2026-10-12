@@ -9,6 +9,7 @@
 		"pin:mutant": "node ./scripts/pin-mutant.mjs",
 		"sync:mutant": "node ./scripts/mutant-sync.mjs",
 		"check:sync": "node ./scripts/mutant-sync.mjs --check",
+		"check:links": "node ./scripts/check-links.mjs",
 		"check:docs:wasm": "node ./scripts/lint-wasm-docs.mjs",
 		"predev": "npm run fetch:wasm",
 		"prebuild": "npm run fetch:wasm",
@@ -20,7 +21,6 @@
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
 	},
 	"devDependencies": {
-		"@sveltejs/adapter-auto": "^7.0.1",
 		"@sveltejs/adapter-netlify": "^6.0.4",
 		"@sveltejs/kit": "^2.63.0",
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",

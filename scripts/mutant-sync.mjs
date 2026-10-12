@@ -1,11 +1,12 @@
-// Mirrors Mutant's docs/ into this site at the commit mutant.lock.json pins,
-// and detects any drift between the two.
+// Mirrors Mutant's documentation into this site at the commit mutant.lock.json
+// pins, and detects any drift between the two.
 //
-// The mirror is exact: every file under Mutant docs/ at the pinned commit, with
-// the same bytes, and nothing else. mutant.sync.json records the commit and the
-// git blob id of each file, so drift can be checked offline (has anyone edited
-// docs/, or re-pinned without re-syncing?) and against the source (does the
-// record match Mutant at that commit?).
+// The mirror is exact: every file under Mutant docs/ (into docs/) plus the
+// project files in REPO_FILES (into content/repo/, keeping their repo paths),
+// with the same bytes, and nothing else. mutant.sync.json records the commit
+// and the git blob id of each file by its path in the Mutant repo, so drift can
+// be checked offline (has anyone edited a mirrored file, or re-pinned without
+// re-syncing?) and against the source (does the record match Mutant?).
 //
 // Usage:
 //   node scripts/mutant-sync.mjs --mutant <path>            mirror from a local Mutant clone
@@ -23,10 +24,32 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const docsDir = path.join(siteRoot, 'docs');
 const recordPath = path.join(siteRoot, 'mutant.sync.json');
-const SOURCE_PREFIX = 'docs/';
 const tag = '[mutant-sync]';
+
+/** Mutant's docs/ tree is mirrored whole into this directory. */
+const DOCS_PREFIX = 'docs/';
+const docsDir = path.join(siteRoot, 'docs');
+
+/** Individual project files, mirrored under content/repo/ at their repo paths. */
+const REPO_FILES = [
+	'README.md',
+	'CHANGELOG.md',
+	'SECURITY.md',
+	'CONTRIBUTING.md',
+	'mutant-vscode-extension/README.md',
+	'mutant-vscode-extension/CHANGELOG.md'
+];
+const repoDir = path.join(siteRoot, 'content', 'repo');
+
+const isMirrored = (repoPath) => repoPath.startsWith(DOCS_PREFIX) || REPO_FILES.includes(repoPath);
+
+/** Where a file at `repoPath` in Mutant lives in this site. */
+function localPathFor(repoPath) {
+	return repoPath.startsWith(DOCS_PREFIX)
+		? path.join(docsDir, ...repoPath.slice(DOCS_PREFIX.length).split('/'))
+		: path.join(repoDir, ...repoPath.split('/'));
+}
 
 function parseArgs(argv) {
 	const args = { mutant: null, remote: false, check: false };
@@ -49,28 +72,41 @@ function blobId(buf) {
 	return createHash('sha1').update(`blob ${text.length}\0`).update(text).digest('hex');
 }
 
-async function listLocal(dir, prefix = '') {
+async function listTree(dir, prefix = '') {
 	const out = [];
-	for (const entry of await readdir(dir, { withFileTypes: true })) {
+	let entries;
+	try {
+		entries = await readdir(dir, { withFileTypes: true });
+	} catch {
+		return out;
+	}
+	for (const entry of entries) {
 		const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
-		if (entry.isDirectory()) out.push(...(await listLocal(path.join(dir, entry.name), rel)));
+		if (entry.isDirectory()) out.push(...(await listTree(path.join(dir, entry.name), rel)));
 		else out.push(rel);
 	}
-	return out.sort();
+	return out;
 }
 
-/** Source adapters: list blob ids under docs/ at a commit, and read one blob. */
+/** Every mirrored file present in this site, by its repo path. */
+async function listLocal() {
+	const docs = (await listTree(docsDir)).map((rel) => `${DOCS_PREFIX}${rel}`);
+	const repo = await listTree(repoDir);
+	return [...docs, ...repo].sort();
+}
+
+/** Source adapters: list the mirrored blob ids at a commit, and read one blob. */
 function localSource(clone, commit) {
 	const git = (...args) => execFileSync('git', ['-C', clone, ...args], { maxBuffer: 64 * 1024 * 1024 });
 	return {
 		label: `${clone} @ ${commit.slice(0, 7)}`,
 		async list() {
-			const out = git('ls-tree', '-r', '-z', commit, '--', SOURCE_PREFIX).toString('utf8');
+			const out = git('ls-tree', '-r', '-z', commit, '--', DOCS_PREFIX, ...REPO_FILES).toString('utf8');
 			const files = new Map();
 			for (const line of out.split('\0').filter(Boolean)) {
 				const [meta, filePath] = line.split('\t');
 				const [, type, id] = meta.split(' ');
-				if (type === 'blob') files.set(filePath.slice(SOURCE_PREFIX.length), id);
+				if (type === 'blob' && isMirrored(filePath)) files.set(filePath, id);
 			}
 			return files;
 		},
@@ -91,14 +127,12 @@ function remoteSource(repo, commit) {
 			if (tree.truncated) throw new Error('GitHub truncated the tree listing; sync from a local clone instead');
 			const files = new Map();
 			for (const item of tree.tree) {
-				if (item.type === 'blob' && item.path.startsWith(SOURCE_PREFIX)) {
-					files.set(item.path.slice(SOURCE_PREFIX.length), item.sha);
-				}
+				if (item.type === 'blob' && isMirrored(item.path)) files.set(item.path, item.sha);
 			}
 			return files;
 		},
-		async read(rel) {
-			const encoded = `${SOURCE_PREFIX}${rel}`.split('/').map(encodeURIComponent).join('/');
+		async read(repoPath) {
+			const encoded = repoPath.split('/').map(encodeURIComponent).join('/');
 			const url = `https://raw.githubusercontent.com/${repo}/${commit}/${encoded}`;
 			const res = await fetch(url);
 			if (!res.ok) throw new Error(`${url}: HTTP ${res.status} ${res.statusText}`);
@@ -111,57 +145,60 @@ function remoteSource(repo, commit) {
 function diff(expected, actual, expectedLabel, actualLabel) {
 	const lines = [];
 	for (const [rel, id] of expected) {
-		if (!actual.has(rel)) lines.push(`missing  docs/${rel}  (in ${expectedLabel}, not in ${actualLabel})`);
-		else if (actual.get(rel) !== id) lines.push(`changed  docs/${rel}`);
+		if (!actual.has(rel)) lines.push(`missing  ${rel}  (in ${expectedLabel}, not in ${actualLabel})`);
+		else if (actual.get(rel) !== id) lines.push(`changed  ${rel}`);
 	}
 	for (const rel of actual.keys()) {
-		if (!expected.has(rel)) lines.push(`extra    docs/${rel}  (in ${actualLabel}, not in ${expectedLabel})`);
+		if (!expected.has(rel)) lines.push(`extra    ${rel}  (in ${actualLabel}, not in ${expectedLabel})`);
 	}
 	return lines;
 }
 
 async function localIds() {
 	const ids = new Map();
-	for (const rel of await listLocal(docsDir)) {
-		ids.set(rel, blobId(await readFile(path.join(docsDir, rel))));
+	for (const repoPath of await listLocal()) {
+		ids.set(repoPath, blobId(await readFile(localPathFor(repoPath))));
 	}
 	return ids;
 }
 
 async function sync(lock, source) {
-	const wanted = await source.list();
-	if (wanted.size === 0) throw new Error(`${source.label} has no files under ${SOURCE_PREFIX}`);
+	const files = await source.list();
+	if (![...files.keys()].some((p) => p.startsWith(DOCS_PREFIX))) {
+		throw new Error(`${source.label} has no files under ${DOCS_PREFIX}`);
+	}
+	const absent = REPO_FILES.filter((p) => !files.has(p));
+	if (absent.length) throw new Error(`${source.label} has no ${absent.join(', ')}`);
 
-	for (const rel of await listLocal(docsDir).catch(() => [])) {
-		if (!wanted.has(rel)) {
-			await rm(path.join(docsDir, rel));
-			console.log(`${tag} removed docs/${rel}`);
+	for (const repoPath of await listLocal()) {
+		if (!files.has(repoPath)) {
+			await rm(localPathFor(repoPath));
+			console.log(`${tag} removed ${repoPath}`);
 		}
 	}
 
-	const current = await localIds().catch(() => new Map());
+	const current = await localIds();
 	let written = 0;
-	for (const [rel, id] of wanted) {
-		if (current.get(rel) === id) continue;
-		const data = await source.read(rel, id);
-		if (blobId(data) !== id) throw new Error(`docs/${rel}: content does not match its blob id ${id}`);
-		const target = path.join(docsDir, ...rel.split('/'));
+	for (const [repoPath, id] of files) {
+		if (current.get(repoPath) === id) continue;
+		const data = await source.read(repoPath, id);
+		if (blobId(data) !== id) throw new Error(`${repoPath}: content does not match its blob id ${id}`);
+		const target = localPathFor(repoPath);
 		await mkdir(path.dirname(target), { recursive: true });
 		await writeFile(target, data);
 		written += 1;
-		console.log(`${tag} wrote docs/${rel}`);
+		console.log(`${tag} wrote ${repoPath}`);
 	}
 
 	const record = {
-		$comment: 'Written by scripts/mutant-sync.mjs. Git blob ids of docs/ as mirrored from Mutant; do not edit.',
+		$comment: 'Written by scripts/mutant-sync.mjs. Git blob ids of the files mirrored from Mutant, by repo path; do not edit.',
 		repo: lock.repo,
 		tag: lock.tag,
 		commit: lock.commit,
-		source: SOURCE_PREFIX,
-		files: Object.fromEntries([...wanted].sort(([a], [b]) => a.localeCompare(b)))
+		files: Object.fromEntries([...files].sort(([a], [b]) => a.localeCompare(b)))
 	};
 	await writeFile(recordPath, `${JSON.stringify(record, null, '\t')}\n`);
-	console.log(`${tag} docs/ mirrors ${source.label}: ${wanted.size} files, ${written} written`);
+	console.log(`${tag} mirrors ${source.label}: ${files.size} files, ${written} written`);
 }
 
 async function check(lock, source) {
@@ -175,12 +212,12 @@ async function check(lock, source) {
 	}
 	if (record.commit !== lock.commit || record.tag !== lock.tag) {
 		problems.push(
-			`pin    docs/ was synced from ${record.tag}@${record.commit.slice(0, 7)}, lock is ${lock.tag}@${lock.commit.slice(0, 7)}`
+			`pin      mirror was synced from ${record.tag}@${record.commit.slice(0, 7)}, lock is ${lock.tag}@${lock.commit.slice(0, 7)}`
 		);
 	}
 
 	const recorded = new Map(Object.entries(record.files));
-	problems.push(...diff(recorded, await localIds(), 'mutant.sync.json', 'docs/'));
+	problems.push(...diff(recorded, await localIds(), 'mutant.sync.json', 'this site'));
 
 	if (source) {
 		problems.push(...diff(await source.list(), recorded, source.label, 'mutant.sync.json'));
@@ -191,7 +228,7 @@ async function check(lock, source) {
 		throw new Error(`${problems.length} difference(s); re-sync with --mutant <path> or --remote`);
 	}
 	const against = source ? ` and ${source.label}` : '';
-	console.log(`${tag} zero drift: docs/ matches mutant.sync.json (${lock.tag})${against}, ${recorded.size} files`);
+	console.log(`${tag} zero drift: mirror matches mutant.sync.json (${lock.tag})${against}, ${recorded.size} files`);
 }
 
 async function main() {

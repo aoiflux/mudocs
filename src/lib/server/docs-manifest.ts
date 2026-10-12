@@ -9,6 +9,8 @@ export type Audience =
 
 export type ManifestEntry = {
 	section?: SectionKey;
+	/** URL segment; defaults to the lower-cased file name (a README takes its directory's). */
+	slug?: string;
 	audience?: Audience;
 	order?: number;
 	tags?: string[];
@@ -25,6 +27,57 @@ export const docsManifestDirectories: Record<string, ManifestEntry> = {
 		audience: 'security-analyst',
 		order: 90,
 		tags: ['advisory', 'security', 'vulnerability']
+	}
+};
+
+/**
+ * Project files mirrored from the Mutant repo root into content/repo/ by
+ * scripts/mutant-sync.mjs. Keyed, like docsManifest, by repo path.
+ */
+const repoFilesManifest: Record<string, ManifestEntry> = {
+	'README.md': {
+		section: 'overview',
+		slug: 'readme',
+		audience: 'all',
+		order: 1,
+		tags: ['overview', 'getting-started', 'install']
+	},
+	'CHANGELOG.md': {
+		section: 'overview',
+		slug: 'changelog',
+		audience: 'all',
+		order: 90,
+		tags: ['changelog', 'releases', 'history']
+	},
+	'SECURITY.md': {
+		section: 'security',
+		slug: 'security-policy',
+		audience: 'all',
+		order: 1,
+		tags: ['security', 'policy', 'reporting', 'vulnerability']
+	},
+	'CONTRIBUTING.md': {
+		section: 'tooling',
+		slug: 'contributing',
+		audience: 'integrator',
+		order: 5,
+		tags: ['contributing', 'development', 'workflow']
+	},
+	'mutant-vscode-extension/README.md': {
+		section: 'tooling',
+		slug: 'vscode-extension',
+		audience: 'language-user',
+		order: 28,
+		tags: ['lsp', 'editor', 'vscode', 'extension'],
+		themes: ['lsp']
+	},
+	'mutant-vscode-extension/CHANGELOG.md': {
+		section: 'tooling',
+		slug: 'vscode-extension-changelog',
+		audience: 'language-user',
+		order: 95,
+		tags: ['lsp', 'vscode', 'changelog'],
+		themes: ['lsp']
 	}
 };
 
@@ -293,5 +346,6 @@ export const docsManifest: Record<string, ManifestEntry> = {
 		audience: 'all',
 		order: 7,
 		tags: ['disclosure', 'policy', 'vulnerability']
-	}
+	},
+	...repoFilesManifest
 };

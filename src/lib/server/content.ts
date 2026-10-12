@@ -430,37 +430,52 @@ function normalizeForIndex(value: string): string {
 	return value.toLowerCase().replace(/[^a-z0-9\s_-]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-async function resolveDocsFilesWithCacheKey(root: string): Promise<{ files: string[]; cacheKey: string }> {
+/** A Markdown file on disk and the path it has in the Mutant repo (`docs/X.md`, `README.md`). */
+type DocFile = { file: string; repoPath: string };
+
+/**
+ * Project files mirrored from the Mutant repo root (README, CHANGELOG, ...) by
+ * scripts/mutant-sync.mjs. Optional: a docs root alone is a complete site.
+ */
+function resolveRepoFilesRoot(): string | null {
+	const candidate = path.resolve(process.cwd(), 'content', 'repo');
+	return fsSync.existsSync(candidate) && fsSync.statSync(candidate).isDirectory() ? candidate : null;
+}
+
+async function markdownUnder(root: string, prefix: string): Promise<DocFile[]> {
+	const files = await fg(path.join(root, '**/*.md').replace(/\\/g, '/'), { dot: false });
+	return files.map((file) => ({ file, repoPath: `${prefix}${path.relative(root, file).split(path.sep).join('/')}` }));
+}
+
+async function resolveDocsFilesWithCacheKey(root: string): Promise<{ files: DocFile[]; cacheKey: string }> {
 	// Recursive: Mutant's docs/ has subdirectories (advisories/), mirrored as-is.
-	const files = (await fg(path.join(root, '**/*.md').replace(/\\/g, '/'), { dot: false })).sort((a, b) =>
-		a.localeCompare(b)
-	);
+	const repoRoot = resolveRepoFilesRoot();
+	const files = [
+		...(await markdownUnder(root, 'docs/')),
+		...(repoRoot ? await markdownUnder(repoRoot, '') : [])
+	].sort((a, b) => a.repoPath.localeCompare(b.repoPath));
 
 	const statParts = await Promise.all(
-		files.map(async (file) => {
+		files.map(async ({ file, repoPath }) => {
 			const stat = await fs.stat(file);
-			return `${docRelPath(root, file)}:${stat.size}:${Math.floor(stat.mtimeMs)}`;
+			return `${repoPath}:${stat.size}:${Math.floor(stat.mtimeMs)}`;
 		})
 	);
 
 	return {
 		files,
-		cacheKey: `${root}|${statParts.join('|')}`
+		cacheKey: `${root}|${repoRoot ?? ''}|${statParts.join('|')}`
 	};
-}
-
-/** A file's path inside docs/, with forward slashes: `advisories/MVF-2026-0001.md`. */
-function docRelPath(root: string, file: string): string {
-	return path.relative(root, file).split(path.sep).join('/');
 }
 
 /**
  * One URL segment per document. A file is named by its base name; a README
- * stands for its directory, so docs/advisories/README.md is `advisories`.
+ * inside a directory stands for that directory, so docs/advisories/README.md
+ * is `advisories`. A manifest entry may name the slug outright.
  */
-function docSlug(relPath: string): string {
-	const parts = relPath.split('/');
-	const base = path.posix.basename(relPath, '.md');
+function docSlug(repoPath: string): string {
+	const parts = repoPath.split('/');
+	const base = path.posix.basename(repoPath, '.md');
 	const name = base.toLowerCase() === 'readme' && parts.length > 1 ? parts[parts.length - 2] : base;
 	return name.toLowerCase();
 }
@@ -619,12 +634,12 @@ function resolveSection(candidate: string | undefined, fallback: SectionKey): Se
 	return fallback;
 }
 
-function inferredFrontmatter(fileName: string, section: SectionKey): DocFrontmatter {
+function inferredFrontmatter(repoPath: string, section: SectionKey): DocFrontmatter {
 	return {
-		title: titleize(fileName.replace(/\.md$/i, '')),
+		title: titleize(path.posix.basename(repoPath).replace(/\.md$/i, '')),
 		description: sectionCatalog[section].description,
 		source_repo: 'aoiflux/mutant',
-		source_path: `docs/${fileName}`,
+		source_path: repoPath,
 		source_ref: MUTANT_TAG,
 		freshness_tier: section === 'security' || section === 'runtime' ? 'critical' : 'high',
 		review_owner: 'docs',
@@ -645,7 +660,7 @@ function inferredFrontmatter(fileName: string, section: SectionKey): DocFrontmat
  * the doc was written. GitHub redirects a /tree/ path that names a file to its
  * /blob/ view, fragment intact, so one base serves files and directories.
  */
-function rewriteRepoLinks(body: string, docPages: Map<string, string>, docRel: string): string {
+function rewriteRepoLinks(body: string, docPages: Map<string, string>, docRepoPath: string): string {
 	let inCodeFence = false;
 	return body
 		.split(/\r?\n/)
@@ -656,35 +671,58 @@ function rewriteRepoLinks(body: string, docPages: Map<string, string>, docRel: s
 			}
 			if (inCodeFence) return line;
 
-			return line.replace(/\]\(([^)\s]+)\)/g, (match, target: string) => {
-				const resolved = resolveRepoLink(target, docPages, docRel);
-				return resolved ? `](${resolved})` : match;
-			});
+			// Images are served as files, so they resolve to the raw blob, not a page.
+			return line
+				.replace(/(!\[[^\]]*\]\()([^)\s]+)\)/g, (match, head: string, target: string) => {
+					const resolved = resolveRepoAsset(target, docRepoPath);
+					return resolved ? `${head}${resolved})` : match;
+				})
+				.replace(/(<img\b[^>]*\bsrc=)(['"])([^'"]+)\2/gi, (match, head: string, quote: string, target: string) => {
+					const resolved = resolveRepoAsset(target, docRepoPath);
+					return resolved ? `${head}${quote}${resolved}${quote}` : match;
+				})
+				.replace(/\]\(([^)\s]+)\)/g, (match, target: string) => {
+					const resolved = resolveRepoLink(target, docPages, docRepoPath);
+					return resolved ? `](${resolved})` : match;
+				});
 		})
 		.join('\n');
 }
 
-function resolveRepoLink(target: string, docPages: Map<string, string>, docRel: string): string | null {
+/** A relative link target as a path in the Mutant repo, or null if it is not one. */
+function repoPathOf(target: string, docRepoPath: string): { repoPath: string; fragment: string } | null {
 	// Absolute URLs, protocol-relative links and in-page anchors already work.
 	if (/^([a-z][a-z0-9+.-]*:|\/\/|#|\/)/i.test(target)) return null;
 
 	const hashIndex = target.indexOf('#');
 	const fragment = hashIndex === -1 ? '' : target.slice(hashIndex);
-	const filePath = (hashIndex === -1 ? target : target.slice(0, hashIndex)).replace(/^\.\//, '');
+	const filePath = hashIndex === -1 ? target : target.slice(0, hashIndex);
 	if (!filePath) return null;
 
 	// Resolve against the containing document's directory inside the repo.
-	const repoPath = path.posix.normalize(path.posix.join('docs', path.posix.dirname(docRel), filePath));
+	const repoPath = path.posix.normalize(path.posix.join(path.posix.dirname(docRepoPath), filePath));
 	if (repoPath === '..' || repoPath.startsWith('../')) return null;
+	return { repoPath, fragment };
+}
+
+function resolveRepoLink(target: string, docPages: Map<string, string>, docRepoPath: string): string | null {
+	const resolved = repoPathOf(target, docRepoPath);
+	if (!resolved) return null;
+	const { repoPath, fragment } = resolved;
 
 	// A line anchor (#L42) only means something in GitHub's file view, so a doc
 	// carrying one keeps pointing at the repo rather than at the rendered page.
-	if (!/^#L\d/.test(fragment) && repoPath.toLowerCase().startsWith('docs/')) {
-		const page = docPages.get(repoPath.slice('docs/'.length).toLowerCase());
+	if (!/^#L\d/.test(fragment)) {
+		const page = docPages.get(repoPath.toLowerCase());
 		if (page) return `${page}${fragment}`;
 	}
 
 	return `${REPO.treeBase}/${repoPath.replace(/\/+$/, '')}${fragment}`;
+}
+
+function resolveRepoAsset(target: string, docRepoPath: string): string | null {
+	const resolved = repoPathOf(target, docRepoPath);
+	return resolved ? `${REPO.rawBase}/${resolved.repoPath}` : null;
 }
 
 function normalizeHeading(value: string): string {
@@ -777,16 +815,15 @@ async function loadAllDocs(): Promise<DocItem[]> {
 	// Two passes: a document can only be linked to its page on this site once
 	// every document's section is known, and sections are resolved per file.
 	const parsedFiles = await Promise.all(
-		files.map(async (file) => {
+		files.map(async ({ file, repoPath }) => {
 			const source = await fs.readFile(file, 'utf8');
 			const parsed = matter(source);
 			const fileName = path.basename(file);
-			const relPath = docRelPath(definitiveDocsRoot, file);
-			const sourcePath = `docs/${relPath}`;
+			const sourcePath = repoPath;
 			const manifestEntry = manifestFor(sourcePath);
 			const inferredSection = inferSection(fileName, parsed.content);
 			const resolvedSection = resolveSection(manifestEntry.section ?? parsed.data.section, inferredSection);
-			const inferred = inferredFrontmatter(fileName, resolvedSection);
+			const inferred = inferredFrontmatter(repoPath, resolvedSection);
 			const frontmatter = frontmatterSchema.parse({
 				...inferred,
 				...manifestEntry,
@@ -794,7 +831,7 @@ async function loadAllDocs(): Promise<DocItem[]> {
 				section: resolvedSection
 			});
 
-			const slug = docSlug(relPath);
+			const slug = manifestEntry.slug ?? docSlug(repoPath);
 			const raw = parsed.content.trim();
 			const title =
 				(typeof parsed.data.title === 'string' ? parsed.data.title : null) ??
@@ -805,7 +842,7 @@ async function loadAllDocs(): Promise<DocItem[]> {
 			return {
 				file,
 				fileName,
-				relPath,
+				repoPath,
 				sourcePath,
 				manifestEntry,
 				inferred,
@@ -819,10 +856,10 @@ async function loadAllDocs(): Promise<DocItem[]> {
 		})
 	);
 
-	/** Lower-cased path inside docs/ (as the corpus links to it) → this site's page. */
+	/** Lower-cased repo path (as the corpus links to it) → this site's page. */
 	const docPages = new Map(
 		parsedFiles.map((entry) => [
-			entry.relPath.toLowerCase(),
+			entry.repoPath.toLowerCase(),
 			`/docs/${entry.resolvedSection}/${entry.slug}`
 		])
 	);
@@ -831,7 +868,7 @@ async function loadAllDocs(): Promise<DocItem[]> {
 		parsedFiles.map(async (entry) => {
 			const {
 				file,
-				relPath,
+				repoPath,
 				sourcePath,
 				manifestEntry,
 				inferred,
@@ -842,7 +879,7 @@ async function loadAllDocs(): Promise<DocItem[]> {
 				title,
 				data
 			} = entry;
-			const processed = processMarkdown(rewriteRepoLinks(injectCharts(raw), docPages, relPath), title);
+			const processed = processMarkdown(rewriteRepoLinks(injectCharts(raw), docPages, repoPath), title);
 			const body = processed.body;
 			// Fences become finished HTML before marked runs; see highlightFences().
 			const html = await marked.parse(await highlightFences(body));
