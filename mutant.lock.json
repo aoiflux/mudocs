@@ -6,10 +6,10 @@
 	"released": "2026-10-12",
 	"wasm": {
 		"asset": "wasm-repl.zip",
-		"zipSha256": "f2d845f9380c80737d4be6784f79a5dba13da336769b95ea809294f95056229e",
+		"zipSha256": "f4e80ba7dd6bcef95f8ee5de655cf40ee4ae1c12e989c90324269917d847fd3c",
 		"files": {
 			"mutant_repl.wasm": {
-				"sha256": "5d267af661dc50a55ed2c7b69b6e07c568d88ebf4a7339c3763e9bc6152b7d65",
+				"sha256": "80391bbd2fbd708dfafdb7489e1c45414c3f0b1ce0f9291b7a13926be51b24ae",
 				"bytes": 86754440
 			},
 			"wasm_exec.js": {
