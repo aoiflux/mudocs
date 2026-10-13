@@ -4,7 +4,8 @@
 	 * The film itself is decoration for sighted readers; the narration under it
 	 * says the same thing in text, and the full shot list is one click away, so
 	 * the stage reads fully without the drawing and with motion reduced. Nothing
-	 * plays until the reader presses Play.
+	 * plays until the reader presses Play. While the stage is on screen (or full
+	 * screen), the arrow keys step, Space plays or pauses, and F goes full screen.
 	 */
 	import { onMount, type Component } from 'svelte';
 	import type { ResolvedCinematic } from '../resolved';
@@ -23,8 +24,12 @@
 		RegistryPersistence: RegistryFilm
 	} as unknown as Record<FilmName, Component<FilmProps>>;
 
-	/** How long a shot holds while playing, in ms. */
-	const HOLD = 7000;
+	/**
+	 * How long a shot holds while playing, in ms: the camera move, then time to
+	 * read the narration, within bounds so a short line does not flash past and
+	 * a long one does not stall.
+	 */
+	const holdFor = (text: string) => Math.min(8000, Math.max(4000, 2500 + text.length * 22));
 	/** The stage every film draws on; the frame scales it to fit. */
 	const STAGE_WIDTH = 960;
 
@@ -34,13 +39,46 @@
 	let playing = $state(false);
 	let reduced = $state(false);
 	let width = $state(STAGE_WIDTH);
+	let root: HTMLDivElement | undefined = $state();
+	let inView = $state(false);
+	let canFullscreen = $state(false);
+	let fullscreen = $state(false);
 
 	const shot = $derived(stage.shots[index]);
 	const last = $derived(index === stage.shots.length - 1);
+	const hold = $derived(holdFor(shot.text));
 	const Film = $derived(FILMS[stage.film]);
+
+	type PrefixedDocument = Document & {
+		webkitFullscreenEnabled?: boolean;
+		webkitFullscreenElement?: Element | null;
+		webkitExitFullscreen?: () => Promise<void> | void;
+	};
+	type PrefixedElement = HTMLElement & { webkitRequestFullscreen?: () => Promise<void> | void };
+
+	const fullscreenElement = () =>
+		document.fullscreenElement ?? (document as PrefixedDocument).webkitFullscreenElement ?? null;
 
 	onMount(() => {
 		reduced = prefersReducedMotion();
+		const doc = document as PrefixedDocument;
+		canFullscreen = Boolean(doc.fullscreenEnabled || doc.webkitFullscreenEnabled);
+
+		const syncFullscreen = () => (fullscreen = root !== undefined && fullscreenElement() === root);
+		document.addEventListener('fullscreenchange', syncFullscreen);
+		document.addEventListener('webkitfullscreenchange', syncFullscreen);
+
+		// Keys steer the film the reader is looking at, not every film on the page.
+		const observer = new IntersectionObserver(([entry]) => (inView = entry.intersectionRatio >= 0.5), {
+			threshold: [0, 0.5, 1]
+		});
+		if (root) observer.observe(root);
+
+		return () => {
+			document.removeEventListener('fullscreenchange', syncFullscreen);
+			document.removeEventListener('webkitfullscreenchange', syncFullscreen);
+			observer.disconnect();
+		};
 	});
 
 	$effect(() => {
@@ -53,7 +91,7 @@
 			playing = false;
 			return;
 		}
-		const timer = setTimeout(() => (index += 1), HOLD);
+		const timer = setTimeout(() => (index += 1), hold);
 		return () => clearTimeout(timer);
 	});
 
@@ -65,9 +103,67 @@
 		if (!playing && last) index = 0;
 		playing = !playing;
 	}
+
+	async function toggleFullscreen(): Promise<void> {
+		if (!root) return;
+		const doc = document as PrefixedDocument;
+		try {
+			if (fullscreenElement()) {
+				await (document.exitFullscreen?.() ?? doc.webkitExitFullscreen?.());
+			} else {
+				const el = root as PrefixedElement;
+				await (el.requestFullscreen?.() ?? el.webkitRequestFullscreen?.());
+			}
+		} catch {
+			// The browser refused (no user gesture, or a policy); the page stays as it is.
+		}
+	}
+
+	/** Fields that take typing, where every key belongs to the field. */
+	const EDITABLE = 'input, textarea, select, [contenteditable]:not([contenteditable="false"])';
+	/** Controls that answer Space and Enter themselves. */
+	const ACTIVATES = 'button, a[href], summary, [role="button"], [role="link"]';
+
+	function onKey(event: KeyboardEvent): void {
+		if (!root || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
+		if (!(fullscreen || inView)) return;
+		const target = event.target instanceof Element ? event.target : null;
+		if (target?.closest(EDITABLE)) return;
+
+		switch (event.key) {
+			case 'ArrowRight':
+				go(index + 1);
+				break;
+			case 'ArrowLeft':
+				go(index - 1);
+				break;
+			case 'Home':
+				if (!fullscreen) return;
+				go(0);
+				break;
+			case 'End':
+				if (!fullscreen) return;
+				go(stage.shots.length - 1);
+				break;
+			case ' ':
+			case 'k':
+				if (event.key === ' ' && target?.closest(ACTIVATES)) return;
+				togglePlay();
+				break;
+			case 'f':
+				if (!canFullscreen) return;
+				void toggleFullscreen();
+				break;
+			default:
+				return;
+		}
+		event.preventDefault();
+	}
 </script>
 
-<div class="cn">
+<svelte:window onkeydown={onKey} />
+
+<div class="cn" bind:this={root} data-full={fullscreen ? '' : undefined}>
 	<p class="cn-intro">{stage.intro}</p>
 
 	<div class="film cn-frame" bind:clientWidth={width} aria-hidden="true" data-reduced={reduced ? '' : undefined}>
@@ -78,21 +174,30 @@
 			<span class="cn-count">{String(index + 1).padStart(2, '0')} / {String(stage.shots.length).padStart(2, '0')}</span>
 			<span class="cn-title">{shot.title}</span>
 		</div>
-		<div class="cn-bar"><span style:width={`${((index + 1) / stage.shots.length) * 100}%`}></span></div>
-	</div>
-
-	<div class="cn-narration" aria-live="polite">
-		<p class="cn-shot"><strong>{index + 1}. {shot.title}.</strong> {shot.text}</p>
+		<div class="cn-bar">
+			<span class="cn-seen" style:width={`${(index / stage.shots.length) * 100}%`}></span>
+			<span
+				class="cn-now"
+				style:left={`${(index / stage.shots.length) * 100}%`}
+				style:width={`${100 / stage.shots.length}%`}
+			>
+				{#key `${index}:${playing}`}
+					<i class:is-timing={playing && !last} style:animation-duration={`${hold}ms`}></i>
+				{/key}
+			</span>
+		</div>
 	</div>
 
 	<div class="cn-controls">
-		<div class="cta-cluster">
-			<button type="button" class="btn btn-ghost" onclick={() => go(index - 1)} disabled={index === 0}>Previous</button>
-			<button type="button" class="btn btn-ghost" onclick={togglePlay} aria-pressed={playing}>
-				{playing ? 'Pause' : last ? 'Play again' : 'Play'}
-			</button>
-			<button type="button" class="btn btn-secondary" onclick={() => go(index + 1)} disabled={last}>Next</button>
-		</div>
+		<button type="button" class="btn btn-ghost" onclick={() => go(index - 1)} disabled={index === 0}>
+			<span aria-hidden="true">◂</span> Previous
+		</button>
+		<button type="button" class="btn btn-primary cn-play" onclick={togglePlay} aria-pressed={playing}>
+			{playing ? 'Pause' : last ? 'Play again' : 'Play'}
+		</button>
+		<button type="button" class="btn btn-ghost" onclick={() => go(index + 1)} disabled={last}>
+			Next <span aria-hidden="true">▸</span>
+		</button>
 		<ol class="cn-dots" aria-label="Shots">
 			{#each stage.shots as s, i (s.shot)}
 				<li>
@@ -107,7 +212,21 @@
 				</li>
 			{/each}
 		</ol>
+		{#if canFullscreen}
+			<button type="button" class="btn btn-ghost cn-full" onclick={toggleFullscreen} aria-pressed={fullscreen}>
+				{fullscreen ? 'Exit full screen' : 'Full screen'}
+			</button>
+		{/if}
 	</div>
+
+	<div class="cn-narration" aria-live="polite">
+		<p class="cn-shot"><strong>{index + 1}. {shot.title}.</strong> {shot.text}</p>
+	</div>
+
+	<p class="cn-keys text-muted">
+		Keys: <kbd>←</kbd> <kbd>→</kbd> step · <kbd>Space</kbd> play or pause
+		{#if canFullscreen}· <kbd>F</kbd> full screen{/if}
+	</p>
 
 	<details class="cn-text">
 		<summary>Every shot, as text</summary>
@@ -173,9 +292,7 @@
 		position: absolute;
 		inset: 0;
 		pointer-events: none;
-		background:
-			radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.55)),
-			repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 3px);
+		background: radial-gradient(ellipse at center, transparent 65%, rgba(0, 0, 0, 0.3));
 	}
 
 	.cn-world {
@@ -184,8 +301,9 @@
 		top: 0;
 		width: 960px;
 		height: 540px;
-		transform: scale(var(--k));
-		transform-origin: 0 0;
+		/* zoom, not a scale transform: the film lays out at its drawn size, so
+		   text is rasterised sharp rather than drawn at 960 px and stretched. */
+		zoom: var(--k);
 		perspective: 1500px;
 		perspective-origin: 50% 40%;
 	}
@@ -224,29 +342,114 @@
 		background: rgba(63, 208, 255, 0.12);
 	}
 
-	.cn-bar span {
-		display: block;
-		height: 100%;
+	.cn-seen,
+	.cn-now {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: 0;
+	}
+
+	.cn-seen,
+	.cn-now i {
 		background: var(--f-cyan);
 		box-shadow: 0 0 10px var(--f-cyan);
+	}
+
+	.cn-seen {
 		transition: width 0.6s var(--f-ease);
+	}
+
+	.cn-now i {
+		display: block;
+		height: 100%;
+		transform-origin: 0 50%;
+	}
+
+	/* While playing, the current shot's segment fills over its hold time. */
+	.cn-now i.is-timing {
+		animation-name: cn-fill;
+		animation-timing-function: linear;
+		animation-fill-mode: both;
+	}
+
+	@keyframes cn-fill {
+		from {
+			transform: scaleX(0);
+		}
+		to {
+			transform: scaleX(1);
+		}
 	}
 
 	.cn-controls {
 		display: flex;
 		flex-wrap: wrap;
-		gap: var(--space-3);
+		gap: var(--space-2);
 		align-items: center;
-		justify-content: space-between;
+	}
+
+	.cn-play {
+		min-width: 8.5em;
 	}
 
 	.cn-dots {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 6px;
-		margin: 0;
+		margin: 0 0 0 var(--space-2);
 		padding: 0;
 		list-style: none;
+	}
+
+	.cn-full {
+		margin-left: auto;
+	}
+
+	.cn-keys {
+		margin: 0;
+		font-size: 12px;
+	}
+
+	/* No keyboard to speak of on a touch screen. */
+	@media (hover: none) and (pointer: coarse) {
+		.cn-keys {
+			display: none;
+		}
+	}
+
+	.cn-keys kbd {
+		font-family: var(--font-mono);
+		font-size: 11px;
+		padding: 0 0.4em;
+		border: 1px solid var(--color-divider);
+	}
+
+	/* Full screen: the film fills the screen above its controls and narration. */
+	.cn[data-full] {
+		align-content: center;
+		justify-items: center;
+		padding: var(--space-4);
+		overflow: auto;
+		background: var(--color-bg);
+		color: var(--color-text);
+	}
+
+	.cn[data-full] .cn-intro,
+	.cn[data-full] .cn-text,
+	.cn[data-full] .cn-sources {
+		display: none;
+	}
+
+	.cn[data-full] .cn-frame,
+	.cn[data-full] .cn-controls,
+	.cn[data-full] .cn-narration,
+	.cn[data-full] .cn-keys {
+		width: min(100%, calc((100vh - 13rem) * 16 / 9));
+	}
+
+	.cn[data-full] .cn-shot {
+		max-width: none;
 	}
 
 	.cn-dot {
@@ -284,7 +487,7 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.cn-bar span {
+		.cn-seen {
 			transition: none;
 		}
 	}

@@ -8,12 +8,21 @@ export type Poses = Readonly<Record<string, Pose>>;
 
 const HIDDEN = 'opacity:0;transform:translate3d(0,0,-260px) scale(0.9)';
 
+/**
+ * How much of each authored tilt is drawn. Text on a tilted plane is resampled
+ * and reads soft, so the films keep the sense of depth at half the angle.
+ */
+const TILT = 0.5;
+
+const flatten = (transform: string) =>
+	transform.replace(/(rotate[XYZ]?\()(-?[\d.]+)deg\)/g, (_, fn: string, deg: string) => `${fn}${Number(deg) * TILT}deg)`);
+
 /** Inline style for an object in this shot. */
 export function pose(poses: Poses, shot: string): string {
 	const p = poses[shot];
 	if (p === undefined) return HIDDEN;
 	const [transform, opacity] = typeof p === 'string' ? [p, 1] : p;
-	return `opacity:${opacity};transform:${transform}`;
+	return `opacity:${opacity};transform:${flatten(transform)}`;
 }
 
 /** True when the object is drawn in this shot; hidden objects take no pointer events. */

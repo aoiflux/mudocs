@@ -3,25 +3,26 @@
  *
  * static/repl-worker.js hosts the pinned wasm build (mutant.lock.json,
  * `WASM_SIZE_LABEL` raw). Downloading, compiling and booting it takes seconds
- * to minutes, far longer than any program it runs. So one worker lives for the
- * life of the tab and that cost is paid once:
+ * to minutes, far longer than any program it runs. Only the pages that run
+ * programs fetch it, and one worker lives for the life of the tab, so that
+ * cost is paid once:
  *
- * - The root layout calls `preload()` once the first page is idle, unless the
- *   connection or the device says not to (`preloadBlockedReason`).
- * - The playground and the codebreaker call `boot()`, which starts the same
- *   load if preload did not, and `subscribe()` to show how far it has got.
+ * - The playground (on open) and the codebreaker (on RECOMPILE) call `boot()`,
+ *   which starts the load or joins the one under way, and `subscribe()` to show
+ *   how far it has got. No other page fetches the runtime.
  * - `run()` waits for the runtime, then gives the program alone its time limit.
  *   A run that overruns leaves the Go heap busy, so the worker is replaced.
  *
  * Worker protocol (static/repl-worker.js):
- *   → {type: 'init'}           ← {type: 'progress', loaded} … {type: 'downloaded', loaded}
+ *   → {type: 'init', sha256}   ← {type: 'source', cached}
+ *                               ← {type: 'progress', loaded} … {type: 'downloaded', loaded}
  *                               ← {type: 'ready'} | {type: 'init-failed', message}
  *   → {id, code}               ← {id, ok, output}
  *
  * Nothing touches `window` or `Worker` at module scope.
  */
 
-import { WASM_BYTES } from '$lib/mutant-pin';
+import { WASM_BYTES, WASM_SHA256 } from '$lib/mutant-pin';
 
 export type ReplPhase = 'idle' | 'downloading' | 'starting' | 'ready' | 'failed';
 
@@ -35,6 +36,8 @@ export type ReplSnapshot = {
 	startedAt: number;
 	/** Why the last load failed. */
 	reason: string;
+	/** True when the bytes come from this browser's stored copy, not the network. */
+	cached: boolean;
 };
 
 export type ReplResult = { ok: boolean; output: string; timedOut: boolean };
@@ -45,7 +48,7 @@ const STALL_MS = 30_000;
 const START_MS = 90_000;
 
 let worker: Worker | null = null;
-let state: ReplSnapshot = { phase: 'idle', loaded: 0, total: WASM_BYTES, startedAt: 0, reason: '' };
+let state: ReplSnapshot = { phase: 'idle', loaded: 0, total: WASM_BYTES, startedAt: 0, reason: '', cached: false };
 let booting: Promise<boolean> | null = null;
 let settle: ((ready: boolean) => void) | null = null;
 let watchdog: ReturnType<typeof setTimeout> | null = null;
@@ -100,6 +103,10 @@ function fail(why: string): void {
 function onMessage(event: MessageEvent): void {
 	const message = event.data ?? {};
 	switch (message.type) {
+		case 'source':
+			if (state.phase !== 'downloading') return;
+			update({ cached: Boolean(message.cached) });
+			return;
 		case 'progress':
 			// The worker reloads by itself after the Go program exits; that is not
 			// a load anyone is waiting on, so a ready runtime ignores its progress.
@@ -153,35 +160,10 @@ export function boot(): Promise<boolean> {
 	}
 	worker.onmessage = onMessage;
 	worker.onerror = () => fail('the worker crashed');
-	update({ phase: 'downloading', loaded: 0, startedAt: Date.now(), reason: '' });
+	update({ phase: 'downloading', loaded: 0, startedAt: Date.now(), reason: '', cached: false });
 	arm(STALL_MS, 'the download stalled');
-	worker.postMessage({ type: 'init' });
+	worker.postMessage({ type: 'init', sha256: WASM_SHA256 });
 	return started;
-}
-
-type ConstrainedNavigator = Navigator & {
-	connection?: { saveData?: boolean; effectiveType?: string };
-	deviceMemory?: number;
-};
-
-/**
- * Why the site should not fetch the runtime unasked. A page that needs it
- * (the playground, a RECOMPILE) still calls `boot()`: asking for it is consent.
- */
-export function preloadBlockedReason(): string | null {
-	if (typeof navigator === 'undefined') return 'server';
-	const nav = navigator as ConstrainedNavigator;
-	if (nav.connection?.saveData) return 'data saver on';
-	const effective = nav.connection?.effectiveType;
-	if (effective === 'slow-2g' || effective === '2g' || effective === '3g') return 'connection too slow';
-	if (typeof nav.deviceMemory === 'number' && nav.deviceMemory < 4) return 'device memory low';
-	return null;
-}
-
-/** Load the runtime in the background, if nothing argues against it. */
-export function preload(): void {
-	if (state.phase !== 'idle' || preloadBlockedReason()) return;
-	void boot();
 }
 
 /**

@@ -2,14 +2,16 @@
 	/**
 	 * Artboard 2c — toolbar / split editor+output / execution graph.
 	 *
-	 * Programs run in the site's one shared REPL runtime ($lib/repl/host), which
-	 * the root layout starts loading in the background. Until it is ready this page
-	 * shows how far the load has got. The build it loads is pinned by mutant.lock.json.
+	 * Programs run in the site's one shared REPL runtime ($lib/repl/host). Opening
+	 * this page starts loading it, unless an earlier visit in this tab already did;
+	 * until it is ready RuntimeLoader shows how far the load has got, with tips and
+	 * a minigame. The build it loads is pinned by mutant.lock.json.
 	 */
 	import { onDestroy, onMount } from 'svelte';
 	import SeoHead from '$lib/components/SeoHead.svelte';
 	import PipelineDiagram from '$lib/components/PipelineDiagram.svelte';
 	import ProgressRing from '$lib/components/ProgressRing.svelte';
+	import RuntimeLoader from '$lib/repl/RuntimeLoader.svelte';
 	import { boot, replSnapshot, run as runInRepl, subscribe, type ReplSnapshot } from '$lib/repl/host';
 	import {
 		MUTANT_RELEASE_URL,
@@ -104,6 +106,8 @@ for (let i = 0; i < len(items); i = i+1) {
 	let repl = $state<ReplSnapshot>(replSnapshot());
 	let elapsedMs = $state<number | null>(null);
 	let stageIndex = $state(0);
+	let showLoader = $state(false);
+	let editor: HTMLTextAreaElement | undefined = $state();
 
 	let startedAt = 0;
 	let stageTimers: number[] = [];
@@ -179,7 +183,11 @@ for (let i = 0; i < len(items); i = i+1) {
 		repl.phase === 'starting' ? null : repl.total > 0 ? repl.loaded / repl.total : null
 	);
 	const loadTitle = $derived(
-		repl.phase === 'starting' ? 'Starting the Mutant runtime' : 'Downloading the Mutant runtime'
+		repl.phase === 'starting'
+			? 'Starting the Mutant runtime'
+			: repl.cached
+				? 'Loading the Mutant runtime from this browser'
+				: 'Downloading the Mutant runtime'
 	);
 	const loadDetail = $derived(
 		repl.phase === 'starting'
@@ -218,8 +226,9 @@ for (let i = 0; i < len(items); i = i+1) {
 	}
 
 	onMount(() => {
+		// A runtime this tab already loaded needs no loading screen.
+		showLoader = replSnapshot().phase !== 'ready';
 		const stop = subscribe((snapshot) => (repl = snapshot));
-		// Join the background load, or start it if the layout did not.
 		void boot();
 		return stop;
 	});
@@ -260,6 +269,11 @@ for (let i = 0; i < len(items); i = i+1) {
 		output = result.output;
 		lastRunOk = result.ok;
 		friendlyDiagnostic = mapFriendlyDiagnostic(result.output);
+	}
+
+	function dismissLoader(byReader: boolean) {
+		showLoader = false;
+		if (byReader) editor?.focus();
 	}
 
 	// The runtime outlives this page on purpose: coming back must not reload it.
@@ -310,11 +324,15 @@ for (let i = 0; i < len(items); i = i+1) {
 	<p class="text-muted" style="font-size: 13px; margin: var(--space-3) 0;">{activePreset.description}</p>
 {/if}
 
+{#if showLoader}
+	<RuntimeLoader {repl} onretry={() => void boot()} ondismiss={dismissLoader} />
+{/if}
+
 <!-- ── Editor · Output ──────────────────────────────────────────────────── -->
 <div class="pg-split">
 	<div class="pg-editor">
 		<span class="pane-label">main.mut</span>
-		<textarea bind:value={code} spellcheck="false" aria-label="Mutant source"></textarea>
+		<textarea bind:this={editor} bind:value={code} spellcheck="false" aria-label="Mutant source"></textarea>
 	</div>
 
 	<div class="pg-right">
@@ -333,7 +351,7 @@ for (let i = 0; i < len(items); i = i+1) {
 				</div>
 			{:else if repl.phase !== 'ready'}
 				<div class="pg-loading">
-					<ProgressRing value={loadFraction} label={loadTitle} />
+					<ProgressRing value={loadFraction} label={loadTitle} size={32} />
 					<div>
 						<strong aria-live="polite">{loadTitle}</strong>
 						<span class="text-muted">{loadDetail}</span>

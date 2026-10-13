@@ -68,7 +68,7 @@ export class GameState {
 	// --- services ------------------------------------------------------------
 	muted = $state(true);
 	audioState = $state<audio.AudioStatus>('idle');
-	wasmView = $state<wasm.WasmSnapshot>({ status: 'idle', elapsedSeconds: 0, reason: '' });
+	wasmView = $state<wasm.WasmSnapshot>({ status: 'idle', percent: null, reason: '' });
 	wasmBusy = $state(false);
 	verdict = $state<WasmVerdict>({ kind: 'none' });
 	consentPending = $state(false);

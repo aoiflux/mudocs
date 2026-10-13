@@ -522,7 +522,7 @@
 	.rg-power {
 		font-size: 64px;
 		color: var(--f-orange);
-		text-shadow: 0 0 24px var(--f-orange);
+		text-shadow: 0 0 8px rgba(255, 155, 66, 0.5);
 		line-height: 1;
 	}
 

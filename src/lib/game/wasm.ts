@@ -3,7 +3,7 @@
  *
  * It runs programs in the site's one shared REPL runtime ($lib/repl/host), the
  * same one the playground uses, so there is only ever one Go heap in a tab and
- * a runtime the layout already loaded in the background is ready at once.
+ * a runtime the playground already loaded is ready at once.
  *
  * The local validator is always authoritative for progression. Everything here
  * only decorates — if it never loads, all eight puzzles remain completable.
@@ -33,19 +33,20 @@ const listeners = new Set<Listener>();
 
 export type WasmSnapshot = {
 	status: WasmStatus;
-	/** Whole seconds since the warm started — an honest timer, not a fake percentage. */
-	elapsedSeconds: number;
+	/** Whole percent of the wasm received, from the worker's byte count; null once it is compiling. */
+	percent: number | null;
 	reason: string;
 };
 
 function snapshot(): WasmSnapshot {
-	if (declined) return { status: 'disabled', elapsedSeconds: 0, reason: declined };
+	if (declined) return { status: 'disabled', percent: null, reason: declined };
 	const shared = host.replSnapshot();
-	if (shared.phase === 'downloading' || shared.phase === 'starting') {
-		const elapsedSeconds = shared.startedAt > 0 ? Math.floor((Date.now() - shared.startedAt) / 1000) : 0;
-		return { status: 'downloading', elapsedSeconds, reason: shared.reason };
+	if (shared.phase === 'downloading') {
+		const percent = shared.total > 0 ? Math.min(100, Math.floor((shared.loaded / shared.total) * 100)) : 0;
+		return { status: 'downloading', percent, reason: shared.reason };
 	}
-	return { status: shared.phase, elapsedSeconds: 0, reason: shared.reason };
+	if (shared.phase === 'starting') return { status: 'downloading', percent: null, reason: shared.reason };
+	return { status: shared.phase, percent: null, reason: shared.reason };
 }
 
 function publish(): void {
@@ -197,7 +198,10 @@ export function summarizePanic(raw: string): string {
 export function chipLabel(current: WasmSnapshot): { mark: string; text: string } {
 	switch (current.status) {
 		case 'downloading':
-			return { mark: '◐', text: `LINKING · ${WASM_SIZE_LABEL} · ${current.elapsedSeconds}s` };
+			return {
+				mark: '◐',
+				text: current.percent === null ? 'LINKING · STARTING' : `LINKING · ${WASM_SIZE_LABEL} · ${current.percent}%`
+			};
 		case 'ready':
 			return { mark: '●', text: 'READY' };
 		case 'failed':

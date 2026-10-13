@@ -1,10 +1,13 @@
 // The REPL host for the whole site: src/lib/repl/host.ts owns the one worker and
-// sends {type: 'init'} to load the runtime ahead of any program, then {id, code}.
-// A bare {id, code} with no init first still works: it loads on demand.
+// sends {type: 'init', sha256} to load the runtime ahead of any program, then
+// {id, code}. A bare {id, code} with no init first still works: it loads on
+// demand, without the browser-side copy described at fetchWasm.
 let ready = false;
 let booting = null;
 let invoke = null;
 let go = null;
+// The sha256 mutant.lock.json records for the wasm; names its cached copy.
+let wasmSha = '';
 
 function normalizeCapturedLines(lines) {
 	return lines
@@ -64,15 +67,64 @@ const READY_EXPORT = 'mutantReplReady';
 const READY_TIMEOUT_MS = 15000;
 const WASM_URL = '/wasm-repl/mutant_repl.wasm';
 const PROGRESS_EVERY_MS = 200;
+const CACHE_NAME = 'mudocs-wasm-repl';
+
+async function openWasmCache() {
+	if (!wasmSha || typeof self.caches === 'undefined') return null;
+	try {
+		return await self.caches.open(CACHE_NAME);
+	} catch {
+		return null;
+	}
+}
+
+// The wasm is far larger than the HTTP cache keeps, so a plain fetch downloads it
+// again on every visit. Keep one copy in Cache Storage instead, keyed by the
+// pinned sha256: a re-pin changes the key, and the old copy is dropped when the
+// new one is stored. Without Cache Storage (an insecure origin, a private window
+// that refuses it) every visit downloads, as before.
+async function fetchWasm(url) {
+	const cache = await openWasmCache();
+	const key = new URL(`${url}?sha256=${wasmSha}`, self.location.href).href;
+	if (cache) {
+		try {
+			const hit = await cache.match(key);
+			if (hit && hit.body) {
+				self.postMessage({ type: 'source', cached: true });
+				return hit;
+			}
+		} catch {
+			// Fall through to the network.
+		}
+	}
+
+	const response = await fetch(url);
+	if (!response.ok || !response.body) {
+		throw new Error(`${url}: HTTP ${response.status}`);
+	}
+	self.postMessage({ type: 'source', cached: false });
+	if (!cache) return response;
+
+	const [forRuntime, forCache] = response.body.tee();
+	const headers = { 'Content-Type': 'application/wasm' };
+	(async () => {
+		try {
+			for (const old of await cache.keys()) {
+				if (old.url !== key) await cache.delete(old);
+			}
+			await cache.put(key, new Response(forCache, { headers }));
+		} catch {
+			// Out of quota, or storage refused: the next visit downloads again.
+		}
+	})();
+	return new Response(forRuntime, { headers });
+}
 
 // Fetch the wasm, telling the host how many bytes have arrived. The count is of
 // the bytes the body yields, which are decompressed even when the transfer was
 // not, so it climbs to the size the lock records.
 async function fetchCounted(url) {
-	const response = await fetch(url);
-	if (!response.ok || !response.body) {
-		throw new Error(`${url}: HTTP ${response.status}`);
-	}
+	const response = await fetchWasm(url);
 
 	let loaded = 0;
 	let reportedAt = 0;
@@ -210,6 +262,7 @@ self.onmessage = async (event) => {
 	const { type, id, code } = event.data || {};
 
 	if (type === 'init') {
+		if (typeof event.data.sha256 === 'string') wasmSha = event.data.sha256;
 		try {
 			await ensureRuntime();
 			self.postMessage({ type: 'ready' });
